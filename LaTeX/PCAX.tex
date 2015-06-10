@@ -1,0 +1,240 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{doublespace}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[authoryear]{natbib}
+\usepackage{bm}
+\usepackage{verbatim}
+\usepackage{lineno}
+\usepackage{times}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{epstopdf}
+%\usepackage{hyperref}   % is required to write URL
+
+
+\linespread{1.5}
+
+\newcommand{\btheta}{ \mbox{\boldmath $\theta$}}
+\newcommand{\bmu}{ \mbox{\boldmath $\mu$}}
+\newcommand{\balpha}{ \mbox{\boldmath $\alpha$}}
+\newcommand{\bbeta}{ \mbox{\boldmath $\beta$}}
+\newcommand{\tbeta}{ \mbox{$\tilde \beta$}}
+\newcommand{\bdelta}{ \mbox{\boldmath $\delta$}}
+\newcommand{\blambda}{ \mbox{\boldmath $\lambda$}}
+\newcommand{\bgamma}{ \mbox{\boldmath $\gamma$}}
+\newcommand{\brho}{ \mbox{\boldmath $\rho$}}
+\newcommand{\bpsi}{ \mbox{\boldmath $\psi$}}
+\newcommand{\bepsilon}{ \mbox{\boldmath $\epsilon$}}
+\newcommand{\bomega}{ \mbox{\boldmath $\omega$}}
+\newcommand{\bDelta}{ \mbox{\boldmath $\Delta$}}
+\newcommand{\bSigma}{ \mbox{\boldmath $\Sigma$}}
+\newcommand{\boldeta}{ \mbox{\boldmath $\eta$}}
+\newcommand{\bone}{ \mbox{\boldmath $1$}}
+\newcommand{\bA}{ \mbox{\bf A}}
+\newcommand{\ba}{ \mbox{\bf a}}
+\newcommand{\bP}{ \mbox{\bf P}}
+\newcommand{\bx}{ \mbox{\bf x}}
+\newcommand{\bX}{ \mbox{\bf X}}
+\newcommand{\bB}{ \mbox{\bf B}}
+\newcommand{\bZ}{ \mbox{\bf Z}}
+\newcommand{\by}{ \mbox{\bf y}}
+\newcommand{\bY}{ \mbox{\bf Y}}
+\newcommand{\bz}{ \mbox{\bf z}}
+\newcommand{\bh}{ \mbox{\bf h}}
+\newcommand{\br}{ \mbox{\bf r}}
+\newcommand{\bt}{ \mbox{\bf t}}
+\newcommand{\bs}{ \mbox{\bf s}}
+\newcommand{\bb}{ \mbox{\bf b}}
+\newcommand{\bL}{ \mbox{\bf L}}
+\newcommand{\bu}{ \mbox{\bf u}}
+\newcommand{\bg}{ \mbox{\bf g}}
+\newcommand{\bv}{ \mbox{\bf v}}
+\newcommand{\bV}{ \mbox{\bf V}}
+\newcommand{\bW}{ \mbox{\bf W}}
+\newcommand{\bG}{ \mbox{\bf G}}
+\newcommand{\bH}{ \mbox{\bf H}}
+\newcommand{\bD}{ \mbox{\bf D}}
+\newcommand{\bK}{ \mbox{\bf K}}
+\newcommand{\bM}{ \mbox{\bf M}}
+\newcommand{\bw}{ \mbox{\bf w}}
+\newcommand{\bo}{ \mbox{\bf o}}
+\newcommand{\bfe}{ \mbox{\bf e}}
+\newcommand{\alphahat}{{\hat \alpha}}
+\newcommand{\iid}{\stackrel{iid}{\sim}}
+\newcommand{\indep}{\stackrel{indep}{\sim}}
+\newcommand{\calR}{{\cal R}}
+\newcommand{\calG}{{\cal G}}
+\newcommand{\calD}{{\cal D}}
+\newcommand{\calS}{{\cal S}}
+\newcommand{\calB}{{\cal B}}
+\newcommand{\calA}{{\cal A}}
+\newcommand{\calT}{{\cal T}}
+\newcommand{\calO}{{\cal O}}
+\newcommand{\calGP}{{\cal GP}}
+\newcommand{\mR}{{\cal R}}
+\newcommand{\mC}{{\cal C}}
+\newcommand{\argmax}{{\mathop{\rm arg\, max}}}
+\newcommand{\argmin}{{\mathop{\rm arg\, min}}}
+\newcommand{\Frechet}{\mbox{Fr$\acute{\mbox{e}}$chet}}
+\newcommand{\Matern}{ \mbox{Mat$\acute{\mbox{e}}$rn}}
+
+
+\newcommand{\beq}{ \begin{equation}}
+\newcommand{\eeq}{ \end{equation}}
+\newcommand{\beqn}{ \begin{eqnarray}}
+\newcommand{\eeqn}{ \end{eqnarray}}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+
+\newtheorem{mydef}{Definition}
+\newtheorem{mythm}{Theorem}
+\newtheorem{mylemma}{Lemma}
+\newtheorem{myproposition}{Proposition}
+\newtheorem{mycor}{Corollary}
+
+
+\begin{document}\linenumbers
+\pagestyle{empty}
+\begin{center}
+{\Large {\bf PCA for extremes}}\\
+
+{\large Sam Morris\footnote[1]{North Carolina State University}, Brian J Reich\footnotemark[1]{}, Emeric Thibauld\footnote[2]{Colorado State University}, and Dan Cooley\footnotemark[2]{}}
+
+%\footnote{This is the footnote} looks like this. Later text referring to same footnote\footnotemark[\value{footnote}]
+\today
+\end{center}
+
+
+\begin{abstract}
+	words...\\
+	{\bf Key words}: Max-stable process.
+
+\end{abstract}
+\newpage
+\pagestyle{plain}
+\setcounter{page}{1}
+
+\section{Introduction}\label{s:intro}
+
+\section{Model}\label{s:model}
+
+
+Let $Y_{it}$ be the observation at location $\bs_i$ for $i\in\{1,...,n_s\}$ and time $t\in\{1,...,n_t\}$.  To focus attention on the extreme values, we consider data above a threshold $T$.  The marginal distribution of $Y_{it}$ is then determined by the probability of exceeding the threshold and the distribution of the excursions. Denote the exceedance probability as Prob$[Y_{it}>T] = p_{it}$.  Extreme value theory says that for sufficiently large $T$ the excursion distribution can be approximated using a generalized Pareto distribution (GPD).  Therefore we model $Y_{it}|Y_{it}>T \sim$ GDP$(\sigma_{it},\xi)$, where the GDP  scale and shape parameters are denoted $\sigma_{it}>0$ and $\xi$, respectively. 
+
+{\bf spectral, max-linear...finally we settle on...} Spatial extremal dependence is captured using a max-stable copula (define).  Let $Z_{it}$ be a max-stable process with $\Frechet$ marginal distributions (define GEV etc...).  Our objective is to identify a low-rank model for spatial dependence in $Z_{it}$.  Decompose  $Z_{it}$ as $Z_{it}=\theta_{it}\varepsilon_{it}$ where $\theta_{it}$ is a spatial process and $\varepsilon_{it}\iid$ GEV$(1,\alpha,\alpha)$ is a nugget.  The spatial component is written as a combination of $L$ basis functions $B_{il}$
+\beq \label{theta}
+  \theta_{it} = \left(\sum_{l=1}^LB_{il}^{1/\alpha}A_{lt}\right)^{\alpha}. 
+\eeq
+If $B_{il}>0$, $\sum_{l=1}^LB_{il}=1$, and the $A_{lt}$ have positive stable (PS) distribution $A_{lt}\sim$ PS$(\alpha)$ (define), then $Z_{it}$ is max-stable and has $\Frechet$ marginal distributions.
+
+The $Z_{it}$ are conditionally independent given the spatial random effects, with conditional distribution $Z_{it}|\theta_{it}\sim$.  As a result, the likelihood is $Y_{it}|\theta_{it} \indep g(y;\theta_{it},p_{it},\sigma_{it},\xi)$ where
+\beq\label{g}
+   g(y;\theta,p,\sigma,\xi)  = 
+\eeq
+Therefore, the likelihood factors across observations which is computationally convenient. Marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence in the $Z_{it}$, and thus the $Y_{it}$.   Spatial dependence can be summarized by the extremal coefficient (EC) $\vartheta_{ij}\in[1,2]$, where
+\beq\label{ECdev}
+  \mbox{Prob}(Z_{it}<c,Z_{jt}<c) = \mbox{Prob}(Z_{it}<c)^{\vartheta_{ij}}.
+\eeq
+
+For the PS random effects model the EC has the form
+\beq\label{EC}
+   \vartheta_{ij} = \sum_{l=1}^L \left(B_{il}^{1/\alpha}+B_{jl}^{1/\alpha}\right)^\alpha.
+\eeq
+In particular, $\vartheta_{ii} = 2^{\alpha}$ for all $i$.  Since $\sum_{l=1}^LB_{il}=1$ for all $i$, we have $\sum_{l=1}^L(\sum_{i=1}^{n_s}B_{il}/n_s) = 1$.  Therefore, the relative contribution of term $l$ can be measured by 
+\beq 
+  v_l = \sum_{i=1}^{n_s}B_{il}/n_s,
+\eeq
+with $\sum_{l=1}^Lv_l=1$.  The order of the terms is arbitrary, and so we assume without loss of generality that $v_1\ge...\ge v_L$.
+
+
+\section{Estimating the extremal coefficient function}\label{s:estimation}
+
+In this section we develop an algorithm to estimate the spatial dependence parameter $\alpha$ and the $n_s\times L$ matrix $\bB = \{B_{il}\}$.  Given these parameters, we plug them into our model and proceed with Bayesian analysis as described in Section \ref{s:MCMC}.  Our algorithm has the following steps:
+\begin{itemize}
+  \item[] (1) Obtain an initial estimate of the extremal coefficient for each pair of locations, ${\hat \vartheta}_{ij}$.
+  \item[] (2) Spatially smooth these initial estimates ${\hat \vartheta}_{ij}$ using kernel smoothing to obtain ${\tilde \vartheta}_{ij}$.
+  \item[] (3) Estimate the spatial dependence parameters by minimizing the difference between model-based coefficients, $\vartheta_{ij}$, and smoothed coefficients, ${\tilde \vartheta}_{ij}$.
+\end{itemize}
+
+To estimate the spatial dependence we first remove variation in the marginal distribution.  Let $U_{it} = \sum_{k=1}^{n_t} I[Y_{ik}<Y_{it}]/n_t$, so that the $U_{it}$ are approximately uniform at each location.  Then for some extreme probability $q\in(0,1)$, solving (\ref{ECdev}) suggest the estimate
+\beq\label{EChat0}
+   {\hat \vartheta}_{ij}(q) = \frac{\log[Q_{ij}(q)]}{\log(q)},
+\eeq
+where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less then $q$.  Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<...<q_{n_q}$
+\beq\label{EChat1}
+{\hat \vartheta}_{ij} = \frac{1}{n_q}\sum_{j=1}^{n_q}{\hat \vartheta}_{ij}(q_j).
+\eeq
+
+Assuming the true $B_{il}$ are smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.  Let
+\beq\label{EChat2}
+  {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
+  {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
+\eeq
+where $w_{iu} = \exp(-\phi||\bs_i-\bs_u'||^2)$ is the Gaussian kernel function with bandwidth $\phi$.  The elements ${\hat \vartheta}_{ii}$ do not contributed any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.  To eliminate the influence of these estimates we set $w_{ii}=0$.  However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provides information about small-scale spatial variability. 
+
+The dependence parameters are estimated by comparing estimates ${\tilde \vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.  For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$. Given $\alpha=\alphahat$, it remains to estimate $\bB$.  These estimate ${\hat \bB}$ is taken as the minimizer of 
+\beq\label{Bhat}
+m(\bB) = \sum_{i<j} \left({\tilde \vartheta}_{ij} - \vartheta_{ij}\right)^2
+  = 
+  \sum_{i<j} \left\{{\tilde \vartheta}_{ji} - \sum_{l=1}^L[B_{il}^{1/\alphahat} + B_{jl}^{1/\alphahat}]^{\alphahat}\right\}^2
+\eeq
+under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.  
+
+The order of the $B_{il}$ is not defined.  Therefore, we sort the terms so that $v_1>...>v_L$.  
+
+
+
+\section{Implementation details}\label{s:MCMC}
+
+The model has three tuning parameters: the quantile threshold $q$, the kernel bandwidth $\phi$, and the number of terms $L$.  How to pick?  Say $q=0.95$ or whatever seems to give GPD marginals.  $\phi$ is something reasonable.  For $L$, we start small and increase until the smallest proportion $v_L$ is less than, say 0.05.  
+
+Given the estimates of $\alpha$ and $\bB$, the hierarchical model is
+\beqn \label{bayesmodel}
+  Y_{it} |\theta_{ij} & \indep & g(y;\theta_{it},p_{it},\sigma_{it},\xi) \\
+  \theta_{it} &=& \left(\sum_{l=1}^L{\hat B}_{il}^{1/\alphahat}A_{lt}\right)^{\alphahat}
+  \mbox{\ \ \ where \ \ \ }
+  A_{lt} \iid PS(\alphahat)\nonumber\\
+  \mbox{logit}(p_{it}) &=& \bX_{it}^T\bbeta_1 
+  \mbox{\ \ \ and \ \ \ }
+  \mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2 \nonumber
+\eeqn
+where $g$ is given in (\ref{g}) and $\bX_{it} = (X_{it1},...,X_{itp})^T$ is a vector of spatiotemporal covariates.  To complete the Bayesian model, we select independent normal priors with mean zero and variance 100 for the components of $\bbeta_1$ and $\bbeta_2$ and standard normal prior for $\xi$.
+
+We estimate parameters $\Theta=\{A_{lt}, \bbeta_1,\bbeta_2,\xi\}$ using Markov chain Monte Carlo. Details...
+
+\section{Data analysis}\label{s:analysis}
+
+\subsection{Results}\label{s:results}
+
+\subsection{Model checking and sensitivity analysis}
+
+
+\section{Conclusions}\label{s:con}
+
+\section*{Acknowledgements}
+
+
+\begin{singlespace}
+\bibliographystyle{rss}
+\bibliography{PCAX}
+\end{singlespace}
+
+\end{document}
+
+
+\begin{figure}
+	\caption{Estimated $\bbeta$ for the EEG data.}\label{f:4fits}
+	\begin{center}\begin{picture}(420,420)
+		\includegraphics[height=6in,width=6in]{4fits}
+		\end{picture}\end{center}
+\end{figure}
+
+
+
+
+

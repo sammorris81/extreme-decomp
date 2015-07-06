@@ -19,123 +19,128 @@
 # 
 ######################################################################
 
-get.factors.EC <- function(EC,L=5,s=NULL,bw=NULL,alpha=NULL,init.B=NULL,iters=10,verbose=TRUE){
+get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
+                           init.B = NULL, iters = 10, verbose = TRUE){
 
  tick   <- proc.time()[3]
 
  n      <- ncol(EC)
- if( is.null(s)){  s <- 1:n}
- if(is.null(bw)){ bw <- 2*min(dist(s))}
+ if (is.null(s)) {s <- 1:n }
+ if (is.null(bw)) {bw <- 2 * min(dist(s)) }
 
  # SMOOTHING
 
-  EC  <- Ksmooth(EC,s,bw)
+  EC  <- Ksmooth(EC, s, bw)
   ECs <- EC
-  if(is.null(alpha)){alpha  <- log2(mean(diag(EC)))}
+  if (is.null(alpha)) {alpha <- log2(mean(diag(EC)))}
   diag(EC) <- NA
 
  # INITIAL VALUES
 
   if(is.null(init.B)){
-    B <- 1/matrix(1:L,n,L,byrow=TRUE)
+    B <- 1 / matrix(1:L, n, L, byrow = TRUE)
   }
   if(!is.null(init.B)){
     B <- init.B
   }
-  B  <- sweep(B,1,rowSums(B),"/")
+  B  <- sweep(B, 1, rowSums(B), "/")
  
  # ESTIMATION
 
-  Delta_B   <- rep(NA,iters)
-  Delta_val <- rep(NA,iters)
+  Delta_B   <- rep(NA, iters)
+  Delta_val <- rep(NA, iters)
 
-  for(iter in 1:iters){
-   prev  <- B
-   maxit <- ifelse(iter==iters | iter>100,100,2*iter+2)
-   for(i in 1:n){
-    fit       <- optim(B[i,],fn=SSE,gr=SSE.grad,Y=EC[i,],B2=B,alpha=alpha,
-                       lower=rep(0,L),upper=rep(1,L),method="L-BFGS-B",
-                       control=list(maxit=maxit))
-    B[i,] <- abs(fit$par)/sum(abs(fit$par))
-   }
-   Delta_B[iter]   <- mean((prev-B)^2)
-   Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
-
-   if(verbose){print(paste("Done with iteration",iter,"of",iters))}
+  for (iter in 1:iters) {
+    prev  <- B
+    maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
+    for (i in 1:n) {
+      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
+                   alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
+                   method = "L-BFGS-B", control = list(maxit = maxit))
+      B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+    }
+    Delta_B[iter]   <- mean((prev-B)^2)
+    Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
+    
+    if(verbose){print(paste("Done with iteration", iter, "of", iters))}
   }
 
  # REORDER THE COLUMNS
     
-  B      <- B[,order(-colSums(B))]
-  pct    <- colSums(B)/sum(B)
+  B      <- B[, order(-colSums(B))]
+  pct    <- colSums(B) / sum(B)
   tock   <- proc.time()[3]
 
-  output <- list(est=B,pct=pct,alpha=alpha,EC.smooth=ECs,
-                 Delta.B=Delta_B,Delta.val=Delta_val,
-                 seconds=tock-tick)
- 
-return(output)}
-
-
-
+  output <- list(est = B, pct = pct, alpha = alpha, EC.smooth = ECs,
+                 Delta.B = Delta_B, Delta.val = Delta_val,
+                 seconds = tock-tick)
+  
+  return(output)
+}
 
 # SSE for row of Y-EC
-SSE <- function(B1,B2,Y,alpha,lambda=1000){
+SSE <- function(B1, B2, Y, alpha, lambda = 1000){
 
-   BB  <- B1^(1/alpha)
-   B2  <- B2^(1/alpha)
-   EC  <- sweep(B2,2,BB,"+")
-   EC  <- rowSums(EC^alpha)
-   sse <- sum((Y-EC)^2,na.rm=TRUE)+lambda*(sum(B1)-1)^2
-return(sse)}
+  BB  <- B1^(1 / alpha)
+  B2  <- B2^(1 / alpha)
+  EC  <- sweep(B2, 2, BB, "+")
+  EC  <- rowSums(EC^alpha)
+  sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
+  
+  return(sse)
+}
 
-SSE.grad <- function(B1,B2,Y,alpha,lambda=1000){
+SSE.grad <- function(B1, B2, Y, alpha, lambda = 1000){
+  
+  BB   <- B1^(1 / alpha)
+  B2   <- B2^(1 / alpha)
+  
+  BB   <- sweep(B2, 2, BB, "+")
+  EC0  <- rowSums(BB^alpha)
+  
+  EC1  <- BB^(alpha - 1)
+  EC1  <- sweep(EC1, 2, B1^(1 / alpha - 1), "*")
+  EC1  <- sweep(EC1, 1, Y - EC0, "*")
+  
+  grad <- -2 * colSums(EC1, na.rm = TRUE) +
+           2 * lambda * (sum(B1) - 1)
+  
+  return(grad)
+}
 
-   BB   <- B1^(1/alpha)
-   B2   <- B2^(1/alpha)
 
-   BB   <- sweep(B2,2,BB,"+")
-   EC0  <- rowSums(BB^alpha)
-
-   EC1  <- BB^(alpha-1)
-   EC1  <- sweep(EC1,2,B1^(1/alpha-1),"*")
-   EC1  <- sweep(EC1,1,Y-EC0,"*")
- 
-   grad <- -2*colSums(EC1,na.rm=TRUE)+
-            2*lambda*(sum(B1)-1)
-
-return(grad)}
-
-
-make.EC  <- function(B,alpha){
-   Ba    <- B^(1/alpha) 
-   EC    <- NULL
-   for(j in 1:nrow(B)){
-      BB <- sweep(Ba,2,Ba[j,],"+")
-      EC <- cbind(EC,rowSums(BB^alpha))
-   }
-return(EC)}
+make.EC  <- function(B, alpha){
+  Ba    <- B^(1 / alpha) 
+  EC    <- NULL
+  for(j in 1:nrow(B)){
+    BB <- sweep(Ba, 2, Ba[j, ], "+")
+    EC <- cbind(EC, rowSums(BB^alpha))
+  }
+  
+  return(EC)
+}
 
 # Performs kernel smoothing of the extremal coefficient matrix.
-Ksmooth <- function(ECmat,s=NULL,bw=NULL){
-
-   n           <- nrow(ECmat)
-   diag(ECmat) <- 0
-   E1          <- ifelse(ECmat==0,0,1)
-   if(is.null(s)){  s<-1:n}
-   if(is.null(bw)){bw<-2*min(dist(s))}
-
-
-   d2       <- as.matrix(dist(s)/bw)^2
-   W        <- exp(-d2)
-   diag(W)  <- 0
-
-   num      <- W%*%ECmat%*%W
-   den      <- W%*%E1%*%W
-
-   ECsmooth <- num/den
-
-return(ECsmooth)}
+Ksmooth <- function(ECmat, s = NULL, bw = NULL){
+  
+  n           <- nrow(ECmat)
+  diag(ECmat) <- 0
+  E1          <- ifelse(ECmat == 0, 0, 1)
+  if (is.null(s)) {s <- 1:n}
+  if (is.null(bw)) {bw <- 2 * min(dist(s))}
+  
+  
+  d2       <- as.matrix(dist(s) / bw)^2
+  W        <- exp(-d2)
+  diag(W)  <- 0
+  
+  num      <- W %*% ECmat %*% W
+  den      <- W %*% E1 %*% W
+  
+  ECsmooth <- num / den
+  
+  return(ECsmooth)
+}
 
 
 ####################################################
@@ -177,7 +182,7 @@ if(TRUE){
   B.est     <- out$est
   alphahat  <- out$alpha
   EC.smooth <- out$EC.smooth
-  EC.est    <- make.EC(B.est,alphahat)
+  EC.est    <- make.EC(B.est, alphahat)
 
   print(out$pct)
 

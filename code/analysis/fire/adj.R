@@ -1,5 +1,4 @@
-cty<-read.csv("S:\\Documents\\ExMarkov\\Fire\\county.csv",as.is=TRUE)
-
+cty<-read.csv("county.csv",as.is=TRUE)
 
 i1<-which(cty[,2]==" GA")
 

@@ -1,0 +1,34 @@
+---
+title: "EDA-part2"
+author: "Sam Morris"
+date: "21 June 2015"
+output: pdf_document
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+library(fields)
+library(maps)
+library(maptools)
+source(file = "../code/analysis/fire/adj.R", chdir = TRUE)
+load(file = "../code/analysis/fire/gaCntyFires.RData")
+load(file = "../code/analysis/fire/fire_data.RData")
+load(file = "../code/analysis/fire/chi.RData")
+
+georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
+               plot = FALSE)
+range(georgia$x, na.rm = TRUE)
+range(georgia$y, na.rm = TRUE)
+georgia$names
+IDs <- sapply(strsplit(georgia$names, ","), function(x) x[2])
+# maptools
+georgia_sp <- map2SpatialPolygons(georgia, IDs = IDs,
+                                  proj4string=CRS("+proj=longlat +datum=WGS84"))
+sapply(slot(georgia_sp, "polygons"), function(x) length(slot(x, "Polygons")))
+plot(georgia_sp, col="grey", axes = TRUE)
+cents <- coordinates(georgia_sp)
+points(cents)
+
+d <- rdist(cents)
+diag(d) <- 0
+```
+

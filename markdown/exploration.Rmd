@@ -1,22 +1,68 @@
 ---
-title: "Exploration"
+title: "Fire data exploration"
 author: "Sam Morris"
 date: "10 June 2015"
 output: pdf_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# EDA for Georgia fire data
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
-summary(cars)
+```{r setup, echo=FALSE, include=FALSE}
+library(fields)
+library(maps)
+source(file = "../code/analysis/fire/adj.R", chdir = TRUE)
+load(file = "../code/analysis/fire/gaCntyFires.RData")
+load(file = "../code/analysis/fire/fire_data.RData")
+load(file = "../code/analysis/fire/chi.RData")
 ```
 
-You can also embed plots, for example:
+```{r chiplot-setup, echo = FALSE}
+# sort the adjacency matrix
+order <- rep(NA, ncol(Y))
+order[1] <- 1
+for (i in 1:length(order)) {
+  this <- order[i]
+  neighbors <- which(ADJ[this, ] == 1)
+  for (k in 1:length(neighbors)) {
+    if (!(neighbors[k] %in% unique(order))) {
+      this <- min(which(is.na(order)))
+      order[this] <- neighbors[k]
+    }
+  }
+}
 
-```{r, echo=FALSE}
-plot(cars)
+chi.sort <- matrix(NA, ncol(Y), ncol(Y))
+for (i in 1:ncol(Y)) {
+  for (j in i:ncol(Y)) {
+    pair.i <- order[i]
+    pair.j <- order[j]
+    chi.sort[i, j] <- chi.sort[j, i] <- chi[pair.i, pair.j]
+  }
+}
+
+chi.sort <- ifelse(chi.sort < 0, 0, chi.sort)
+# image.plot(1:ncol(Y), 1:ncol(Y), chi, main = "estimated chi")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Dependence
+
+I used the `chiplot` function in `evd` to estimate the pairwise $\chi$ for all pairs of counties.
+The value we're using is the average of $\chi(u)$ for $u = 0.909, 0.917, 0.925, 0.933, 0.940, 0.948$.
+Then to get the estimate for $\theta$, I'm using $2 - \chi$.
+Currently, I am estimating $\theta$ only using the annual forest fire burn amount, but I will be changing this to work with the daily time series.
+This plot is an estimate of $\widehat{\theta}$ and not $\widetilde{\theta}$.
+I plan to implement the method described in the draft manuscript as the next step to get $\widehat{\theta}$ and $\widetilde{\theta}$.
+
+```{r chiplot, echo = FALSE, fig.height=3.5, fig.width=5}
+image.plot(1:ncol(Y), 1:ncol(Y), chi.sort, main = "estimated chi")
+```
+
+```{r ecplot, echo = FALSE, fig.height=3.5, fig.width=5}
+image.plot(1:ncol(Y), 1:ncol(Y), 2 - chi.sort, main = "estimated EC")
+```
+
+## How best to sort the sites?
+
+I did use the adjacency matrix to try to rearrange the counties in the plots so neighboring counties are near each other, but this still needs to be refined some more.
+I tried to figure out how to identify the latitude and longitude of the centroids of the counties, but I could not find anything.
+Do you have any code that takes the information from the `maps` package and can calculate the centroids?

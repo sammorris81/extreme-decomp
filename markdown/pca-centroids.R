@@ -129,7 +129,7 @@ p.1 <- ggplot(extcoef_map.1, aes(x=long, y=lat, group=group, fill=basis.1))
 p.1 <- p.1 + geom_polygon(colour="grey", aes(fill=basis.1))
 p.1 <- p.1 + expand_limits(x = extcoef_map.1$long, y = extcoef_map.1$lat) 
 p.1 <- p.1 + coord_map("polyconic") 
-p.1 <- p.1 + labs(title = "1st basis function", fill = "Extremal Coefficient") 
+p.1 <- p.1 + labs(title = "1st basis function", fill = "B") 
 p.1 <- p.1 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
                               midpoint = median(B.est[, 1]))
 p.1 <- p.1 + theme_clean()
@@ -142,7 +142,7 @@ p.2 <- ggplot(extcoef_map.2, aes(x=long, y=lat, group=group, fill=basis.2))
 p.2 <- p.2 + geom_polygon(colour="grey", aes(fill=basis.2))
 p.2 <- p.2 + expand_limits(x = extcoef_map.2$long, y = extcoef_map.2$lat) 
 p.2 <- p.2 + coord_map("polyconic") 
-p.2 <- p.2 + labs(title = "2nd basis function", fill = "Extremal Coefficient") 
+p.2 <- p.2 + labs(title = "2nd basis function", fill = "B") 
 p.2 <- p.2 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
                                   midpoint = median(B.est[, 2]))
 p.2 <- p.2 + theme_clean()
@@ -155,7 +155,7 @@ p.3 <- ggplot(extcoef_map.3, aes(x=long, y=lat, group=group, fill=basis.3))
 p.3 <- p.3 + geom_polygon(colour="grey", aes(fill=basis.3))
 p.3 <- p.3 + expand_limits(x = extcoef_map.3$long, y = extcoef_map.3$lat) 
 p.3 <- p.3 + coord_map("polyconic") 
-p.3 <- p.3 + labs(title = "3rd basis function", fill = "Extremal Coefficient") 
+p.3 <- p.3 + labs(title = "3rd basis function", fill = "B") 
 p.3 <- p.3 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
                                   midpoint = median(B.est[, 3]))
 p.3 <- p.3 + theme_clean()
@@ -168,7 +168,7 @@ p.4 <- ggplot(extcoef_map.4, aes(x=long, y=lat, group=group, fill=basis.4))
 p.4 <- p.4 + geom_polygon(colour="grey", aes(fill=basis.4))
 p.4 <- p.4 + expand_limits(x = extcoef_map.4$long, y = extcoef_map.4$lat) 
 p.4 <- p.4 + coord_map("polyconic") 
-p.4 <- p.4 + labs(title = "4th basis function", fill = "Extremal Coefficient") 
+p.4 <- p.4 + labs(title = "4th basis function", fill = "B") 
 p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
                                   midpoint = median(B.est[, 4]))
 p.4 <- p.4 + theme_clean()
@@ -177,3 +177,34 @@ grid.arrange(p.1, p.2, p.3, p.4, nrow = 2,
              ncol = 2, widths = c(2, 2), 
              main = "Basis function for extremal coefficients")
 
+
+basis.4 <- B.est[, 5]
+basis.4 <- data.frame(basis.4, subregion)
+extcoef_map.4 <- merge(county_map, basis.4, all.x=TRUE)
+
+p.4 <- ggplot(extcoef_map.4, aes(x=long, y=lat, group=group, fill=basis.4))
+p.4 <- p.4 + geom_polygon(colour="grey", aes(fill=basis.4))
+p.4 <- p.4 + expand_limits(x = extcoef_map.4$long, y = extcoef_map.4$lat) 
+p.4 <- p.4 + coord_map("polyconic") 
+p.4 <- p.4 + labs(title = "4th basis function", fill = "B") 
+p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 5]))
+p.4 <- p.4 + theme_clean()
+
+rm(p.4)
+basis.4 <- B.est[, 6]
+basis.4 <- data.frame(basis.4, subregion)
+extcoef_map.4 <- merge(county_map, basis.4, all.x=TRUE)
+
+p.4 <- ggplot(extcoef_map.4, aes(x=long, y=lat, group=group, fill=basis.4))
+p.4 <- p.4 + geom_polygon(colour="grey", aes(fill=basis.4))
+p.4 <- p.4 + expand_limits(x = extcoef_map.4$long, y = extcoef_map.4$lat) 
+p.4 <- p.4 + coord_map("polyconic") 
+p.4 <- p.4 + labs(title = "4th basis function", fill = "B") 
+p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 6]))
+p.4 <- p.4 + theme_clean()
+
+rm(p.4)
+
+map.ga(colMeans(Y))

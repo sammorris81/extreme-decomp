@@ -147,7 +147,7 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
 # SIMPLE EXAMPLE
 ####################################################
 
-if(TRUE){
+if(FALSE){
 
  library(splines)
  library(fields)

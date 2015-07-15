@@ -10,35 +10,10 @@ load(file = "../code/analysis/fire/gaCntyFires.RData")
 load(file = "../code/analysis/fire/fire_data.RData")
 
 # get the Georgia map and coordinates
-georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
-               plot = FALSE)
-range(georgia$x, na.rm = TRUE)
-range(georgia$y, na.rm = TRUE)
-georgia$names
-IDs <- sapply(strsplit(georgia$names, ","), function(x) x[2])
-# maptools
-georgia_sp <- map2SpatialPolygons(georgia, IDs = IDs,
-                                  proj4string=CRS("+proj=longlat +datum=WGS84"))
-cents <- coordinates(georgia_sp)
+load(file = "../code/analysis/fire/georgia_centroids.RData")
 d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
-
-# get the estimate of the EC from the chiplot
-# library(evd)
-# chi <- matrix(NA, ncol(Y), ncol(Y))
-# for (i in 1:ncol(Y)) {
-#   for (j in i:ncol(Y)) {
-#     chi.ij <- mean(chiplot(Y[, c(i, j)], which = 1, ask = FALSE)$chi[95:100, 2])
-#     chi[i, j] <- chi[j, i] <- chi.ij
-#     if (j %% 50 == 0) {
-#       print(paste("j:", j))
-#     }
-#   }
-#   if (i %% 10 == 0) {
-#     print(paste("i:", i))
-#   }
-# }
 
 # chi[i, j] is the chi statistic between sites i and j
 load(file = "../code/analysis/fire/chi.RData")

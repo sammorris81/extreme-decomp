@@ -1,0 +1,25 @@
+---
+title: "MCMC for PCAx"
+author: "Sam Morris"
+date: "July 15, 2015"
+output: pdf_document
+---
+
+## MCMC for PCAx
+
+We have data for $n_s = 159$ counties and $n_t = 57$ years.
+We're going to let the marginal parameters for the GEV be defined as follows
+
+\begin{align*}
+  \mu(s, t) &= \sum_{l = 1}^{L} \{w_l(s) [a_l + b_l z(t)] \}\\
+  \log[\sigma(s, t)] &= \sum_{l = 1}^L w_l(s) c_l\\
+  \xi(s, t) &= d
+\end{align*}
+
+where $w_l(s)$ are the basis functions from the smoother, and $z(t) = (t - 28.5) / 20$ is a standardized value for the year. 
+We use independent $N(0, 100)$ priors for all $a_l$, $b_l$, $c_l$ terms, and a $N(0, 0.5)$ prior for $d$.
+
+## Questions/clarifications
+
+1. I know we had originally discussed a CAR model, but I wasn't sure how that fit in exactly with the formulation we had using the basis functions above. Do you anticipate issues with what I wrote down?
+2. We talked about using $\log(\text{acres burned})$ as the response with values censored at $q(0.95)$ for each site. So, after conditioning on the random effects, we'll be using a partially censored joint likelihood where the contribution to the likelihood for a censored value is $F(x)$ and the contribution for an uncensored value is $f(x)$ where $F(x)$ is the CDF, and $f(x)$ is the PDF of the generalized extreme value distribution. Is this what you were thinking?

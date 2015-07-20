@@ -1,3 +1,47 @@
+# Rcpp functions
+if (!exists("dPSCPP")) {
+  sourceCpp(file = "llps.cpp")
+}
+
+if (!exists("ifelsematCPP")) {
+  sourceCpp(file = "ifelse.cpp")
+}
+
+################################################################################
+# Common data transformations
+################################################################################
+transform <- list(
+  logit = function(x, lower=0, upper=1) {
+    x <- (x - lower) / (upper - lower)
+    return(log(x / (1 - x)))
+  },
+  inv.logit = function(x, lower=0, upper=1) {
+    p <- exp(x) / (1 + exp(x))
+    p <- p * (upper - lower) + lower
+    return(p)
+  },
+  probit = function(x, lower=0, upper=1) {
+    x <- (x - lower) / (upper - lower)
+    return(qnorm(x))
+  },
+  inv.probit = function(x, lower=0, upper=1) {
+    p <- pnorm(x)
+    p <- p * (upper - lower) + lower
+    return(p)
+  },
+  log = function(x) log(x),
+  exp = function(x) exp(x),
+  copula = function(dens) {
+    this.dens <- paste("p", dens, sep = "")
+    function(x, ...) qnorm(do.call(this.dens, args = list(x, ...)))
+  },
+  inv.copula = function(dens) {
+    this.dens <- paste("q", dens, sep = "")
+    function(x, ...) do.call(this.dens, args = list(pnorm(x), ...))
+  }
+)
+
+
 #############################################################
 ########   FUNCTIONS TO COMPUTE INITIAL VALUES    ###########
 #############################################################
@@ -70,7 +114,7 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
     for (j in 1:nknots) {
       A[j] <- rstable.posit(alpha)
     }
-    theta <- (K%*%A)^alpha
+    theta <- (K %*% A)^alpha
     
     xi_star  <- alpha*xi
     mu_star  <- mu+sig*(theta^xi-1)/xi
@@ -79,62 +123,69 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
     y[,t]    <- rgev(n,mu_star,sig_star,xi_star)
   }  
   
-  return(y)}
+  return(y)
+}
 
 
 ######################################################
 ##########    FUNCTIONS USED FOR PREDICTION  #########
 ######################################################
 
-rGEV<-function(n,mu,sig,xi){
-  tau<-runif(n)
-  x<--1/log(tau)
-  x<-x^(xi)-1
-  x<-mu+sig*x/xi
-  x}
+rGEV <- function(n, mu, sig, xi) {
+  tau <- runif(n)
+  x <- -1 / log(tau)
+  x <- x^(xi) - 1
+  x <- mu + sig * x / xi
+  return(x)
+}
 
-proj.beta<-function(B,d12,d22,S11inv,tau,logrho){
+proj.beta <- function(B, d12, d22, S11inv, tau, logrho) {
   #B<-n-vector of observed beta (minus the mean)
-  ns<-nrow(d22)
-  rho<-exp(logrho)
+  ns <- nrow(d22)
+  rho <- exp(logrho)
   
-  S22<-exp(-d22/rho)/tau
-  S12<-exp(-d12/rho)/tau
-  S11inv<-S11inv*tau
+  S22 <- exp(-d22 / rho) / tau
+  S12 <- exp(-d12 / rho) / tau
+  S11inv <- S11inv * tau
   
-  P2<-S12%*%S11inv
-  P1<-S22-S12%*%S11inv%*%t(S12)
-  P1<-t(chol(P1))    
+  P2 <- S12 %*% S11inv
+  P1 <- S22 - S12 %*% S11inv %*% t(S12)
+  P1 <- t(chol(P1))    
   
-  Bnew<-P2%*%B+P1%*%rnorm(ns)
-  return(Bnew)}
+  Bnew <- P2 %*% B + P1 %*% rnorm(ns)
+  return(Bnew)
+}
 
 
 
 ######################################################
 ####  FUNCTION TO COMPUTE THE RANDOM EFFECTS  ########
 ######################################################
-
-make.theta<-function(FAC,logs,alpha){
+# this is theta^(1 / alpha)
+make.theta <- function(FAC, logs, alpha) {
   #theta is nxnF
   #s is nFxnt
   #alpha in (0,1)
-  if(length(logs)==1){
-    xxx<-(FAC^(1/alpha))*exp(logs)}
-  if(length(logs)>1){
-    xxx<-(FAC^(1/alpha))%*%exp(logs)}
-  xxx}  
+  if (length(logs) == 1) {
+    xxx <- (FAC^(1 / alpha)) * exp(logs)
+  }
+  if (length(logs) > 1) {
+    xxx <- (FAC^(1 / alpha)) %*% exp(logs)
+  }
+  return(xxx)
+}  
 
+stdKern <- function(w, single = FALSE) {
+  if (single) { K <- w / sum(w) }   
+  if (!single) { K <- sweep(w, 1, rowSums(w), "/") }
+  return(K)
+}  
 
-stdKern<-function(w,single=F){
-  if(single){K<-w/sum(w)}   
-  if(!single){K<-sweep(w,1,rowSums(w),"/")}
-  K}  
-
-make.kern<-function(d2,logrho){
-  rho2<-exp(logrho)^2
-  w<-exp(-0.5*d2/rho2)
-  w}
+make.kern <- function(d2, logrho) {
+  rho2 <- exp(logrho)^2
+  w <- exp(-0.5 * d2 / rho2)
+  return(w)
+}
 
 
 
@@ -142,32 +193,67 @@ make.kern<-function(d2,logrho){
 ########            OTHER FUNCTIONS        ###########
 ######################################################
 
-get.level<-function(logs,cuts){
-  sum(logs>cuts)+1
+get.level <- function(logs, cuts){
+  sum(logs > cuts) + 1
 }
 
-logdet<-function(X){
+logdet <- function(X){
   determinant(X)$modulus
 }
 
-trunc<-function(x,eps=.1){
-  x<-ifelse(x<eps,eps,x)
-  x<-ifelse(x>1-eps,1-eps,x)
-  x}
+trunc <- function(x, eps = 0.1){
+  x <- ifelse(x < eps, eps, x)
+  x <- ifelse(x > 1 - eps, 1 - eps, x)
+  return(x)
+}
 
-rtnorm<-function(mn,sd=.25,fudge=0){
-  upper<-pnorm(1-fudge,mn,sd)
-  lower<-pnorm(fudge,mn,sd)
-  if(is.matrix(mn)){
-    U<-matrix(runif(prod(dim(mn)),lower,upper),dim(mn)[1],dim(mn)[2])
+rtnorm <- function(mn, sd = 0.25, fudge = 0){
+  upper <- pnorm(1 - fudge, mn, sd)
+  lower <- pnorm(fudge, mn, sd)
+  if (is.matrix(mn)) {
+    U <- matrix(runif(prod(dim(mn)), lower, upper), dim(mn)[1], dim(mn)[2])
   }
-  if(!is.matrix(mn)){
-    U<-runif(length(mn),lower,upper)
+  if (!is.matrix(mn)) {
+    U <- runif(length(mn), lower, upper)
   }
-  return(qnorm(U,mn,sd))}
+  return(qnorm(U, mn, sd))
+}
 
-dtnorm<-function(y,mn,sd=.25,fudge=0){
-  upper<-pnorm(1-fudge,mn,sd)
-  lower<-pnorm(fudge,mn,sd)
-  l<-dnorm(y,mn,sd,log=T)-log(upper-lower)
-  return(l)}
+dtnorm <- function(y, mn, sd = 0.25, fudge = 0){
+  upper <- pnorm(1 - fudge, mn, sd)
+  lower <- pnorm(fudge, mn, sd)
+  l <- dnorm(y, mn, sd, log = TRUE) - log(upper - lower)
+  return(l)
+}
+
+# update candidate standard deviation
+mhUpdate <- function(acc, att, mh, nattempts = 50, lower = 0.8, higher = 1.2) {
+  acc.rate     <- acc / att
+  these.update <- att > nattempts
+  these.low    <- (acc.rate < 0.25) & these.update
+  these.high   <- (acc.rate > 0.50) & these.update
+  
+  mh[these.low]  <- mh[these.low] * lower
+  mh[these.high] <- mh[these.high] * higher
+  
+  acc[these.update] <- 0
+  att[these.update] <- 0
+  
+  results <- list(acc=acc, att=att, mh=mh)
+  return(results)
+}
+
+dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
+  if (is.null(dim(a))) {
+    ns <- length(a)
+    nt <- 1
+    a <- matrix(a, ns, nt)  # turn it into a matrix
+  } else {
+    ns <- nrow(a)
+    nt <- ncol(a)
+  }
+  
+  results <- dPSCPP(a=a, alpha=alpha, mid_points=mid.points,
+                    bin_width=bin.width)
+  return(results)
+}

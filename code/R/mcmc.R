@@ -34,7 +34,7 @@ Bayes_GEV <- function(y, S, knots = NULL,
   #BOOKEEPING
   n <- nrow(y)
   nt <- ncol(y)
-  years <- 3 * ((1:nt) - ((nt + 1) / 2)) / ((nt + 1) / 2)  # put years in (-3, 3)
+  years <- 3 * ((1:nt) - ((nt + 1) / 2)) / ((nt) / 2)  # standardize years
   nF <- nrow(knots)
   p <- ncol(X)
   

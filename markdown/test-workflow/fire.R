@@ -11,6 +11,7 @@ library(Rcpp)
 source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
 source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
 source(file = "../../code/R/PCAX.R", chdir = TRUE)
+source(file = "../../code/R/mcmc.R")
 # load(file = "../code/analysis/fire/gaCntyFires.RData")
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 
@@ -98,27 +99,3 @@ p.B4 <- map.ga.ggplot(Y = B.est[, 4], main = "Basis function 4",
 
 grid.arrange(p.B1, p.B2, p.B3, p.B4, ncol = 2, widths = c(1.5, 1.5), 
              top = "Basis functions 1 -- 4")
-
-p.B5 <- map.ga.ggplot(Y = B.est[, 5], main = "Basis function 5",
-                      fill.legend = "Basis value")
-p.B6 <- map.ga.ggplot(Y = B.est[, 6], main = "Basis function 6",
-                      fill.legend = "Basis value")
-p.B7 <- map.ga.ggplot(Y = B.est[, 7], main = "Basis function 7",
-                      fill.legend = "Basis value")
-p.B8 <- map.ga.ggplot(Y = B.est[, 8], main = "Basis function 8",
-                      fill.legend = "Basis value")
-
-grid.arrange(p.B5, p.B6, p.B7, p.B8, ncol = 2, widths = c(1.5, 1.5), 
-             top = "Basis functions 5 -- 8")
-
-p.B9 <- map.ga.ggplot(Y = B.est[, 9], main = "Basis function 9",
-                      fill.legend = "Basis value")
-p.B10 <- map.ga.ggplot(Y = B.est[, 10], main = "Basis function 10",
-                       fill.legend = "Basis value")
-p.B11 <- map.ga.ggplot(Y = B.est[, 11], main = "Basis function 11",
-                       fill.legend = "Basis value")
-p.B12 <- map.ga.ggplot(Y = B.est[, 12], main = "Basis function 12",
-                       fill.legend = "Basis value")
-
-grid.arrange(p.B9, p.B10, p.B11, p.B12, ncol = 2, widths = c(1.5, 1.5), 
-             top = "Basis functions 9 -- 12")

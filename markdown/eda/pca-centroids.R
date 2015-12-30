@@ -4,19 +4,22 @@ library(splines)
 library(maps)
 library(maptools)
 library(fields)
-source(file = "../code/analysis/fire/adj.R", chdir = TRUE)
-source(file = "../code/R/auxfunctions.R", chdir = TRUE)
-load(file = "../code/analysis/fire/gaCntyFires.RData")
-load(file = "../code/analysis/fire/fire_data.RData")
+library(Rcpp)
+library(gridExtra)
+source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
+source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
+source(file = "../../code/R/PCAX.R", chdir = TRUE)
+load(file = "../../code/analysis/fire/gaCntyFires.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 
 # get the Georgia map and coordinates
-load(file = "../code/analysis/fire/georgia_centroids.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
 
 # chi[i, j] is the chi statistic between sites i and j
-load(file = "../code/analysis/fire/chi.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/chi.RData")
 chi.hat <- ifelse(chi <= 0, 0, chi)
 ec.hat  <- 2 - chi.hat
 image.plot(1:n, 1:n, chi.hat, main = "estimated chi")
@@ -52,7 +55,7 @@ image.plot(1:n, 1:n, rdist(cents.order.long))
 
 L <- 10
 
-out       <- get.factors.EC(ec.hat,L=L,s=cents)
+out       <- get.factors.EC(ec.hat, L=L, s=cents)
 B.est     <- out$est
 alphahat  <- out$alpha
 ec.smooth <- out$EC.smooth
@@ -148,38 +151,65 @@ p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid 
                                   midpoint = median(B.est[, 4]))
 p.4 <- p.4 + theme_clean()
 
+basis.5 <- B.est[, 5]
+basis.5 <- data.frame(basis.5, subregion)
+extcoef_map.5 <- merge(county_map, basis.5, all.x=TRUE)
+
+p.5 <- ggplot(extcoef_map.5, aes(x=long, y=lat, group=group, fill=basis.5))
+p.5 <- p.5 + geom_polygon(colour="grey", aes(fill=basis.5))
+p.5 <- p.5 + expand_limits(x = extcoef_map.5$long, y = extcoef_map.5$lat) 
+p.5 <- p.5 + coord_map("polyconic") 
+p.5 <- p.5 + labs(title = "5th basis function", fill = "B") 
+p.5 <- p.5 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 5]))
+p.5 <- p.5 + theme_clean()
+
+basis.6 <- B.est[, 6]
+basis.6 <- data.frame(basis.6, subregion)
+extcoef_map.6 <- merge(county_map, basis.6, all.x=TRUE)
+
+p.6 <- ggplot(extcoef_map.6, aes(x=long, y=lat, group=group, fill=basis.6))
+p.6 <- p.6 + geom_polygon(colour="grey", aes(fill=basis.6))
+p.6 <- p.6 + expand_limits(x = extcoef_map.6$long, y = extcoef_map.6$lat) 
+p.6 <- p.6 + coord_map("polyconic") 
+p.6 <- p.6 + labs(title = "6th basis function", fill = "B") 
+p.6 <- p.6 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 6]))
+p.6 <- p.6 + theme_clean()
+
+basis.7 <- B.est[, 7]
+basis.7 <- data.frame(basis.7, subregion)
+extcoef_map.7 <- merge(county_map, basis.7, all.x=TRUE)
+
+p.7 <- ggplot(extcoef_map.7, aes(x=long, y=lat, group=group, fill=basis.7))
+p.7 <- p.7 + geom_polygon(colour="grey", aes(fill=basis.7))
+p.7 <- p.7 + expand_limits(x = extcoef_map.7$long, y = extcoef_map.7$lat) 
+p.7 <- p.7 + coord_map("polyconic") 
+p.7 <- p.7 + labs(title = "7th basis function", fill = "B") 
+p.7 <- p.7 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 7]))
+p.7 <- p.7 + theme_clean()
+
+basis.8 <- B.est[, 8]
+basis.8 <- data.frame(basis.8, subregion)
+extcoef_map.8 <- merge(county_map, basis.8, all.x=TRUE)
+
+p.8 <- ggplot(extcoef_map.8, aes(x=long, y=lat, group=group, fill=basis.8))
+p.8 <- p.8 + geom_polygon(colour="grey", aes(fill=basis.8))
+p.8 <- p.8 + expand_limits(x = extcoef_map.8$long, y = extcoef_map.8$lat) 
+p.8 <- p.8 + coord_map("polyconic") 
+p.8 <- p.8 + labs(title = "8th basis function", fill = "B") 
+p.8 <- p.8 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
+                                  midpoint = median(B.est[, 8]))
+p.8 <- p.8 + theme_clean()
+
 grid.arrange(p.1, p.2, p.3, p.4, nrow = 2,
              ncol = 2, widths = c(2, 2), 
-             main = "Basis function for extremal coefficients")
+             top = "Basis function for extremal coefficients")
 
+grid.arrange(p.5, p.6, p.7, p.8, nrow = 2,
+             ncol = 2, widths = c(2, 2), 
+             top = "Basis function for extremal coefficients")
 
-basis.4 <- B.est[, 5]
-basis.4 <- data.frame(basis.4, subregion)
-extcoef_map.4 <- merge(county_map, basis.4, all.x=TRUE)
-
-p.4 <- ggplot(extcoef_map.4, aes(x=long, y=lat, group=group, fill=basis.4))
-p.4 <- p.4 + geom_polygon(colour="grey", aes(fill=basis.4))
-p.4 <- p.4 + expand_limits(x = extcoef_map.4$long, y = extcoef_map.4$lat) 
-p.4 <- p.4 + coord_map("polyconic") 
-p.4 <- p.4 + labs(title = "4th basis function", fill = "B") 
-p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
-                                  midpoint = median(B.est[, 5]))
-p.4 <- p.4 + theme_clean()
-
-rm(p.4)
-basis.4 <- B.est[, 6]
-basis.4 <- data.frame(basis.4, subregion)
-extcoef_map.4 <- merge(county_map, basis.4, all.x=TRUE)
-
-p.4 <- ggplot(extcoef_map.4, aes(x=long, y=lat, group=group, fill=basis.4))
-p.4 <- p.4 + geom_polygon(colour="grey", aes(fill=basis.4))
-p.4 <- p.4 + expand_limits(x = extcoef_map.4$long, y = extcoef_map.4$lat) 
-p.4 <- p.4 + coord_map("polyconic") 
-p.4 <- p.4 + labs(title = "4th basis function", fill = "B") 
-p.4 <- p.4 + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", mid = "#ffffff", 
-                                  midpoint = median(B.est[, 6]))
-p.4 <- p.4 + theme_clean()
-
-rm(p.4)
 
 map.ga(colMeans(Y))

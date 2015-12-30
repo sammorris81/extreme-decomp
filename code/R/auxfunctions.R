@@ -257,3 +257,42 @@ dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
                     bin_width=bin.width)
   return(results)
 }
+
+theme_clean <- function(base_size = 12) {
+  require(grid)
+  theme_grey(base_size) %+replace%
+    theme(
+      axis.title      =   element_blank(),
+      axis.text       =   element_blank(),
+      panel.background    =   element_blank(),
+      panel.grid      =   element_blank(),
+      axis.ticks.length   =   unit(0,"cm"),
+      axis.ticks.margin   =   unit(0,"cm"),
+      panel.margin    =   unit(0,"lines"),
+      plot.margin     =   unit(c(0,0,0,0),"lines"),
+      complete = TRUE
+    )
+}
+
+map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
+  require(ggplot2)
+  require(maps)
+  georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
+                 plot = FALSE)
+  subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
+  county_map <- map_data(map = "county", region = "georgia")
+  
+  basis <- data.frame(Y, subregion)
+  extcoef_map <- merge(county_map, basis, all.x = TRUE)
+  
+  # using fill = Y because that's the column of extcoef_map with the actual data
+  p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
+  p <- p + geom_polygon(colour = "grey", aes(fill = Y))
+  p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
+  p <- p + coord_map("polyconic")
+  p <- p + labs(title = main, fill = fill.legend)
+  p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", 
+                                mid = "#ffffff", midpoint = median(Y))
+  p <- p + theme_clean()
+  return(p)
+}

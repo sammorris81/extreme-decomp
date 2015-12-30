@@ -82,6 +82,7 @@ save.image("georgia_preprocess/fire_data.RData")
 rm(list=ls())
 library(maps)
 library(maptools)
+# gpclibPermit()
 georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
                plot = FALSE)
 range(georgia$x, na.rm = TRUE)

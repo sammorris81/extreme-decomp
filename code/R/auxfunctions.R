@@ -7,41 +7,6 @@ if (!exists("ifelsematCPP")) {
   sourceCpp(file = "ifelse.cpp")
 }
 
-################################################################################
-# Common data transformations
-################################################################################
-transform <- list(
-  logit = function(x, lower=0, upper=1) {
-    x <- (x - lower) / (upper - lower)
-    return(log(x / (1 - x)))
-  },
-  inv.logit = function(x, lower=0, upper=1) {
-    p <- exp(x) / (1 + exp(x))
-    p <- p * (upper - lower) + lower
-    return(p)
-  },
-  probit = function(x, lower=0, upper=1) {
-    x <- (x - lower) / (upper - lower)
-    return(qnorm(x))
-  },
-  inv.probit = function(x, lower=0, upper=1) {
-    p <- pnorm(x)
-    p <- p * (upper - lower) + lower
-    return(p)
-  },
-  log = function(x) log(x),
-  exp = function(x) exp(x),
-  copula = function(dens) {
-    this.dens <- paste("p", dens, sep = "")
-    function(x, ...) qnorm(do.call(this.dens, args = list(x, ...)))
-  },
-  inv.copula = function(dens) {
-    this.dens <- paste("q", dens, sep = "")
-    function(x, ...) do.call(this.dens, args = list(pnorm(x), ...))
-  }
-)
-
-
 #############################################################
 ########   FUNCTIONS TO COMPUTE INITIAL VALUES    ###########
 #############################################################
@@ -258,6 +223,8 @@ dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
   return(results)
 }
 
+#### Plotting
+
 theme_clean <- function(base_size = 12) {
   require(grid)
   theme_grey(base_size) %+replace%
@@ -295,4 +262,36 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
                                 mid = "#ffffff", midpoint = median(Y))
   p <- p + theme_clean()
   return(p)
+}
+
+################################################################
+# Arguments:
+#   preds(iters, yp, nt): mcmc predictions at validation
+#                         locations
+#   probs(nprobs): sample quantiles for scoring
+#   validate(np, nt): validation data
+#
+# Returns:
+#   score(nprobs): a single quantile score per quantile
+################################################################
+QuantScore <- function(preds, probs, validate) {
+  
+  nt <- ncol(validate)  # number of prediction days
+  np <- nrow(validate)  # number of prediction sites
+  nprobs <- length(probs)  # number of quantiles to find quantile score
+  
+  # we need to know the predicted quantiles for each site and day in the validation set
+  pred.quants <- apply(preds, 2, quantile, probs=probs, na.rm=T)  # gives nprobs x np x nt
+  
+  scores.sites <- array(NA, dim=c(nprobs, np, nt))
+  
+  for (q in 1:nprobs) {
+    diff <- pred.quants[q, ] - validate
+    i <- diff >= 0  # diff >= 0 means qhat is larger
+    scores.sites[q, , ] <- 2 * (i - probs[q]) * diff
+  }
+  
+  scores <- apply(scores.sites, 1, mean, na.rm=T)
+  
+  return(scores)
 }

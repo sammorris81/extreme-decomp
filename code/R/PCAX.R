@@ -62,7 +62,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     Delta_B[iter]   <- mean((prev-B)^2)
     Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
     
-    if(verbose){print(paste("Done with iteration", iter, "of", iters))}
+    if(verbose){cat("    Done with iteration", iter, "of", iters, "\n")}
   }
 
  # REORDER THE COLUMNS

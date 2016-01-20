@@ -95,19 +95,26 @@ for (i in 1:ns.trn) {
   thresh[i] <- quantile(Y.trn[these, ], probs = 0.95)
 }
 
-cat("Start mcmc fit \n")
+################################################################################
+## run the MCMC
+################################################################################
+iters  <- 30000
+burn   <- 20000
+update <- 500
 
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y.trn, X = X.trn, thresh = thresh, B = B.est.trn, 
                 alpha = alpha, 
-                iters = 300, burn = 100, update = 10, iterplot = TRUE)
+                iters = iters, burn = burn, update = update, iterplot = FALSE)
 
 cat("Start mcmc predict \n")
 
 # predict at other locations
 y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X.tst, 
                         B = B.est.tst, alpha = alpha, 
-                        start = 1, end = 200, update = 10)
+                        start = 1, end = (iters - burn), update = update)
 
 cat("Finished fit and predict \n")
 

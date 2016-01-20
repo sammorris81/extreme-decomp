@@ -202,6 +202,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
         plot(log(keep.A[1:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
         plot(log(keep.A[1:iter, L, 1]), main = "log(A[L, 1])", type = "l")
       }
+      cat("    Finished fit:", iter, "of", iters, "iters \n")
     }
     
   }#end iter
@@ -270,24 +271,27 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
   
   # storage for predictions
   y.pred <- array(-99999, dim = c(niters, npred, nt))
-  
-  for (i in 1:length(start:end)) {
-    xi.i <- xi[i]
+  iters <- length(start:end)
+  for (iter in 1:iters) {
+    xi.i <- xi[iter]
     
     # calculate mu and sigma
     for (t in 1:nt) {
-      theta.i <- (Ba %*% A[i, , t])^alpha
-      mu.i  <- X.pred[, t, ] %*% beta1[i, ]
-      sig.i <- exp(X.pred[, t, ] %*% beta2[i, ]) 
+      theta.i <- (Ba %*% A[iter, , t])^alpha
+      mu.i  <- X.pred[, t, ] %*% beta1[iter, ]
+      sig.i <- exp(X.pred[, t, ] %*% beta2[iter, ]) 
       
       mu.star  <- mu.i + sig.i * (theta.i^xi.i - 1) / xi.i
       sig.star <- alpha * sig.i * theta.i^xi.i
       xi.star  <- alpha * xi.i
       
-      y.pred[i, , t] <- revd(n = npred, loc = mu.star, scale = sig.star, 
-                            shape = xi.star, type = "GEV")
+      y.pred[iter, , t] <- revd(n = npred, loc = mu.star, scale = sig.star, 
+                                shape = xi.star, type = "GEV")
     }
     
+    if (iter %% update == 0) {
+      cat("    Finished pred:", iter, "of", iters, "iters \n")
+    }
   }
   
   return(y.pred)

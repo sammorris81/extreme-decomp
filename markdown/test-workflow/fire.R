@@ -52,7 +52,7 @@ p.2 <- map.ga.ggplot(Y = ec.hat[, 2],
 
 # sort the sites by longitude
 sites.order.long <- order(cents[, 1])
-cents.order.long <- cents[sites.order.for, ]
+cents.order.long <- cents[sites.order.long, ]
 image.plot(1:n, 1:n, rdist(cents.order.long))
 
 # # more complicated sorting - doesn't appear to improve plot at all
@@ -99,3 +99,80 @@ p.B4 <- map.ga.ggplot(Y = B.est[, 4], main = "Basis function 4",
 
 grid.arrange(p.B1, p.B2, p.B3, p.B4, ncol = 2, widths = c(1.5, 1.5), 
              top = "Basis functions 1 -- 4")
+
+################################################################################
+#### Run the MCMC:
+#### Use the basis functions with the MCMC
+#### The response is the total acreage burned in a year 
+####   Y[i, t] = acres burned in county i and year t 
+####   X[i, t, p] = pth covariate for site i in year t
+####     Using (1, time, B, B * time) where time = (t - nt / 2) / nt
+################################################################################
+
+## transpose Y because preprocessed forest fire data is Y[t, i]
+Y <- t(Y)
+nt <- ncol(Y)
+ns <- nrow(Y)
+np <- ncol(out$est) * 2 + 2
+
+## create covariate matrix
+X <- array(1, dim = c(ns, nt, np))
+for (i in 1:ns) {
+  for (t in 1:nt) {
+    time <- (t - nt / 2) / nt
+    X[i, t, 2:np] <- c(time, out$est[i, ], out$est[i, ] * time) 
+  }
+}
+
+## need spatially smoothed threshold
+thresh <- rep(0, ns)
+
+# first standardize the centroid locations
+cents.std <- cents
+cents.rng <- apply(cents.std, 2, range)
+cents.std[, 1] <- (cents.std[, 1] - cents.rng[1, 1]) / 
+  (cents.rng[2, 1] - cents.rng[1, 1])
+cents.std[, 2] <- (cents.std[, 2] - cents.rng[1, 2]) / 
+  (cents.rng[2, 2] - cents.rng[1, 2])
+
+# get the distances between standardized quantiles
+d.std <- rdist(cents.std)
+diag(d.std) <- 0
+
+# set the radius to q(0.05) of the distances and take q(0.95) across the sites
+# within the radius across all the years
+rad <- quantile(d.std[upper.tri(d)], probs = 0.05)
+for (i in 1:ns) {
+  these <- which(d.std[i, ] < rad)
+  thresh[i] <- quantile(Y[these, ], probs = 0.95)
+}
+
+# plot smoothed quantile
+p.3 <- map.ga.ggplot(Y = thresh, 
+                     main = paste("Spatially smoothed q(0.95) of acreage burned, ",
+                                  "bandwidth = ", round(rad, 3)),
+                     fill.legend = "Acreage burned")
+p.3
+
+train <- seq(1, 159, 2)
+test  <- seq(2, 158, 2)
+
+fit.1 <- ReShMCMC(y = Y[train, ], X = X[train, , ], thresh = thresh[train], 
+                B = out$est[train, , drop = FALSE], alpha = out$alpha, 
+                iters = 300, burn = 100, update = 10, iterplot = TRUE)
+
+fit.2 <- ReShMCMC(y = Y, X = X, thresh = thresh, 
+                B = out$est, alpha = out$alpha, 
+                iters = 300, burn = 100, update = 10, iterplot = TRUE)
+
+fit.3 <- ReShMCMC(y = Y[train, ], X = X[train, , 1:12], thresh = thresh[train], 
+                  B = out$est[train, 1:5, drop = FALSE], alpha = out$alpha, 
+                  iters = 300, burn = 100, update = 10, iterplot = TRUE)
+
+fit.4 <- ReShMCMC(y = Y, X = X[, , 1:12], thresh = thresh, 
+                  B = out$est[, 1:5, drop = FALSE], alpha = out$alpha, 
+                  iters = 300, burn = 100, update = 10, iterplot = TRUE)
+
+y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X[test, , ], 
+                        B = out$est[test, , drop = FALSE], alpha = out$alpha, 
+                        start = 1, end = 200, update = 10)

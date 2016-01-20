@@ -67,8 +67,13 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 
  # REORDER THE COLUMNS
     
-  B      <- B[, order(-colSums(B))]
-  pct    <- colSums(B) / sum(B)
+  if (L == 1) {
+    B   <- matrix(B, n, L)
+    pct <- 1
+  } else {
+    B   <- B[, order(-colSums(B))]
+    pct <- colSums(B) / sum(B)
+  }
   tock   <- proc.time()[3]
 
   output <- list(est = B, pct = pct, alpha = alpha, EC.smooth = ECs,

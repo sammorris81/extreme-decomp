@@ -21,15 +21,15 @@
 #   beta1    := Posterior samples of beta1
 #   beta2    := Posterior samples of beta2
 #   xi       := Posterior samples of xi
-#   logA1    := Posterior samples of log(A) for the first time point
+#   logA     := Posterior samples of log(A)
 #   theta.mn := Posterior mean of theta
 #
-###################################################################################
+################################################################################
 
 ReShMCMC<-function(y, X, thresh, B, alpha,
-                   beta1 = NULL, beta2 = NULL, xi = 0.001,
-                   beta.sd = 10,
-                   iters = 5000, burn = 1000, update = 10){
+                   beta1 = NULL, beta2 = NULL, xi = 0.001, beta.sd = 10,
+                   keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
+                   iterplot = FALSE){
   # BOOKKEEPING
   
   ns   <- nrow(y)
@@ -71,7 +71,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   keep.beta1 <- matrix(0, iters, p)
   keep.beta2 <- matrix(0, iters, p)
   keep.xi    <- rep(0, iters)
-  keep.logA1 <- matrix(0, iters, L)
+  keep.A     <- array(0, dim = c(iters, L, nt))
   theta.mn   <- 0 
   
   # TUNING:
@@ -81,7 +81,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   atta <- acca <- 0*MHa
   attb <- accb <- MHb <- matrix(.1,p,3)
   
-  
+  tic <- proc.time()[3]
   for (iter in 1:iters) {
     
     ####################################################
@@ -184,7 +184,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
     keep.beta1[iter, ] <- beta1
     keep.beta2[iter, ] <- beta2
     keep.xi[iter]      <- xi
-    keep.logA1[iter, ] <- log(A[, 1])
+    keep.A[iter, , ]   <- A
     if (iter > burn) {
       theta.mn <- theta.mn + theta / (iters - burn)
     }
@@ -193,24 +193,105 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
     #DISPLAY CURRENT VALUE:
     
     if (iter %% update == 0) {
-      par(mfrow = c(3, 2))
-      plot(keep.beta1[1:iter, 1], main = "beta1[1]", type = "l")
-      plot(keep.beta1[1:iter, p], main = "beta1[p]", type = "l")
-      plot(keep.beta2[1:iter, 1], main = "beta2[1]", type = "l")
-      plot(keep.beta2[1:iter, p], main = "beta2[p]", type = "l")
-      plot(keep.logA1[1:iter, 1], main = "log(A[1, 1])", type = "l")
-      plot(keep.logA1[1:iter, L], main = "log(A[L, 1])", type = "l")
+      if (iterplot) {
+        par(mfrow = c(3, 2))
+        plot(keep.beta1[1:iter, 1], main = "beta1[1]", type = "l")
+        plot(keep.beta1[1:iter, p], main = "beta1[p]", type = "l")
+        plot(keep.beta2[1:iter, 1], main = "beta2[1]", type = "l")
+        plot(keep.beta2[1:iter, p], main = "beta2[p]", type = "l")
+        plot(log(keep.A[1:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
+        plot(log(keep.A[1:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+      }
     }
     
   }#end iter
   
-  list(beta1 = keep.beta1,
-       beta2 = keep.beta2,
-       xi = keep.xi,
+  toc <- proc.time()[3]
+  
+  if (keep.burn) {
+    return.iters <- 1:iters
+  } else {
+    return.iters <- (burn + 1):iters
+  }
+  
+  list(beta1 = keep.beta1[return.iters, , drop = FALSE],
+       beta2 = keep.beta2[return.iters, , drop = FALSE],
+       xi = keep.xi[return.iters],
        theta.mn = theta.mn,
-       logA1 = keep.logA1)}
+       A = keep.A[return.iters, , , drop = FALSE], 
+       timing = toc - tic)
+}
 
+#############################################################:
+###                PREDICT AT NEW LOCATIONS               ###:
+#############################################################:
 
+#############################################################:
+#
+# INPUTS:
+#
+#   mcmcoutput := list of output from mcmc
+#   X          := npred x nt x p matrix of covariance for the GPD prob and scale
+#   thresh     := npred x nt matrix of GPD thresholds
+#   B          := npred x L matrix of PCs
+#   alpha      := PS parameter alpha
+#
+# OUTPUTS:
+#
+#   ypred      := npred x nt matrix of predicted y value
+#
+################################################################################
+
+pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL, 
+                           thin = 1, update = NULL) {
+  require(extRemes)
+  if (is.null(end)) {
+    end <- length(mcmcoutput$xi)
+  }
+  
+  if (length(dim(X.pred)) != 3) {
+    stop("X.pred must be an array with dimensions npred x nt x p")
+  }
+  
+  npred <- dim(X.pred)[1]
+  nt    <- dim(X.pred)[2]
+  L     <- ncol(B)
+  p     <- dim(X.pred)[3]
+  
+  # stays the same for all iterations
+  Ba    <- B^(1 / alpha)
+  
+  # make sure we are iterating over the post burnin samples
+  niters <- length(start:end)
+  beta1  <- matrix(mcmcoutput$beta1[start:end, , drop = F], niters, p)
+  beta2  <- matrix(mcmcoutput$beta2[start:end, , drop = F], niters, p)
+  xi     <- mcmcoutput$xi[start:end]
+  A      <- mcmcoutput$A[start:end, , , drop = F]
+  
+  # storage for predictions
+  y.pred <- array(-99999, dim = c(niters, npred, nt))
+  
+  for (i in 1:length(start:end)) {
+    xi.i <- xi[i]
+    
+    # calculate mu and sigma
+    for (t in 1:nt) {
+      theta.i <- (Ba %*% A[i, , t])^alpha
+      mu.i  <- X.pred[, t, ] %*% beta1[i, ]
+      sig.i <- exp(X.pred[, t, ] %*% beta2[i, ]) 
+      
+      mu.star  <- mu.i + sig.i * (theta.i^xi.i - 1) / xi.i
+      sig.star <- alpha * sig.i * theta.i^xi.i
+      xi.star  <- alpha * xi.i
+      
+      y.pred[i, , t] <- revd(n = npred, loc = mu.star, scale = sig.star, 
+                            shape = xi.star, type = "GEV")
+    }
+    
+  }
+  
+  return(y.pred)
+}
 
 
 #############################################################:

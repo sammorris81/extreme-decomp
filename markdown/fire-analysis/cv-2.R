@@ -77,3 +77,10 @@ for (i in 1:ns) {
   thresh[i] <- quantile(Y[these, ], probs = 0.95)
 }
 
+fit <- ReShMCMC(y = Y[train, ], X = X[train, , ], thresh = thresh[train], 
+                  B = out$est[train, , drop = FALSE], alpha = out$alpha, 
+                  iters = 300, burn = 100, update = 10, iterplot = TRUE)
+
+y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X[test, , ], 
+                        B = out$est, alpha = out$alpha, 
+                        start = 1, end = 200, update = 10)

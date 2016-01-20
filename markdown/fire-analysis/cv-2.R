@@ -6,7 +6,7 @@ library(maptools)
 library(fields)
 library(ggplot2)
 # library(gridExtra)  # not available on hpc
-library(rapport)
+# library(rapport)    # not available on hpc
 library(Rcpp)
 source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)

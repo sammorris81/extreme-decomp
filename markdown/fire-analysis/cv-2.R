@@ -5,7 +5,7 @@ library(maps)
 library(maptools)
 library(fields)
 library(ggplot2)
-library(gridExtra)
+# library(gridExtra)  # not available on hpc
 library(rapport)
 library(Rcpp)
 source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)

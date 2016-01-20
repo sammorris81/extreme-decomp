@@ -2,8 +2,6 @@
 # cv: which cross-validation testing set to use
 # L: the umber of basis functions to use
 
-
-
 # get the Georgia map and coordinates
 # from georgia_preprocess in code/analysis/fire
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
@@ -15,6 +13,12 @@ n <- nrow(cents)
 load(file = "../../code/analysis/fire/georgia_preprocess/chi.RData")
 chi.hat <- ifelse(chi <= 0, 0, chi)
 ec.hat  <- 2 - chi.hat
+
+# set up the 5 fold cross validation
+n <- length(county)
+set.seed(28)  #cv
+nfolds <- 5
+cv.idx <- get.cv.test(n = n, nfolds = nfolds)
 
 # separate the test vs training
 ec.hat.trn <- ec.hat[-cv.idx[[cv]], -cv.idx[[cv]], drop = FALSE]
@@ -105,4 +109,18 @@ y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X.tst,
                         B = B.est.tst, alpha = alpha, 
                         start = 1, end = 200, update = 10)
 
+cat("Finished fit and predict \n")
 
+# calculate the scores
+probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
+quant.scores <- QuantScore(pred = y.pred, probs = probs.for.qs, validate = Y.tst)
+write.table(quant.scores, file = table.file)
+
+upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
+upload.pre <- paste(upload.pre, "fire-analysis/cv-tables/", sep = "")
+if (do.upload) {
+  upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
+  system(upload.cmd)
+}
+save(B.est.trn, B.est.tst, alpha, fit, y.pred, cv.idx, quant.scores, 
+     file = results.file)

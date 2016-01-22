@@ -177,8 +177,53 @@ y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X[test, , ],
                         B = out$est[test, , drop = FALSE], alpha = out$alpha, 
                         start = 1, end = 200, update = 10)
 
+rm(list=ls())
+library(splines)
+library(maps)
+library(maptools)
+library(fields)
+library(ggplot2)
+# library(gridExtra)  # not available on hpc
+# library(rapport)    # not available on hpc
+library(Rcpp)
+source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
+source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
+source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
+source(file = "../../code/R/PCAX.R", chdir = TRUE)
+source(file = "../../code/R/mcmc.R")
+# load(file = "../code/analysis/fire/gaCntyFires.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+
+if (Sys.info()["nodename"] == "sam-ubuntu") {
+  setMKLthreads(1)
+  do.upload <- TRUE
+} else if (Sys.info()["sysname"] == "Darwin") {
+  do.upload <- TRUE
+} else {
+  do.upload <- FALSE
+}
+
 # test for missing
-Y[c(1, 5, 6,8, 10)] <- NA
+# get the Georgia map and coordinates
+# from georgia_preprocess in code/analysis/fire
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+d <- rdist(cents)
+diag(d) <- 0
+n <- nrow(cents)
+
+Y <- t(Y)
+
+# set up the 5 fold cross validation
+n.tot <- nrow(Y) * ncol(Y)
+set.seed(28)  #cv
+nfolds <- 5
+cv.idx <- get.cv.test(n = n.tot, nfolds = nfolds)
+
+Y.tst <- Y
+Y.tst[cv.idx[[1]]] <- NA
+
+
+
 
 fit.1 <- ReShMCMC(y = Y, X = X, thresh = thresh, 
                   B = out$est, alpha = out$alpha, 

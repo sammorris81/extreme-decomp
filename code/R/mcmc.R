@@ -30,6 +30,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
                    beta1 = NULL, beta2 = NULL, xi = 0.001, beta.sd = 10,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
+  require(extRemes)
   # BOOKKEEPING
   
   ns   <- nrow(y)
@@ -37,7 +38,17 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   L    <- ncol(B)
   p    <- dim(X)[3]
   
-  y    <- ifelse(y < thresh, thresh, y)
+  miss  <- is.na(y)
+  y     <- ifelse(y < thresh, thresh, y)
+  
+  # initial missing values to be set at threshold
+  # looping over time because threshold is a vector of ns length
+  if (any(miss)) {
+    for (t in 1:nt) {
+      y[miss[, t], t] <- thresh[miss[, t]]
+    }
+    missing.times <- which(colSums(miss) > 0)
+  }
   
   # dPS approximation:
   
@@ -54,7 +65,6 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   beta2[1] <- log(sqrt(6) * sd(as.vector(y)) / pi)
   beta1[1] <- mean(y) - exp(beta2[1]) * 0.577      
   
-  
   mu <- logsig <- 0
   for(j in 1:p){
     mu     <- mu     + X[, , j] * beta1[j]
@@ -64,6 +74,7 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha
+  
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
   
   # STORAGE:
@@ -72,6 +83,12 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   keep.beta2 <- matrix(0, iters, p)
   keep.xi    <- rep(0, iters)
   keep.A     <- array(0, dim = c(iters, L, nt))
+  if (any(miss)) {
+    keep.y <- matrix(0, iters, sum(miss))  # only record the missing data
+  } else {
+    keep.y <- NULL
+  }
+  
   theta.mn   <- 0 
   
   # TUNING:
@@ -83,6 +100,21 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
   
   tic <- proc.time()[3]
   for (iter in 1:iters) {
+    ####################################################
+    ##############      Impute missing      ############
+    ####################################################
+    if (any(miss)) {
+      for (t in missing.times) {
+        # calculate mu and sigma
+        miss.t   <- miss[, t]
+        sigma    <- exp(logsig[miss.t, t])
+        mu_star  <- mu[miss.t, t] + sigma * (theta[miss.t, t]^xi - 1) / xi
+        sig_star <- alpha * sigma * theta[miss.t, t]^xi
+        xi_star  <- alpha * xi
+        y[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star, scale = sig_star, 
+                                  shape = xi_star, type = "GEV")
+      }
+    }
     
     ####################################################
     ##############      Random effects A    ############
@@ -180,11 +212,13 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
     
     
     #KEEP TRACK OF STUFF:
-    
     keep.beta1[iter, ] <- beta1
     keep.beta2[iter, ] <- beta2
     keep.xi[iter]      <- xi
     keep.A[iter, , ]   <- A
+    if (any(miss)) {
+      keep.y[iter, ]   <- y[miss]
+    }
     if (iter > burn) {
       theta.mn <- theta.mn + theta / (iters - burn)
     }
@@ -215,11 +249,16 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
     return.iters <- (burn + 1):iters
   }
   
+  if (any(miss)) {
+    keep.y <- keep.y[return.iters, , drop = FALSE]
+  }
+  
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
        xi = keep.xi[return.iters],
        theta.mn = theta.mn,
        A = keep.A[return.iters, , , drop = FALSE], 
+       y.pred = keep.y,
        timing = toc - tic)
 }
 

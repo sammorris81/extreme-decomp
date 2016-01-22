@@ -176,3 +176,10 @@ fit.4 <- ReShMCMC(y = Y, X = X[, , 1:12], thresh = thresh,
 y.pred <- pred.ReShMCMC(mcmcoutput = fit, X.pred = X[test, , ], 
                         B = out$est[test, , drop = FALSE], alpha = out$alpha, 
                         start = 1, end = 200, update = 10)
+
+# test for missing
+Y[c(1, 5, 6,8, 10)] <- NA
+
+fit.1 <- ReShMCMC(y = Y, X = X, thresh = thresh, 
+                  B = out$est, alpha = out$alpha, 
+                  iters = 300, burn = 100, update = 10, iterplot = TRUE)

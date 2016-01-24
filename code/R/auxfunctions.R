@@ -314,12 +314,12 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
     update <- floor(ns / 4)
   }
   
-  # first get the sample quantiles at each site
-  U <- matrix(NA, ns, nt)
-  for (i in 1:ns) {
-    U[i, ] <- rank(Y[i, ]) / (sum(!is.na(Y[i, ])) + 1)
-  }
-  U[U >= 1] <- NA  # retain the fact that we didn't have a measurement here
+#   # first get the sample quantiles at each site
+#   U <- matrix(NA, ns, nt)
+#   for (i in 1:ns) {
+#     U[i, ] <- rank(Y[i, ]) / (sum(!is.na(Y[i, ])) + 1)
+#   }
+#   U[U >= 1] <- NA  # retain the fact that we didn't have a measurement here
   
   ec <- matrix(0, ns, ns)
   eps <- .Machine$double.eps^0.5
@@ -331,11 +331,14 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
     for (j in i:ns) {
       
       # only want to include years which have both observations
-      these.ij   <- which(colSums(is.na(U[c(i, j), ])) == 0)
-      U.these.ij <- U[c(i, j), these.ij]
-      colmax.ij  <- apply(U.these.ij, 2, max)
-      min.ij     <- max(min(U.these.ij), qlim[1]) + eps
-      max.ij     <- min(max(U.these.ij), qlim[2]) - eps
+      these.ij   <- which(colSums(is.na(Y[c(i, j), ])) == 0)
+      U <- Y[c(i, j), these.ij]
+      for (k in 1:2) {
+        U[k, ] <- rank(U[k, ]) / (length(these.ij) + 1)
+      }
+      colmax.ij  <- apply(U, 2, max)
+      min.ij     <- max(min(U), qlim[1]) + eps
+      max.ij     <- min(max(U), qlim[2]) - eps
       if (max.ij < min.ij) {
         cat("  i:", i, "j:", j, "\n")
       }

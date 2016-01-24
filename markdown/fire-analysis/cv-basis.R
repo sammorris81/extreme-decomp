@@ -37,7 +37,7 @@ Y <- t(Y)  # Y is originally nt x ns
 # set up the 5 fold cross validation
 n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
-nfolds <- 20
+nfolds <- 5
 cv.idx <- get.cv.test(n = n.tot, nfolds = nfolds)
 
 # loop over the list for cross-validation and get the basis functions

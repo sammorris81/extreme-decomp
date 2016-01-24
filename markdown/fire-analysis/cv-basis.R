@@ -32,50 +32,34 @@ load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
-Y <- t(Y)  # when loading in, Y is nt x ns
+Y <- t(Y)  # Y is originally nt x ns
 
 # set up the 5 fold cross validation
 n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
-nfolds <- 5
+nfolds <- 20
 cv.idx <- get.cv.test(n = n.tot, nfolds = nfolds)
 
 # loop over the list for cross-validation and get the basis functions
 # before getting started, find the upper quantile limit
 
-for (i in 1:nfolds) {
+fold <- 1; i <- 1; j <- 2
+# check qlims - recording the min and max for all qlims on each fold
+qlim.min.range <- matrix(0, nrow = nfolds, ncol = 2)
+qlim.max.range <- matrix(0, nrow = nfolds, ncol = 2)
+for (fold in 1:nfolds) {
   Y.tst <- Y
-  Y.tst[cv.idx[[1]]] <- NA
+  Y.tst[cv.idx[[fold]]] <- NA
   
-  # build ec matrix
-  chi <- matrix(NA, nrow(Y), nrow(Y))
-  for (i in 1:nrow(Y)) {
-    for (j in i:nrow(Y)) {
-      chi.ij <- chiplot(Y[c(i, j), ], which = 1, ask = FALSE)
-      use.id <- which(chi.ij > 0.95)
-      chi.ij <- mean(chiplot(Y[, c(i, j)], which = 1, ask = FALSE)$chi[95:100, 2])
-      chi[i, j] <- chi[j, i] <- chi.ij
-      if (j %% 50 == 0) {
-        print(paste("j:", j))
-      }
-    }
-    if (i %% 10 == 0) {
-      print(paste("i:", i))
-    }
-  }
+  # build ec matrix: ns x ns
+  ec <- get.pw.ec(Y = Y.tst, qlim = c(0.95, 1), verbose = TRUE, update = 50)
+  qlim.min.range[fold, ] <- range(ec$qlims[, 1])
+  qlim.max.range[fold, ] <- range(ec$qlims[, 2])
   
   # run smoother
+  
+  cat("finished fold:", fold, "\n")
 }
 
 
-Y <- t(Y)
-temp <- chiplot(Y[c(1, 2), ], nq = 1000, which = 1, ask = FALSE)
-temp <- chiplot(Y[, c(1, 2)], nq = 1000, which = 1, ask = FALSE)
 
-
-data <- na.omit(Y[, c(1, 2)])
-data <- cbind(rank(data[, 1])/(n + 1), rank(data[, 2])/(n + 1))
-rowmax <- apply(data, 1, max)
-rowmin <- apply(data, 1, min)
-eps <- .Machine$double.eps^0.5
-qlim2 <- c(min(rowmax) + eps, max(rowmin) - eps)

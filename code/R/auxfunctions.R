@@ -295,3 +295,67 @@ QuantScore <- function(preds, probs, validate) {
   
   return(scores)
 }
+
+
+get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1, 
+                      verbose = FALSE, update = NULL) {
+  # get the pairwise chi as an average over nq quantiles 
+  # between qlim[1] and qlim[2]
+  # if qlim[2] == 1, then we'll set it to the max quantile for the two sites
+  
+  if (site.idx == 2) {  # each column represents a site
+    Y <- t(Y)  # transform to rows
+  }
+  
+  ns <- nrow(Y)
+  nt <- ncol(Y)
+  
+  if (is.null(update)) {
+    update <- floor(ns / 4)
+  }
+  
+  # first get the sample quantiles at each site
+  U <- matrix(NA, ns, nt)
+  for (i in 1:ns) {
+    U[i, ] <- rank(Y[i, ]) / (sum(!is.na(Y[i, ])) + 1)
+  }
+  U[U >= 1] <- NA  # retain the fact that we didn't have a measurement here
+  
+  ec <- matrix(0, ns, ns)
+  eps <- .Machine$double.eps^0.5
+  
+  qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
+  qlim.idx <- 1
+  
+  for (i in 1:ns) {
+    for (j in i:ns) {
+      
+      # only want to include years which have both observations
+      these.ij   <- which(colSums(is.na(U[c(i, j), ])) == 0)
+      U.these.ij <- U[c(i, j), these.ij]
+      colmax.ij  <- apply(U.these.ij, 2, max)
+      min.ij     <- max(min(U.these.ij), qlim[1]) + eps
+      max.ij     <- min(max(U.these.ij), qlim[2]) - eps
+      if (max.ij < min.ij) {
+        cat("  i:", i, "j:", j, "\n")
+      }
+      quantiles  <- seq(min.ij, max.ij, length = nq)
+      if (max(quantiles) == 1) {
+        cat("  i:", i, "j:", j, "\n")
+      }
+      Q.ij <- rep(NA, length(quantiles))
+      for (q in 1:length(quantiles)) {
+        Q.ij[q] <- mean(colmax.ij < quantiles[q])
+      }
+      ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(quantiles))
+      
+      qlims[qlim.idx, ] <- c(min.ij, max.ij)
+      qlim.idx <- qlim.idx + 1
+    }
+    if (verbose & (i %% update == 0)) {
+      cat("  Finished i =", i, "\n")
+    }
+  }
+  
+  return(list(ec = ec, qlims = qlims))
+}

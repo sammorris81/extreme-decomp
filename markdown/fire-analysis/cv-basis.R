@@ -35,32 +35,31 @@ diag(d) <- 0
 n <- nrow(cents)
 Y <- t(Y)  # Y is originally nt x ns
 
-# set up the 5 fold cross validation
+# set up the 10 fold cross validation
 n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
-nfolds <- 5
+nfolds <- 10
 cv.idx <- get.cv.test(n = n.tot, nfolds = nfolds)
 
 # loop over the list for cross-validation and get the basis functions
 # before getting started, find the upper quantile limit
 
-fold <- 1; i <- 1; j <- 2
 # check qlims - recording the min and max for all qlims on each fold
 qlim.min.range <- matrix(0, nrow = nfolds, ncol = 2)
 qlim.max.range <- matrix(0, nrow = nfolds, ncol = 2)
+
+ec.hat <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   Y.tst <- Y
   Y.tst[cv.idx[[fold]]] <- NA
   
   # build ec matrix: ns x ns
   ec <- get.pw.ec(Y = Y.tst, qlim = c(0.95, 1), verbose = TRUE, update = 50)
+  ec.hat[[fold]] <- ec$ec
   qlim.min.range[fold, ] <- range(ec$qlims[, 1])
   qlim.max.range[fold, ] <- range(ec$qlims[, 2])
-  
-  # run smoother
   
   cat("finished fold:", fold, "\n")
 }
 
-
-
+save(cv.idx, ec.hat, file = "cv-extcoef.RData")

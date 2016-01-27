@@ -266,29 +266,31 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
 
 ################################################################
 # Arguments:
-#   preds(iters, yp, nt): mcmc predictions at validation
-#                         locations
+#   preds(iters, npreds): mcmc predictions for test site/day
 #   probs(nprobs): sample quantiles for scoring
-#   validate(np, nt): validation data
+#   validate(npreds): validation data
 #
 # Returns:
 #   score(nprobs): a single quantile score per quantile
 ################################################################
 QuantScore <- function(preds, probs, validate) {
   
-  nt <- ncol(validate)  # number of prediction days
-  np <- nrow(validate)  # number of prediction sites
+#   nt <- ncol(validate)  # number of prediction days
+#   np <- nrow(validate)  # number of prediction sites
+  npreds <- length(validate)
   nprobs <- length(probs)  # number of quantiles to find quantile score
   
-  # we need to know the predicted quantiles for each site and day in the validation set
-  pred.quants <- apply(preds, 2, quantile, probs=probs, na.rm=T)  # gives nprobs x np x nt
+  # we need to know the predicted quantiles for each site and day in the 
+  # validation set. 
+  # nprobs x npreds
+  pred.quants <- apply(preds, 2, quantile, probs=probs, na.rm=T)  
   
-  scores.sites <- array(NA, dim=c(nprobs, np, nt))
+  scores.sites <- matrix(NA, nprobs, npreds)
   
   for (q in 1:nprobs) {
     diff <- pred.quants[q, ] - validate
     i <- diff >= 0  # diff >= 0 means qhat is larger
-    scores.sites[q, , ] <- 2 * (i - probs[q]) * diff
+    scores.sites[q, ] <- 2 * (i - probs[q]) * diff
   }
   
   scores <- apply(scores.sites, 1, mean, na.rm=T)

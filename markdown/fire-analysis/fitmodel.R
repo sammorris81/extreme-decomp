@@ -84,9 +84,14 @@ cat("Finished fit and predict \n")
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
-quant.scores <- QuantScore(preds = fit$y.pred, probs = probs.for.qs, 
-                           validate = Y.tst)
-write.table(quant.scores, file = table.file)
+results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs, 
+                      validate = Y.tst)
+
+results <- c(results, fit$timing)
+results <- c(results, Sys.info()["nodename"])
+names(results) <- c(probs.for.qs, "timing", "system")
+
+write.table(results, file = table.file)
 
 upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
 upload.pre <- paste(upload.pre, "fire-analysis/cv-tables/", sep = "")

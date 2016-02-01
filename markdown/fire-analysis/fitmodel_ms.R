@@ -12,6 +12,8 @@ n <- nrow(cents)
 # cv.idx and ec.hat were calculated ahead of time
 load(file = "./cv-extcoef.RData")
 
+# get estimates for rho and alpha
+
 ################################################################################
 #### Run the MCMC:
 #### Use the basis functions with the MCMC

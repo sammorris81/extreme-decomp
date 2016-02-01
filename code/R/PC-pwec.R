@@ -21,7 +21,7 @@
 
 get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
                           init.rho = NULL, iters = 10, verbose = TRUE){
-  
+  require(rdist)
   tick   <- proc.time()[3]
   
   n      <- ncol(EC)
@@ -37,14 +37,21 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   diag(EC) <- NA
   
   # INITIAL VALUES
-  
-  if(is.null(init.B)){
-    B <- 1 / matrix(1:L, n, L, byrow = TRUE)
+  if (is.null(knots)) {
+    knots <- s
   }
-  if(!is.null(init.B)){
+  dw2             <- as.matrix(rdist(s, knots))^2
+  dw2[dw2 < 1e-6] <- 0
+  
+  if (is.null(init.rho)) {
+    rho <- quantile(dw2, probs = 0.15)
+  }
+  
+  if (is.null(init.B)) {
+    B <- getW(rho, dw2)
+  } else {
     B <- init.B
   }
-  B  <- sweep(B, 1, rowSums(B), "/")
   
   # ESTIMATION
   
@@ -54,12 +61,11 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   for (iter in 1:iters) {
     prev  <- B
     maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
-    for (i in 1:n) {
-      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
-                   alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
-                   method = "L-BFGS-B", control = list(maxit = maxit))
-      B[i, ] <- abs(fit$par) / sum(abs(fit$par))
-    }
+    fit <- optim(rho, fn = SSE, gr = SSE.grad, Y = EC, B2 = B, 
+                 alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
+                 method = "L-BFGS-B", control = list(maxit = maxit))
+    B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+    
     Delta_B[iter]   <- mean((prev-B)^2)
     Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
     
@@ -84,8 +90,24 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   return(output)
 }
 
+# SSE
+SSE <- function(rho, dw2, Y, alpha) {
+  B <- getW(rho = rho, dw2 = dw2)
+  B <- B^(1 / alpha)
+  
+  n <- ncol(Y)
+  EC <- matrix(NA, n, n)
+  for (i in 1:n) {
+    for (j in (i+1):n) {
+      EC[i, j] <- EC[j, i] <- sum(colSums(B[c(i, j), ])^alpha)
+    }
+  } 
+  sse <- sum((Y - EC)^2, na.rm = TRUE)
+}
+
 # SSE for row of Y-EC
-SSE <- function(B1, B2, Y, alpha, lambda = 1000){
+SSE <- function(rho, dw2, Y, alpha, lambda = 1000){
+  
   
   BB  <- B1^(1 / alpha)
   B2  <- B2^(1 / alpha)
@@ -155,9 +177,6 @@ getW <- function(rho, dw2) {
 
 # get the kernel weighting
 makeW <- function(dw2, rho) {
-  if (is.null(a.cutoff)) {
-    a.cutoff <- max(sqrt(dw2))
-  }
   w <- exp(-0.5 * dw2 / (rho^2))
 
   return(w)

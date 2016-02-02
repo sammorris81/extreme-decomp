@@ -3,7 +3,7 @@ rm(list = ls())
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
-basis  <- c(2, 5, 10, 15)
+basis  <- c(2, 5, 10, 15, "ms")
 nbases <- length(basis)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 nprobs <- length(probs.for.qs)
@@ -17,13 +17,24 @@ for (b in 1:nbases) {
   rownames(qs.results[[b]])  <- paste("fold:", 1:nfolds)
 }
 
+# timing is a data.frame that contains time, hostname, basis, and fold
+timing <- data.frame(timing = double(), hostname = factor(), 
+                     basis = factor(), fold = factor())
 for (i in 1:length(files)) {
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
-  setting   <- which(basis == as.numeric(split[1]))  
+  setting   <- which(basis == split[1])  
   fold      <- as.numeric(split[2])
-  table.set <- read.table(paste("cv-tables/", files[i], sep = ""))$x
-  qs.results[[setting]][fold, ]  <- table.set
+  table.set <- read.table(paste("cv-tables/", files[i], sep = ""), 
+                          stringsAsFactors = FALSE)
+  
+  # first extract the timing information from the end of the vector
+  timing.tail <- tail(table.set$x, 2)
+  timing.row <- data.frame(timing = as.numeric(timing.tail[1]), 
+                           host = timing.tail[2],
+                           basis = split[1], fold = as.factor(fold))
+  timing <- rbind(timing, timing.row)
+  qs.results[[setting]][fold, ]  <- as.numeric(table.set$x[1:nprobs])
 }
 
 # combine lists into a single matrix that averages qs over all folds for 

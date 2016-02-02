@@ -9,6 +9,12 @@ d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
 
+# standardize the locations
+s <- cents
+s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
+s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
+
+
 # cv.idx and ec.hat were calculated ahead of time
 load(file = "./cv-extcoef.RData")
 
@@ -19,7 +25,7 @@ load(file = "./cv-extcoef.RData")
 cat("Start estimation of rho and alpha \n")
 
 # alpha and rho estimates using only the training data
-out       <- get.rho.alpha(EC = ec.hat[[cv]], s = cents, knots = cents)
+out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = s)
 rho       <- out$rho
 ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
@@ -47,9 +53,9 @@ np <- 6  # for a single year (int, t, lat, long, t * lat, t * long)
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
-  for (t in 1:nt) {  # cross-validation with sites not 
+  for (t in 1:nt) {  
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, cents[i, ], cents[i, ] * time) 
+    X[i, t, 2:np] <- c(time, s[i, ], s[i, ] * time) 
   }
 }
 
@@ -58,12 +64,12 @@ for (i in 1:ns) {
 ################################################################################
 thresh <- rep(0, ns)
 neighbors <- 5
-d.trn <- rdist(cents)
-diag(d.trn) <- 0
+d <- rdist(s)
+diag(d) <- 0
 
 # take the 5 closest neighbors when finding the threshold
 for (i in 1:ns) {
-  these <- order(d.trn[i, ])[2:(neighbors + 1)]  # the closest is always site i
+  these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
   thresh[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
 }
 

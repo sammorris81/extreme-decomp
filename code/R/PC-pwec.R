@@ -5,15 +5,15 @@
 #
 # Inputs:
 #
-#  EC      := n x n matrix of estimated pairwise extremal coefficients
-#  L       := number of B functions to be estimated
-#  alpha   := positive stable parameter alpha
-#  init.B  := inital value
-#  iters   := number of iterations in the optimization algorithm
+#  EC       := n x n matrix of estimated pairwise extremal coefficients
+#  s        := locations
+#  knots    := knot locations
+#  alpha    := positive stable parameter alpha
+#  init.rho := inital value
 #
 # Outputs
 #
-#  est       := estimated value of B
+#  rho       := estimated value of rho
 #  alpha     := estimated alpha
 #  EC.smooth := smoothed version of EC
 # 
@@ -51,12 +51,16 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   
   # ESTIMATION
   
-  fit <- optim(rho, fn = SSE, gr = SSE.grad, Y = EC, dw2 = dw2, 
+  fit <- optim(rho, fn = SSE, # gr = SSE.grad, 
+               Y = EC, dw2 = dw2, 
                alpha = alpha, lower = 0, upper = 0.5 * sqrt(max(dw2)), 
-               method = "L-BFGS-B", control = list(maxit = 1000))
+               method = "L-BFGS-B")
   rho <- fit$par
+  if (fit$convergence != 0) {
+    cat(" Warning, optim returned convergence code", fit$convergence, "\n")
+  }
     
-  output <- list(est = rho, alpha = alpha, EC.smooth = ECs,
+  output <- list(rho = rho, alpha = alpha, EC.smooth = ECs, dw2 = dw2,
                  seconds = tock-tick)
   
   return(output)
@@ -69,12 +73,15 @@ SSE <- function(rho, dw2, Y, alpha) {
   
   n <- ncol(Y)
   EC <- matrix(NA, n, n)
-  for (i in 1:n) {
+  for (i in 1:(n - 1)) {
     for (j in (i+1):n) {
       EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
     }
   } 
+  
   sse <- sum((Y - EC)^2, na.rm = TRUE)
+  
+  return(sse)
 }
 
 # hack for finding the gradient

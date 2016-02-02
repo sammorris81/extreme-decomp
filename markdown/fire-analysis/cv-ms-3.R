@@ -6,7 +6,7 @@ source(file = "./package_load.R", chdir = T)
 # function to our proposed method which uses basis functions. So, here
 # there aren't a set of basis functions.
 L <- "ms" # using ms for the results from abba
-cv <- 1   # which cross-validation set to use
+cv <- 3   # which cross-validation set to use
 results.file <- paste("./cv-results/", L, "-", cv, ".RData", sep = "")
 table.file   <- paste("./cv-tables/", L, "-", cv, ".txt", sep = "")
 
@@ -24,7 +24,7 @@ source(file = "./package_load.R", chdir = T)
 # opting for 2, 5, 10, 15, and then looking a max stable method with fixed 
 # alpha.
 L <- "ms" # number of basis functions
-cv <- 6   # which cross-validation set to use
+cv <- 8   # which cross-validation set to use
 results.file <- paste("./cv-results/", L, "-", cv, ".RData", sep = "")
 table.file   <- paste("./cv-tables/", L, "-", cv, ".txt", sep = "")
 

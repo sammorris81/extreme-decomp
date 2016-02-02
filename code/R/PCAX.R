@@ -152,6 +152,111 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
   return(ECsmooth)
 }
 
+######################################################################
+# 
+# Function to estimate the B functions:
+#
+# Inputs:
+#
+#  EC       := n x n matrix of estimated pairwise extremal coefficients
+#  s        := locations
+#  knots    := knot locations
+#  alpha    := positive stable parameter alpha
+#  init.rho := inital value
+#
+# Outputs
+#
+#  rho       := estimated value of rho
+#  alpha     := estimated alpha
+#  EC.smooth := smoothed version of EC
+# 
+######################################################################
+
+get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
+                          init.rho = NULL, verbose = TRUE){
+  require(fields)
+  tick   <- proc.time()[3]
+  
+  n      <- ncol(EC)
+  if (is.null(s)) {s <- 1:n}
+  if (is.null(knots)) {knots <- s}  # place knots at sites
+  if (is.null(bw)) {bw <- 2 * min(dist(s))}
+  
+  # SMOOTHING
+  
+  EC  <- Ksmooth(EC, s, bw)
+  ECs <- EC
+  if (is.null(alpha)) {alpha <- log2(mean(diag(EC)))}
+  diag(EC) <- NA
+  
+  # INITIAL VALUES
+  if (is.null(knots)) {
+    knots <- s
+  }
+  dw2             <- as.matrix(rdist(s, knots))^2
+  dw2[dw2 < 1e-6] <- 0
+  
+  if (is.null(init.rho)) {
+    rho <- quantile(dw2, probs = 0.15)
+  }
+  
+  w <- getW(rho = rho, dw2 = dw2)
+  
+  # ESTIMATION
+  
+  fit <- optim(rho, fn = SSE.rhoalpha, # gr = SSE.grad, 
+               Y = EC, dw2 = dw2, 
+               alpha = alpha, lower = 0, upper = 0.5 * sqrt(max(dw2)), 
+               method = "L-BFGS-B")
+  rho <- fit$par
+  if (fit$convergence != 0) {
+    cat(" Warning, optim returned convergence code", fit$convergence, "\n")
+  }
+  
+  tock <- proc.time()[3]
+  output <- list(rho = rho, alpha = alpha, EC.smooth = ECs, dw2 = dw2,
+                 seconds = tock-tick)
+  
+  return(output)
+}
+
+# SSE
+SSE.rhoalpha <- function(rho, dw2, Y, alpha) {
+  w <- getW(rho = rho, dw2 = dw2)
+  w <- w^(1 / alpha)
+  
+  n <- ncol(Y)
+  EC <- matrix(NA, n, n)
+  for (i in 1:(n - 1)) {
+    for (j in (i+1):n) {
+      EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
+    }
+  } 
+  
+  sse <- sum((Y - EC)^2, na.rm = TRUE)
+  
+  return(sse)
+}
+
+getW <- function(rho, dw2) {
+  w <- stdW(makeW(dw2 = dw2, rho = rho))
+}
+
+
+# get the kernel weighting
+makeW <- function(dw2, rho) {
+  w <- exp(-0.5 * dw2 / (rho^2))
+  
+  return(w)
+}
+
+# standardize the kernel weights
+stdW <- function(x, single = FALSE) {
+  if (single) {x <- x / sum(x)}
+  if (!single) {x <- sweep(x, 1, rowSums(x), "/")}
+  return(x)
+}
+
 
 ####################################################
 # SIMPLE EXAMPLE

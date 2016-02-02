@@ -3,7 +3,7 @@ rm(list = ls())
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
-basis  <- c(2, 5, 10, 15, "ms")
+basis  <- c(2, 5, 10, 15, "kern")
 nbases <- length(basis)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 nprobs <- length(probs.for.qs)
@@ -39,10 +39,16 @@ for (i in 1:length(files)) {
 
 # combine lists into a single matrix that averages qs over all folds for 
 # each entry in probs.for.qs
-qs.results.combined  <- matrix(NA, nbases, nprobs)  
+qs.results.mn <- qs.results.se <- matrix(NA, nbases, nprobs)
 for (b in 1:nbases) {
-  qs.results.combined[b, ]  <- apply(qs.results[[b]], 2, mean, na.rm = TRUE)
+  qs.results.mn[b, ]  <- apply(qs.results[[b]][1:5,], 2, mean, na.rm = TRUE)
+  qs.results.se[b, ]  <- apply(qs.results[[b]][1:5,], 2, sd, na.rm = TRUE) / sqrt(5)
 }
+
+colnames(qs.results.mn) <- colnames(qs.results.se) <- probs.for.qs
+rownames(qs.results.mn) <- rownames(qs.results.se) <- basis
+round(qs.results.mn, 3)
+round(qs.results.se, 3)
 
 for (setting in 1:nsettings) {
   print(length(finished.sets[[setting]]))

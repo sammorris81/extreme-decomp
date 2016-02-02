@@ -9,7 +9,9 @@
 #  L       := number of B functions to be estimated
 #  alpha   := positive stable parameter alpha
 #  init.B  := inital value
-#  iters   := number of iterations in the optimization algorithm
+#  iters   := minimum number of iterations in the optimization algorithm.
+#             the algorithm will continue until convergence is reached at 
+#             all sites.
 #
 # Outputs
 #
@@ -49,23 +51,36 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 
   Delta_B   <- rep(NA, iters)
   Delta_val <- rep(NA, iters)
-
-  for (iter in 1:iters) {
+  
+  # keep running the algorithm until we get convergence at all sites.
+  convergence <- 0
+  iter        <- 0
+  while (convergence > 0 | iter < iters) {
+    convergence <- 0  # storage for optim convergence
+    iter  <- iter + 1
     prev  <- B
     maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
+    
     for (i in 1:n) {
       fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
                    alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
                    method = "L-BFGS-B", control = list(maxit = maxit))
       B[i, ] <- abs(fit$par) / sum(abs(fit$par))
       if (fit$convergence != 0) {
-        cat(" Warning, optim returned convergence code", fit$convergence, "\n")
+        convergence <- convergence + 1
       }
     }
+    
     Delta_B[iter]   <- mean((prev-B)^2)
     Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
-    
-    if(verbose){cat("    Done with iteration", iter, "of", iters, "\n")}
+    if(verbose & (iter %% 5 == 0)){
+      cat("  Done with iteration ", iter, ", still need to converge at ", 
+          convergence, " sites \n", sep = "")
+    }
+  }
+  
+  if (iter > iters) {
+    cat("  estimating basis functions took ", iter, "iterations. \n")
   }
 
  # REORDER THE COLUMNS
@@ -81,7 +96,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 
   output <- list(est = B, pct = pct, alpha = alpha, EC.smooth = ECs,
                  Delta.B = Delta_B, Delta.val = Delta_val,
-                 seconds = tock-tick)
+                 convergence = convergence, seconds = tock-tick)
   
   return(output)
 }

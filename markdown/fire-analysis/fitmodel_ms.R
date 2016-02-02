@@ -12,7 +12,20 @@ n <- nrow(cents)
 # cv.idx and ec.hat were calculated ahead of time
 load(file = "./cv-extcoef.RData")
 
-# get estimates for rho and alpha
+################################################################################
+## Estimate the rho and alpha
+################################################################################
+
+cat("Start estimation of rho and alpha \n")
+
+# alpha and rho estimates using only the training data
+out       <- get.rho.alpha(EC = ec.hat[[cv]], s = cents, knots = cents, 
+                           dw2 = dw2)
+rho       <- out$est
+ec.smooth <- out$EC.smooth
+alpha     <- out$alpha
+dw2       <- out$dw2
+w         <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
 
 ################################################################################
 #### Run the MCMC:
@@ -67,7 +80,9 @@ update <- 500
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.est, alpha = alpha, 
+# note: we use w as our basis functions because the MCMC should be identical
+#       once the bandwidth and alpha terms are estimated.
+fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = w, alpha = alpha, 
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
 
 cat("Finished fit and predict \n")

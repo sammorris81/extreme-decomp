@@ -58,6 +58,9 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
                    alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
                    method = "L-BFGS-B", control = list(maxit = maxit))
       B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+      if (fit$convergence != 0) {
+        cat(" Warning, optim returned convergence code", fit$convergence, "\n")
+      }
     }
     Delta_B[iter]   <- mean((prev-B)^2)
     Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)

@@ -20,8 +20,8 @@
 ######################################################################
 
 get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
-                          init.rho = NULL, iters = 10, verbose = TRUE){
-  require(rdist)
+                          init.rho = NULL, verbose = TRUE){
+  require(fields)
   tick   <- proc.time()[3]
   
   n      <- ncol(EC)
@@ -47,44 +47,16 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
     rho <- quantile(dw2, probs = 0.15)
   }
   
-  if (is.null(init.B)) {
-    B <- getW(rho, dw2)
-  } else {
-    B <- init.B
-  }
+  w <- getW(rho = rho, dw2 = dw2)
   
   # ESTIMATION
   
-  Delta_B   <- rep(NA, iters)
-  Delta_val <- rep(NA, iters)
-  
-  for (iter in 1:iters) {
-    prev  <- B
-    maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
-    fit <- optim(rho, fn = SSE, gr = SSE.grad, Y = EC, B2 = B, 
-                 alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
-                 method = "L-BFGS-B", control = list(maxit = maxit))
-    B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+  fit <- optim(rho, fn = SSE, gr = SSE.grad, Y = EC, dw2 = dw2, 
+               alpha = alpha, lower = 0, upper = 0.5 * sqrt(max(dw2)), 
+               method = "L-BFGS-B", control = list(maxit = 1000))
+  rho <- fit$par
     
-    Delta_B[iter]   <- mean((prev-B)^2)
-    Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
-    
-    if(verbose){cat("    Done with iteration", iter, "of", iters, "\n")}
-  }
-  
-  # REORDER THE COLUMNS
-  
-  if (L == 1) {
-    B   <- matrix(B, n, L)
-    pct <- 1
-  } else {
-    B   <- B[, order(-colSums(B))]
-    pct <- colSums(B) / sum(B)
-  }
-  tock   <- proc.time()[3]
-  
-  output <- list(est = B, pct = pct, alpha = alpha, EC.smooth = ECs,
-                 Delta.B = Delta_B, Delta.val = Delta_val,
+  output <- list(est = rho, alpha = alpha, EC.smooth = ECs,
                  seconds = tock-tick)
   
   return(output)
@@ -92,46 +64,27 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
 
 # SSE
 SSE <- function(rho, dw2, Y, alpha) {
-  B <- getW(rho = rho, dw2 = dw2)
-  B <- B^(1 / alpha)
+  w <- getW(rho = rho, dw2 = dw2)
+  w <- w^(1 / alpha)
   
   n <- ncol(Y)
   EC <- matrix(NA, n, n)
   for (i in 1:n) {
     for (j in (i+1):n) {
-      EC[i, j] <- EC[j, i] <- sum(colSums(B[c(i, j), ])^alpha)
+      EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
     }
   } 
   sse <- sum((Y - EC)^2, na.rm = TRUE)
 }
 
-# SSE for row of Y-EC
-SSE <- function(rho, dw2, Y, alpha, lambda = 1000){
+# hack for finding the gradient
+SSE.grad <- function(rho, dw2, Y, alpha){
   
+  delta <- 0.001
+  epsilon <- SSE(rho = rho + delta, dw2 = dw2, Y = Y, alpha = alpha) - 
+             SSE(rho = rho, dw2 = dw2, Y = Y, alpha = alpha)
   
-  BB  <- B1^(1 / alpha)
-  B2  <- B2^(1 / alpha)
-  EC  <- sweep(B2, 2, BB, "+")
-  EC  <- rowSums(EC^alpha)
-  sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
-  
-  return(sse)
-}
-
-SSE.grad <- function(B1, B2, Y, alpha, lambda = 1000){
-  
-  BB   <- B1^(1 / alpha)
-  B2   <- B2^(1 / alpha)
-  
-  BB   <- sweep(B2, 2, BB, "+")
-  EC0  <- rowSums(BB^alpha)
-  
-  EC1  <- BB^(alpha - 1)
-  EC1  <- sweep(EC1, 2, B1^(1 / alpha - 1), "*")
-  EC1  <- sweep(EC1, 1, Y - EC0, "*")
-  
-  grad <- -2 * colSums(EC1, na.rm = TRUE) +
-    2 * lambda * (sum(B1) - 1)
+  grad <- epsilon / delta
   
   return(grad)
 }

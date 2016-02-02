@@ -90,6 +90,8 @@ SSE <- function(B1, B2, Y, alpha, lambda = 1000){
   B2  <- B2^(1 / alpha)
   EC  <- sweep(B2, 2, BB, "+")
   EC  <- rowSums(EC^alpha)
+  
+  # penalty term is to make sure that the bases sum to 1
   sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
   
   return(sse)

@@ -59,7 +59,8 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   if (fit$convergence != 0) {
     cat(" Warning, optim returned convergence code", fit$convergence, "\n")
   }
-    
+  
+  tock <- proc.time()[3]
   output <- list(rho = rho, alpha = alpha, EC.smooth = ECs, dw2 = dw2,
                  seconds = tock-tick)
   

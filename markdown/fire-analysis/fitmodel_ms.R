@@ -19,9 +19,8 @@ load(file = "./cv-extcoef.RData")
 cat("Start estimation of rho and alpha \n")
 
 # alpha and rho estimates using only the training data
-out       <- get.rho.alpha(EC = ec.hat[[cv]], s = cents, knots = cents, 
-                           dw2 = dw2)
-rho       <- out$est
+out       <- get.rho.alpha(EC = ec.hat[[cv]], s = cents, knots = cents)
+rho       <- out$rho
 ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
 dw2       <- out$dw2

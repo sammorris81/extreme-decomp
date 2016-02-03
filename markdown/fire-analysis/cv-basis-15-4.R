@@ -7,13 +7,16 @@ source(file = "./package_load.R", chdir = T)
 # fact that they need to add up to 1 across all basis functions at each site.
 # opting for 2, 5, 10, 15, and then looking a max stable method with fixed 
 # alpha.
-L <- 15   # number of basis functions
-cv <- 4  # which cross-validation set to use
-results.file <- paste("./cv-results/", L, "-", cv, ".RData", sep = "")
-table.file   <- paste("./cv-tables/", L, "-", cv, ".txt", sep = "")
+method <- "basis" # using kern for the results from abba
+L      <- 15  # will be using this to get basis functions for covariates
+cv     <- 4   # which cross-validation set to use
+results.file <- paste("./cv-results/", method, "-", L, "-", cv, ".RData", sep = "")
+table.file   <- paste("./cv-tables/", method, "-", L, "-", cv, ".txt", sep = "")
+
 
 # fit the model and get predictions
-source(file = "./fitmodel.R")
+source(file = "./fitmodel_basis.R")
+
 
 rm(list=ls())
 
@@ -24,10 +27,12 @@ source(file = "./package_load.R", chdir = T)
 # fact that they need to add up to 1 across all basis functions at each site.
 # opting for 2, 5, 10, 15, and then looking a max stable method with fixed 
 # alpha.
-L <- 15   # number of basis functions
-cv <- 9  # which cross-validation set to use
-results.file <- paste("./cv-results/", L, "-", cv, ".RData", sep = "")
-table.file   <- paste("./cv-tables/", L, "-", cv, ".txt", sep = "")
+method <- "basis" # using kern for the results from abba
+L      <- 15  # will be using this to get basis functions for covariates
+cv     <- 9   # which cross-validation set to use
+results.file <- paste("./cv-results/", method, "-", L, "-", cv, ".RData", sep = "")
+table.file   <- paste("./cv-tables/", method, "-", L, "-", cv, ".txt", sep = "")
+
 
 # fit the model and get predictions
-source(file = "./fitmodel.R")
+source(file = "./fitmodel_basis.R")

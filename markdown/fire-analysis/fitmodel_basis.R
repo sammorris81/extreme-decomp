@@ -22,7 +22,6 @@ load(file = "./cv-extcoef.RData")
 ################################################################################
 
 cat("Start basis function estimation \n")
-
 # basis function estimates using only the training data
 out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
 B.est     <- out$est

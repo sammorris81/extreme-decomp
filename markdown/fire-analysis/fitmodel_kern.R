@@ -22,8 +22,13 @@ load(file = "./cv-extcoef.RData")
 ## Estimate the rho and alpha
 ################################################################################
 
-cat("Start estimation of rho and alpha \n")
+cat("Start basis function estimation \n")
+# basis function estimates using only the training data
+out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
+B.est     <- out$est
+ec.smooth <- out$EC.smooth
 
+cat("Start estimation of rho and alpha \n")
 # alpha and rho estimates using only the training data
 out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = s)
 rho       <- out$rho
@@ -48,14 +53,14 @@ Y[cv.idx[[cv]]] <- NA  # remove the testing data
 
 ns <- nrow(Y)
 nt <- ncol(Y)
-np <- 6  # for a single year (int, t, lat, long, t * lat, t * long)
+np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
-  for (t in 1:nt) {  
+  for (t in 1:nt) { 
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, s[i, ], s[i, ] * time) 
+    X[i, t, 2:np] <- c(time, B.est[i, ], B.est[i, ] * time) 
   }
 }
 
@@ -109,4 +114,4 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.est, alpha, fit, cv.idx, results, file = results.file)
+save(B.est, alpha, rho, fit, cv.idx, results, file = results.file)

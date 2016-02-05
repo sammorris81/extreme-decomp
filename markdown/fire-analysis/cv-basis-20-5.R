@@ -9,7 +9,7 @@ source(file = "./package_load.R", chdir = T)
 # alpha.
 method <- "basis" # using kern for the results from abba
 L      <- 20  # will be using this to get basis functions for covariates
-cv     <- 4   # which cross-validation set to use
+cv     <- 5   # which cross-validation set to use
 results.file <- paste("./cv-results/", method, "-", L, "-", cv, ".RData", sep = "")
 table.file   <- paste("./cv-tables/", method, "-", L, "-", cv, ".txt", sep = "")
 

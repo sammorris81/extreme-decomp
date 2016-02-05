@@ -3,15 +3,16 @@ rm(list = ls())
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
-basis  <- c(2, 5, 10, 15, "kern")
-nbases <- length(basis)
+processes <- c("basis", "kern")  # what process determines the spatial structure
+bases   <- c(2, 5, 10, 15, 20)
+nbases  <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 nprobs <- length(probs.for.qs)
 
 files <- list.files(path = "cv-tables/")
 qs.results <- vector(mode = "list", length = nbases)  # each element is a matrix
 
-for (b in 1:nbases) {
+for (b in 1:(nbases * 2)) {
   qs.results[[b]]  <- matrix(NA, nfolds, nprobs)
   colnames(qs.results[[b]])  <- probs.for.qs
   rownames(qs.results[[b]])  <- paste("fold:", 1:nfolds)
@@ -23,10 +24,12 @@ timing <- data.frame(timing = double(), hostname = factor(),
 for (i in 1:length(files)) {
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
-  setting   <- which(basis == split[1])  
-  fold      <- as.numeric(split[2])
-  table.set <- read.table(paste("cv-tables/", files[i], sep = ""), 
-                          stringsAsFactors = FALSE)
+  process.idx <- which(processes == split[1])
+  basis.idx   <- which(bases == split[2])  
+  idx         <- (process.idx - 1) * nbases + basis.idx
+  fold        <- as.numeric(split[3])
+  table.set   <- read.table(paste("cv-tables/", files[i], sep = ""), 
+                            stringsAsFactors = FALSE)
   
   # first extract the timing information from the end of the vector
   timing.tail <- tail(table.set$x, 2)
@@ -34,19 +37,20 @@ for (i in 1:length(files)) {
                            host = timing.tail[2],
                            basis = split[1], fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
-  qs.results[[setting]][fold, ]  <- as.numeric(table.set$x[1:nprobs])
+  qs.results[[idx]][fold, ]  <- as.numeric(table.set$x[1:nprobs])
 }
 
 # combine lists into a single matrix that averages qs over all folds for 
 # each entry in probs.for.qs
+# CHECK to make sure you're only including the folds that you want
 qs.results.mn <- qs.results.se <- matrix(NA, nbases, nprobs)
 for (b in 1:nbases) {
-  qs.results.mn[b, ]  <- apply(qs.results[[b]][1:5,], 2, mean, na.rm = TRUE)
-  qs.results.se[b, ]  <- apply(qs.results[[b]][1:5,], 2, sd, na.rm = TRUE) / sqrt(5)
+  qs.results.mn[b, ]  <- apply(qs.results[[b]][-5,], 2, mean, na.rm = TRUE)
+  qs.results.se[b, ]  <- apply(qs.results[[b]][-5,], 2, sd, na.rm = TRUE) / sqrt(9)
 }
 
 colnames(qs.results.mn) <- colnames(qs.results.se) <- probs.for.qs
-rownames(qs.results.mn) <- rownames(qs.results.se) <- basis
+rownames(qs.results.mn) <- rownames(qs.results.se) <- bases
 round(qs.results.mn, 3)
 round(qs.results.se, 3)
 

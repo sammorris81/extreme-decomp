@@ -64,6 +64,13 @@ rownames(qs.results.mn) <- rownames(qs.results.se) <- these.rownames
 round(qs.results.mn, 3)
 round(qs.results.se, 3)
 
+load("./cv-results/basis-2-1.RData")
+dim(fit$beta2)
+plot(fit$beta1[, 1], type = "l")
+plot(fit$beta1[, 6], type = "l")
+plot(fit$beta2[, 1], type = "l")
+plot(fit$beta2[, 6], type = "l")
+
 for (setting in 1:nsettings) {
   print(length(finished.sets[[setting]]))
 }

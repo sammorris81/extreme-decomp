@@ -42,7 +42,6 @@ alpha     <- out$alpha
 
 ## transpose Y because preprocessed forest fire data is Y[t, i]
 Y.all <- Y <- t(Y)
-these.cv <- sort(cv.idx[[cv]])
 Y.tst <- Y[cv.idx[[cv]]]  # save the testing data to validate
 Y[cv.idx[[cv]]] <- NA  # remove the testing data
 

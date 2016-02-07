@@ -299,6 +299,29 @@ QuantScore <- function(preds, probs, validate) {
 }
 
 
+################################################################
+# Arguments:
+#   preds(iters, npreds): mcmc predictions for test site/day
+#   probs(nprobs): sample quantiles for scoring
+#   validate(npreds): validation data
+#   thresh(npreds): threshold for the site at which the prediction 
+#                    is made
+#
+# Returns:
+#   scores: list of scores (bs and qs)
+#   scores$bs: brier score for exceeding the scoring threshold
+#   scores$qs: quantile score for validation data that exceeds thresh
+#              at the site
+################################################################
+Score <- function(preds, probs, validate, thresh) {
+  these.qs <- validate > thresh
+  
+  # find the Brier scores for all sites 
+  
+  # only get the quantile scores for these.qs
+}
+
+
 get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1, 
                       verbose = FALSE, update = NULL) {
   # get the pairwise chi as an average over nq quantiles 

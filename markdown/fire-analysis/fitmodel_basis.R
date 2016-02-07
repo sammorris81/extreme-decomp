@@ -42,6 +42,7 @@ alpha     <- out$alpha
 
 ## transpose Y because preprocessed forest fire data is Y[t, i]
 Y.all <- Y <- t(Y)
+these.cv <- sort(cv.idx[[cv]])
 Y.tst <- Y[cv.idx[[cv]]]  # save the testing data to validate
 Y[cv.idx[[cv]]] <- NA  # remove the testing data
 
@@ -71,13 +72,15 @@ for (i in 1:ns) {
   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
   thresh[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
 }
+thresh <- matrix(thresh, ns, nt)
+thresh.tst <- thresh[cv.idx[[cv]]]
 
 ################################################################################
 ## run the MCMC
 ################################################################################
 iters  <- 30000
 burn   <- 20000
-update <- 100
+update <- 1000
 
 # iters <- 20000; burn <- 15000; update <- 100  # for testing
 

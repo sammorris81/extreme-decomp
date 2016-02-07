@@ -2,6 +2,9 @@
 # cv: which cross-validation testing set to use
 # L: the umber of basis functions to use
 
+# load in the data
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+
 # get the Georgia map and coordinates
 # from georgia_preprocess in code/analysis/fire
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
@@ -74,16 +77,15 @@ for (i in 1:ns) {
 ################################################################################
 iters  <- 30000
 burn   <- 20000
-update <- 500
+update <- 100
 
-# iters <- 200; burn <- 100; update <- 10  # for testing
+# iters <- 20000; burn <- 15000; update <- 100  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.est, alpha = alpha, 
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
-
 cat("Finished fit and predict \n")
 
 # calculate the scores

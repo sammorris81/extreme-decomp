@@ -1,6 +1,9 @@
 # Already set in other file:
 # cv: which cross-validation testing set to use
-# L: "ms" indicating max-stable
+# L: "kern" indicating spatial process from kernel weights
+
+# load in the data
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 
 # get the Georgia map and coordinates
 # from georgia_preprocess in code/analysis/fire

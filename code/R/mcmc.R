@@ -245,10 +245,6 @@ ReShMCMC<-function(y, X, thresh, B, alpha,
       }
     }
     
-    miss <<- miss
-    y.tmp <<- y.tmp
-    stop()
-    
     #KEEP TRACK OF STUFF:
     keep.beta1[iter, ] <- beta1
     keep.beta2[iter, ] <- beta2

@@ -12,6 +12,7 @@ nprobs <- length(probs.for.qs)
 
 files <- list.files(path = "cv-tables/")
 qs.results <- vector(mode = "list", length = nbases)  # each element is a matrix
+bs.results <- matrix(NA, nbases * nprocs, nfolds)
 
 for (b in 1:(nbases * nprocs)) {
   qs.results[[b]]  <- matrix(NA, nfolds, nprobs)
@@ -40,6 +41,7 @@ for (i in 1:length(files)) {
                            fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
   qs.results[[idx]][fold, ]  <- as.numeric(table.set$x[1:nprobs])
+  bs.results[idx, fold] <- as.numeric(table.set$x[nprobs + 1])
 }
 
 # combine lists into a single matrix that averages qs over all folds for 
@@ -61,8 +63,34 @@ colnames(qs.results.mn) <- colnames(qs.results.se) <- probs.for.qs
 these.rownames <- paste(rep(procs, each = nbases), 
                         rep(bases, times = nprocs))
 rownames(qs.results.mn) <- rownames(qs.results.se) <- these.rownames
+rownames(bs.results) <- these.rownames
+
+bs.results.mn <- apply(bs.results[, c(1:5)], 1, mean)
+bs.results.se <- apply(bs.results[, c(1:5)], 1, sd) / sqrt(5)
+
 round(qs.results.mn, 3)
 round(qs.results.se, 3)
+
+# look at timing - try to keep like computers together (in minutes)
+time.basis.mn <- time.kern.mn <- rep(NA, 3) 
+for (i in 1:length(bases[1:3])) {  # these are on beowulf
+  these.basis <- which(timing$basis == bases[i] & timing$proc == "basis")
+  these.kern <- which(timing$basis == bases[i] & timing$proc == "kern")
+  time.basis.mn[i] <- mean(timing$timing[these.basis]) / 60
+  time.kern.mn[i] <- mean(timing$timing[these.kern]) / 60
+}
+
+ylim = range(c(time.basis.mn, time.kern.mn))
+ylim[2] <- ylim[2] + 500
+plot(bases[1:3], time.basis.mn, type = "b", 
+     ylim = ylim, 
+     xaxt = "n", xlab = "basis functions", 
+     ylab = "timing", 
+     main = "Timing for 30000 iterations: basis functions vs. kernel (in minutes)")
+axis(1, at = bases[1:3], labels = TRUE)
+lines(bases[1:3], time.kern.mn, lty = 2, type = "b")
+legend("topright", legend = c("basis functions", "kernel"), lty = c(1, 2), 
+       title = "Spatial Process")
 
 load("./cv-results/basis-2-1.RData")
 dim(fit$beta2)

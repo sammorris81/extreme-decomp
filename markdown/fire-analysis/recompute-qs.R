@@ -73,6 +73,7 @@ for (i in 1:length(files)) {
   
   system(upload.cmd)
   save(B.est, alpha, fit, cv.idx, results, file = results.file)
+  print(paste("Dataset", i, "finished"))
 }
 
 

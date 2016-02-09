@@ -298,6 +298,23 @@ QuantScore <- function(preds, probs, validate) {
   return(scores)
 }
 
+BrierScore <- function(preds, validate, thresh) {
+  # iters <- nrow(post.prob)
+  # np    <- ncol(post.prob)
+  
+  # scores <- rep(NA, iters)
+  # for (i in 1:iters) {
+  #   scores[i] <- mean((validate - post.prob[i, ])^2)
+  # }
+  probs <- rep(NA, length(validate))
+  for (i in 1:length(validate)) {
+    probs[i] <- mean(preds[, i] > thresh[i])
+  }
+  score <- mean(((validate >= thresh) - probs)^2)
+  
+  return(score)
+}
+
 
 ################################################################
 # Arguments:

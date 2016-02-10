@@ -24,9 +24,8 @@ for (p in 1:nprocs) {
       cv <- f
       source(file = source.files[p])
       timing[this.row, f] <- fit$timing
+      write.table(timing, file = "./cv-tables/timing.txt")
     }
     cat("Finished", bases[b], "basis functions for", procs[p], "spatial process \n")
   }
 }
-
-write.table(timing, file = "./cv-tables/timing.txt")

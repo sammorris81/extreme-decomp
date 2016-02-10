@@ -81,7 +81,7 @@ thresh.tst <- thresh[cv.idx[[cv]]]
 # burn   <- 20000
 # update <- 1000
 
-iters <- 1000; burn <- 900; update <- 100  # for testing
+iters <- 100; burn <- 90; update <- 50  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc

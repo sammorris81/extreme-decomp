@@ -29,7 +29,7 @@ s <- cents
 s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
 s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
 
-for (i in 1:length(files)) {
+for (i in 1:length(files)) {  
   Y <- Y.all
   split      <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   table.file <- paste("cv-tables/", split[1], "-", split[2], "-", split[3], 

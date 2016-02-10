@@ -23,7 +23,7 @@ for (b in 1:(nbases * nprocs)) {
 # timing is a data.frame that contains time, hostname, basis, and fold
 timing <- data.frame(timing = double(), hostname = factor(), 
                      proc = factor(), basis = factor(), fold = factor())
-for (i in 1:length(files)) {
+for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
@@ -51,7 +51,7 @@ qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs)
 for (p in 1:nprocs) {
   for (b in 1:nbases) {
     this.row <- (p - 1) * nbases + b
-    this.qs <- qs.results[[this.row]][c(1:5), ]
+    this.qs <- qs.results[[this.row]]
     qs.results.mn[this.row, ]  <- apply(this.qs, 2, mean, 
                                         na.rm = TRUE)
     qs.results.se[this.row, ]  <- apply(this.qs, 2, sd, 
@@ -65,133 +65,84 @@ these.rownames <- paste(rep(procs, each = nbases),
 rownames(qs.results.mn) <- rownames(qs.results.se) <- these.rownames
 rownames(bs.results) <- these.rownames
 
-bs.results.mn <- apply(bs.results[, c(1:5)], 1, mean)
-bs.results.se <- apply(bs.results[, c(1:5)], 1, sd) / sqrt(5)
+bs.results.mn <- apply(bs.results, 1, mean)
+bs.results.se <- apply(bs.results, 1, sd) / sqrt(10)
 
 round(qs.results.mn, 3)
 round(qs.results.se, 3)
 
+matplot(x = probs.for.qs, y = t(qs.results.mn),
+        col = c(rep("dodgerblue4", nbases), 
+                rep("firebrick4", nbases)), 
+        bg = c(rep("dodgerblue1", nbases),
+               rep("firebrick1", nbases)),
+        type = "b", pch = c(rep(21, nbases), rep(22, nbases)),
+        lty = c(rep(1, nbases), rep(2, nbases)),
+        cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex = 1.5, lwd=1.5,
+        main = "Average quantile score at selected quantiles",
+        ylab = "Mean quantile score", xlab = "Quantile")
+legend("topright", legend = c("Basis functions", "Kernel"), 
+       lty = c(1, 2), pch = c(21, 22), 
+       col = c("dodgerblue4", "firebrick4"), 
+       pt.bg = c("dodgerblue1", "firebrick1"),
+       title = "Spatial Process", 
+       lwd = 1.5, cex=1.5)
+
 # look at timing - try to keep like computers together (in minutes)
-time.basis.mn <- time.kern.mn <- rep(NA, 3) 
-for (i in 1:length(bases[1:3])) {  # these are on beowulf
-  these.basis <- which(timing$basis == bases[i] & timing$proc == "basis")
-  these.kern <- which(timing$basis == bases[i] & timing$proc == "kern")
-  time.basis.mn[i] <- mean(timing$timing[these.basis]) / 60
-  time.kern.mn[i] <- mean(timing$timing[these.kern]) / 60
-}
+timing <- read.table(file = "./cv-tables/timing.txt")
+timing.mn <- apply(timing, 1, mean)
 
-ylim = range(c(time.basis.mn, time.kern.mn))
-ylim[2] <- ylim[2] + 500
-plot(bases[1:3], time.basis.mn, type = "b", 
+dev.new(width = 4, height = 3)
+par(mfrow=c(1, 1), mar=c(5.1, 5.1, 4.1, 2.1))
+ylim = range(timing.mn)
+ylim[2] <- ylim[2] + 100
+plot(bases, timing.mn[1:5], type = "b", 
      ylim = ylim, 
-     xaxt = "n", xlab = "basis functions", 
-     ylab = "timing", 
-     main = "Timing for 30000 iterations: basis functions vs. kernel (in minutes)")
-axis(1, at = bases[1:3], labels = TRUE)
-lines(bases[1:3], time.kern.mn, lty = 2, type = "b")
-legend("topright", legend = c("basis functions", "kernel"), lty = c(1, 2), 
-       title = "Spatial Process")
+     xaxt = "n", xlab = "Number of basis functions", 
+     ylab = "Timing", 
+     # main = "Timing comparison of 100 iterations: Basis functions vs kernel", 
+     cex.lab=1.5, cex.axis=1.5, cex.main=1.5, lwd=1.5)
+axis(1, at = bases, labels = TRUE)
+lines(bases, timing.mn[6:10], lty = 2, type = "b", lwd = 1.5)
+legend("topleft", legend = c("Basis functions", "Kernel"), 
+       lty = c(1, 2), lwd = 1.5, pch = 1,
+       title = "Spatial Process", 
+       cex=1.5)
+dev.print(device = pdf, file = "plots/timing.pdf")
+dev.off()
 
-load("./cv-results/basis-2-1.RData")
-dim(fit$beta2)
-plot(fit$beta1[, 1], type = "l")
-plot(fit$beta1[, 6], type = "l")
-plot(fit$beta2[, 1], type = "l")
-plot(fit$beta2[, 6], type = "l")
+# look at results
+# load in the data
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+Y <- Y.all <- t(Y)
+load("./cv-results/basis-10-1.RData")
+fit.basis <- fit
+load("./cv-results/kern-10-1.RData")
+fit.kern <- fit
 
-for (setting in 1:nsettings) {
-  print(length(finished.sets[[setting]]))
-}
+this.Y <- Y[sort(cv.idx[[1]])[1]]
+quantile(fit.basis$y.pred[, 1], probs = c(0.025, 0.975))
+quantile(fit.kern$y.pred[, 1], probs = c(0.025, 0.975))
 
-# how many have finished
-colSums(!is.na(bs.results[[1]]))
-colSums(!is.na(bs.results[[2]]))
-colSums(!is.na(bs.results[[3]]))
-colSums(!is.na(bs.results[[4]]))
-colSums(!is.na(bs.results[[5]]))
-colSums(!is.na(bs.results[[6]]))
+this.Y <- Y[sort(cv.idx[[1]])[2]]
+quantile(fit.basis$y.pred[, 2], probs = c(0.025, 0.975))
+quantile(fit.kern$y.pred[, 2], probs = c(0.025, 0.975))
 
-round(bs.results.combined[, 1] / bs.results.combined[, 3], 4)
-round(bs.results.combined[, 2] / bs.results.combined[, 3], 4)
-round(auc.results.combined[, 1], 4)
-round(auc.results.combined[, 2], 4)
-round(auc.results.combined[, 3], 4)
+this.Y <- Y[sort(cv.idx[[1]])[711]]
+quantile(fit.basis$y.pred[, 711], probs = c(0.025, 0.975))
+quantile(fit.kern$y.pred[, 711], probs = c(0.025, 0.975))
 
-# Check for differences
-# First do Friedman test (one-way repeated measures)
-#   friedman.test(y ~ trt | block, data)
-# Then follow up with the Wilcoxon, Nemenyi, McDonald-Thompson test
-# pWNMT(x, b, trt, method, n.mc)
-#     x: list of values
-#     b: vector of blocks (only needed if x is a vector)
-#     trt: vector of treatments
-#     method: "Exact", "Monte Carlo" or "Asymptotic"
+dim(fit.basis$beta2)
 
-library(NSM3)
-set.seed(6727)  #npar
-groups <- as.factor(rep(1:nmethods, each=50))
-dataset <- as.factor(rep(1:50, times=nmethods))
-results.friedman <- matrix(0, nsettings, 2)
-colnames(results.friedman) <- c("bs", "auc")
+plot(fit.basis$beta1[, 1], type = "l")
+plot(fit.kern$beta1[, 1], type = "l")
+plot(fit.basis$beta1[, 6], type = "l")
+plot(fit.kern$beta1[, 6], type = "l")
+plot(fit.basis$beta2[, 1], type = "l")
+plot(fit.kern$beta2[, 1], type = "l")
+plot(fit.basis$beta2[, 6], type = "l")
+plot(fit.kern$beta2[, 6], type = "l")
 
-for (setting in 1:nsettings) {
-  scores <- as.vector(bs.results[[setting]])
-  combine <- data.frame(scores, groups, dataset)
-  results.friedman[setting, 1] <- friedman.test(scores ~ groups | dataset,
-                                                data=combine)$p.value
-  
-  scores <- as.vector(auc.results[[setting]])
-  combine <- data.frame(scores, groups, dataset)
-  results.friedman[setting, 2] <- friedman.test(scores ~ groups | dataset,
-                                                data=combine)$p.value
-}
+hist(fit.basis$y.pred[, 1])
+hist(fit.kern$y.pred[, 1])
 
-# posthoc is  Wilcoxon, Nemenyi, McDonald-Thompson test
-bs.results.wnmt  <- matrix(0, choose(nmethods, 2), nsettings)
-auc.results.wnmt <- matrix(0, choose(nmethods, 2), nsettings)
-for (setting in 1:nsettings) {
-  scores <- as.vector(bs.results[[setting]])
-  combine <- data.frame(scores, groups, dataset)
-  bs.results.wnmt[, setting] <- pWNMT(x=combine$scores, b=combine$dataset,
-                                      trt=combine$groups, n.mc=20000)$p.val
-  
-  scores <- as.vector(auc.results[[setting]])
-  combine <- data.frame(scores, groups, dataset)
-  auc.results.wnmt[, setting] <- pWNMT(x=combine$scores, b=combine$dataset,
-                                       trt=combine$groups, n.mc=20000)$p.val
-  
-  print(paste("setting:", setting))
-}
-
-save(bs.results, bs.results.combined, bs.results.wnmt,
-     auc.results, auc.results.combined, auc.results.wnmt,
-     results.friedman,
-     file = "results.RData")
-
-# # look at a few iteration plots
-# set <- 1
-# setting <- 1
-# dataset <- paste("sim-results/", setting, "-", set, ".RData", sep = "")
-# load(dataset)
-# 
-# par(mfrow = c(4, 5))
-# for (i in 1:4) {
-#   plot(log(fit.gev$a[, i, ]), type = "l", 
-#        main = paste("log(a[", i, "])", sep = ""))
-# }
-# plot(fit.gev$beta, type = "l", main = bquote(beta[0]))
-# 
-# for (i in 8:11) {
-#   plot(log(fit.gev$a[, i, ]), type = "l", 
-#        main = paste("log(a[", i, "])", sep = ""))
-# }
-# plot(fit.gev$alpha, type = "l", main = bquote(alpha))
-# 
-# for (i in 1:4) {
-#   plot(fit.gev$b[, i, ], type = "l", main = paste("b[", i, "]", sep = ""))
-# }
-# plot(fit.gev$rho, type = "l", main = bquote(rho))
-# 
-# for (i in 6:10) {
-#   plot(fit.gev$b[, i, ], type = "l", main = paste("b[", i, "]", sep = ""))
-# }

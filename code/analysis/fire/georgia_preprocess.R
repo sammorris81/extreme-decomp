@@ -1,4 +1,33 @@
 ################################################################################
+#### Get updated data from GA
+################################################################################
+setwd("~/repos-git/extreme-decomp/code/analysis/fire/county_fire/")
+ncounties <- 159
+
+
+for (i in 1:ncounties) {
+  if (i < 10) {
+    filename <- paste("http://weather.gfc.state.ga.us/FireData/CT00", i, 
+                      "MONCYA.TXT", sep = "")
+  } else if (i < 100) {
+    filename <- paste("http://weather.gfc.state.ga.us/FireData/CT0", i, 
+                      "MONCYA.TXT", sep = "")
+  } else {
+    filename <- paste("http://weather.gfc.state.ga.us/FireData/CT", i, 
+                      "MONCYA.TXT", sep = "")
+  }
+  cmd <- paste("wget", filename)
+  system(cmd)
+#   
+#   cnty.fire[i] <- read.table(filename, nrows = 1)
+#   data <- read.table(filename, header = TRUE, skip = 1)
+#   Y
+}
+
+cnty.fire <- rep(NA, ncounties)
+
+
+################################################################################
 #### Yearly amounts from each county
 ################################################################################
 rm(list=ls())

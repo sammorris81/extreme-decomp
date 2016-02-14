@@ -3,7 +3,7 @@
 ################################################################################
 setwd("~/repos-git/extreme-decomp/code/analysis/fire/county_fire/")
 ncounties <- 159
-nyears    <- 57  # 1957 - 2013
+nyears    <- 58  # 1957 - 2014
 
 for (i in 1:ncounties) {
   if (i < 10) {
@@ -37,25 +37,9 @@ for (i in 1:ncounties) {
 }
 
 colnames(Y) <- county
-rownames(Y) <- seq(1957, 2013)
+rownames(Y) <- seq(1957, 2014)
 
 save(Y, file = "fire_data.RData")
-
-dev.new()
-par(mfrow = c(5, 5))
-for (i in 76:100) {
-  plot(Y.old[i, ], type = "l")
-  lines(Y.new[i, ])
-}
-
-Y.diff <- Y.old - Y.new
-round(Y.diff[1, ])
-mean(round(Y.diff)[, 1:56])
-
-range(Y.diff[, 57] / Y.new[, 57], na.rm = TRUE)
-sum(abs(Y.diff[, 57]) > 10)
-
-plot(rowSums(Y.old - Y.new), type = "l")
 
 ################################################################################
 #### Yearly amounts from each county

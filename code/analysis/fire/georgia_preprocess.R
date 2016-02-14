@@ -3,7 +3,7 @@
 ################################################################################
 setwd("~/repos-git/extreme-decomp/code/analysis/fire/county_fire/")
 ncounties <- 159
-
+nyears    <- 57  # 1957 - 2013
 
 for (i in 1:ncounties) {
   if (i < 10) {
@@ -16,16 +16,46 @@ for (i in 1:ncounties) {
     filename <- paste("http://weather.gfc.state.ga.us/FireData/CT", i, 
                       "MONCYA.TXT", sep = "")
   }
-  cmd <- paste("wget", filename)
+  cmd <- paste("curl -O", filename)
   system(cmd)
-#   
-#   cnty.fire[i] <- read.table(filename, nrows = 1)
-#   data <- read.table(filename, header = TRUE, skip = 1)
-#   Y
 }
 
-cnty.fire <- rep(NA, ncounties)
+county <- rep(NA, ncounties)
+Y <- matrix(NA, nyears, ncounties)  # to maintain compatibility with existing code
+for (i in 1:ncounties) {
+  if (i < 10) {
+    filename <- paste("CT00", i, "MONCYA.TXT", sep = "")
+  } else if (i < 100) {
+    filename <- paste("CT0", i, "MONCYA.TXT", sep = "")
+  } else {
+    filename <- paste("CT", i, "MONCYA.TXT", sep = "")
+  }
+  
+  county[i] <- read.table(file = filename, nrows = 1, 
+                          stringsAsFactors = FALSE)$V1
+  Y[, i]    <- read.table(file = filename, skip = 1, header = TRUE)[1:nyears, 2]
+}
 
+colnames(Y) <- county
+rownames(Y) <- seq(1957, 2013)
+
+save(Y, file = "fire_data.RData")
+
+dev.new()
+par(mfrow = c(5, 5))
+for (i in 76:100) {
+  plot(Y.old[i, ], type = "l")
+  lines(Y.new[i, ])
+}
+
+Y.diff <- Y.old - Y.new
+round(Y.diff[1, ])
+mean(round(Y.diff)[, 1:56])
+
+range(Y.diff[, 57] / Y.new[, 57], na.rm = TRUE)
+sum(abs(Y.diff[, 57]) > 10)
+
+plot(rowSums(Y.old - Y.new), type = "l")
 
 ################################################################################
 #### Yearly amounts from each county
@@ -103,6 +133,8 @@ year <- YEAR
 
 rm(adj, i, j, m, n, YEAR)
 
+load("./county_fire/fire_data.RData")
+Y <- Y[10:nrow(Y), ]  # years 1957 - 1964 are likely not reliable
 save.image("georgia_preprocess/fire_data.RData")
 
 ################################################################################

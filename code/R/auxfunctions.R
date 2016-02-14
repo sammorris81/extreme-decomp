@@ -356,19 +356,12 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
     update <- floor(ns / 4)
   }
   
-#   # first get the sample quantiles at each site
-#   U <- matrix(NA, ns, nt)
-#   for (i in 1:ns) {
-#     U[i, ] <- rank(Y[i, ]) / (sum(!is.na(Y[i, ])) + 1)
-#   }
-#   U[U >= 1] <- NA  # retain the fact that we didn't have a measurement here
-  
   ec <- matrix(0, ns, ns)
   eps <- .Machine$double.eps^0.5
   
   qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   qlim.idx <- 1
-  
+  these <- ns
   for (i in 1:ns) {
     for (j in i:ns) {
       
@@ -393,6 +386,8 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
         Q.ij[q] <- mean(colmax.ij < quantiles[q])
       }
       ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(quantiles))
+      ec[i, j] <- ec[j, i] <- min(ec[i, j], 2)  # keep it within the range
+      ec[i, j] <- ec[j, i] <- max(ec[i, j], 1)  # keep it within the range
       
       qlims[qlim.idx, ] <- c(min.ij, max.ij)
       qlim.idx <- qlim.idx + 1

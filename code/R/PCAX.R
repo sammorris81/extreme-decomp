@@ -32,7 +32,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 
  # SMOOTHING
 
-  EC  <- Ksmooth(EC, s, bw)
+  EC  <- Ksmooth(EC, s, bw)  # run a kernel smoother on the pairwise estimates
   ECs <- EC
   if (is.null(alpha)) {alpha <- log2(mean(diag(EC)))}
   diag(EC) <- NA

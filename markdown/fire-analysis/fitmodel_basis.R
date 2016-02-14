@@ -1,6 +1,6 @@
 # Already set in other file:
 # cv: which cross-validation testing set to use
-# L: the umber of basis functions to use
+# L: the number of basis functions to use
 
 # load in the data
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
@@ -30,6 +30,11 @@ out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
 B.est     <- out$est
 ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
+
+p.1 <- map.ga.ggplot(Y = ec.smooth[, 14], 
+                     main = paste("Spatially smoothed ECs"),
+                     fill.legend = "EC")
+p.1
 
 ################################################################################
 #### Run the MCMC:

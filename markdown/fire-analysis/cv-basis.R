@@ -67,7 +67,7 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 library(ggplot2)
 library(gridExtra)
 # just want to see if it looks as weird when we run all the data
-ec <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
+ec <- get.pw.ec(Y = Y, qlim = c(0.95, 1), verbose = TRUE, update = 50)$ec
 p.1 <- map.ga.ggplot(Y = ec[, 4], 
                      main = paste("Extremal Coefficients full data"),
                      fill.legend = "EC")

@@ -68,19 +68,19 @@ library(ggplot2)
 library(gridExtra)
 # just want to see if it looks as weird when we run all the data
 ec <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
-p.1 <- map.ga.ggplot(Y = ec[, 1], 
+p.1 <- map.ga.ggplot(Y = ec[, 4], 
                      main = paste("Extremal Coefficients full data"),
                      fill.legend = "EC")
 
-p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 1], 
+p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 1], 
+p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 1], 
+p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 

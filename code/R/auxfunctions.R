@@ -259,7 +259,7 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
   p <- p + coord_map("polyconic")
   p <- p + labs(title = main, fill = fill.legend)
   p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", 
-                                mid = "#ffffff", midpoint = median(Y))
+                                mid = "#ffffff", midpoint = 1.5)
   p <- p + theme_clean()
   return(p)
 }

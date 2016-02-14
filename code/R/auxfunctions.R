@@ -381,11 +381,16 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
       if (max(quantiles) == 1) {
         cat("  i:", i, "j:", j, "\n")
       }
+      qhat <- rep(NA, length(quantiles))
       Q.ij <- rep(NA, length(quantiles))
       for (q in 1:length(quantiles)) {
+        qhat[q] <- mean(U[1, ] < quantiles[q])
         Q.ij[q] <- mean(colmax.ij < quantiles[q])
       }
-      ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(quantiles))
+      
+      # we're using qhat here because we want to make sure that the quantile by 
+      # which we divide is only as precise as the data will allow. 
+      ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(qhat))
       ec[i, j] <- ec[j, i] <- min(ec[i, j], 2)  # keep it within the range
       ec[i, j] <- ec[j, i] <- max(ec[i, j], 1)  # keep it within the range
       

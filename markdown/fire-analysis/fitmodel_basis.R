@@ -31,11 +31,6 @@ B.est     <- out$est
 ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
 
-p.1 <- map.ga.ggplot(Y = ec.smooth[, 14], 
-                     main = paste("Spatially smoothed ECs"),
-                     fill.legend = "EC")
-p.1
-
 ################################################################################
 #### Run the MCMC:
 #### Use the basis functions with the MCMC

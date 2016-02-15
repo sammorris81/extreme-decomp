@@ -16,7 +16,7 @@ source(file = "../../code/R/mcmc.R")
 
 if (Sys.info()["nodename"] == "cwl-mth-sam-001" | 
     Sys.info()["nodename"] == "cwl-mth-sam-002") {
-  setMKLthreads(2)
+  setMKLthreads(1)
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Darwin") {
   do.upload <- TRUE

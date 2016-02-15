@@ -39,7 +39,7 @@ Y <- t(Y)  # Y is originally nt x ns
 n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
 nfolds <- 10
-cv.idx <- get.cv.test(n = n.tot, nfolds = nfolds)
+cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 
 # loop over the list for cross-validation and get the basis functions
 # before getting started, find the upper quantile limit
@@ -67,7 +67,7 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 library(ggplot2)
 library(gridExtra)
 # just want to see if it looks as weird when we run all the data
-ec <- get.pw.ec(Y = Y, qlim = c(0.95, 1), verbose = TRUE, update = 50)$ec
+ec <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
 p.1 <- map.ga.ggplot(Y = ec[, 4], 
                      main = paste("Extremal Coefficients full data"),
                      fill.legend = "EC")
@@ -81,6 +81,28 @@ p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 4],
                      fill.legend = "EC")
 
 p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 4], 
+                     main = paste("Extremal Coefficients cross validation"),
+                     fill.legend = "EC")
+
+# grid.arrange(p.1, p.2, ncol = 2, widths = c(1.5, 1.5), 
+#              top = "EC comparison for CV")
+
+grid.arrange(p.1, p.2, p.3, p.4, ncol = 2, widths = c(1.5, 1.5), 
+             top = "EC comparison for CV")
+
+p.1 <- map.ga.ggplot(Y = ec[, 10], 
+                     main = paste("Extremal Coefficients full data"),
+                     fill.legend = "EC")
+
+p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 10], 
+                     main = paste("Extremal Coefficients cross validation"),
+                     fill.legend = "EC")
+
+p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 10], 
+                     main = paste("Extremal Coefficients cross validation"),
+                     fill.legend = "EC")
+
+p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 10], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 

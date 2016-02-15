@@ -53,21 +53,25 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
   Delta_val <- rep(NA, iters)
   
   # keep running the algorithm until we get convergence at all sites.
-  convergence <- 0
+  convergence <- rep(FALSE, n)
   iter        <- 0
-  while (convergence > 0 | iter < iters) {
-    convergence <- 0  # storage for optim convergence
+  while (sum(!convergence) > 0 | iter < iters) {
+    convergence <- rep(FALSE, n)  # storage for optim convergence
     iter  <- iter + 1
     prev  <- B
     maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
     
     for (i in 1:n) {
-      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
-                   alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
-                   method = "L-BFGS-B", control = list(maxit = maxit))
-      B[i, ] <- abs(fit$par) / sum(abs(fit$par))
-      if (fit$convergence != 0) {
-        convergence <- convergence + 1
+      if (!convergence[i]) {
+        fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
+                     alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
+                     method = "L-BFGS-B", control = list(maxit = maxit))
+        B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+        if (fit$convergence == 0) {
+          convergence[i] <- TRUE
+        } else if (fit$convergence != 0) {
+          convergence[i] <- FALSE
+        }
       }
     }
     
@@ -75,8 +79,9 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
     if(verbose & (iter %% 5 == 0)){
       cat("  Done with iteration ", iter, ", still need to converge at ", 
-          convergence, " sites \n", sep = "")
+          sum(!convergence), " sites \n", sep = "")
     }
+    
   }
   
   if (iter > iters) {

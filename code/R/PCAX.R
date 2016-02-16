@@ -62,9 +62,10 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
     
     for (i in 1:n) {
-      if (!convergence[i]) {
+      # if (!convergence[i]) {
         fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B, 
-                     alpha = alpha, lower = rep(0, L), upper = rep(1, L), 
+                     alpha = alpha, 
+                     lower = rep(0, L), upper = rep(1, L), 
                      method = "L-BFGS-B", control = list(maxit = maxit))
         B[i, ] <- abs(fit$par) / sum(abs(fit$par))
         if (fit$convergence == 0) {
@@ -72,7 +73,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
         } else if (fit$convergence != 0) {
           convergence[i] <- FALSE
         }
-      }
+      # }
     }
     
     Delta_B[iter]   <- mean((prev-B)^2)
@@ -226,7 +227,7 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   
   fit <- optim(rho, fn = SSE.rhoalpha, # gr = SSE.grad, 
                Y = EC, dw2 = dw2, 
-               alpha = alpha, lower = 0, upper = 0.5 * sqrt(max(dw2)), 
+               alpha = alpha, lower = 1e-6, upper = 0.5 * sqrt(max(dw2)), 
                method = "L-BFGS-B")
   rho <- fit$par
   if (fit$convergence != 0) {
@@ -248,7 +249,7 @@ SSE.rhoalpha <- function(rho, dw2, Y, alpha) {
   n <- ncol(Y)
   EC <- matrix(NA, n, n)
   for (i in 1:(n - 1)) {
-    for (j in (i+1):n) {
+    for (j in (i + 1):n) {
       EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
     }
   } 

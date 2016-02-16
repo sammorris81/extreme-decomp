@@ -165,7 +165,7 @@ To estimate the spatial dependence we first remove variation in the marginal dis
 \beq\label{EChat0}
    {\hat \vartheta}_{ij}(q) = \frac{\log[Q_{ij}(q)]}{\log(q)},
 \eeq
-where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less then $q$.  Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<...<q_{n_q}$
+where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less then $q$.  Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<\cdots<q_{n_q}$
 \beq\label{EChat1}
 {\hat \vartheta}_{ij} = \frac{1}{n_q}\sum_{j=1}^{n_q}{\hat \vartheta}_{ij}(q_j).
 \eeq
@@ -208,6 +208,14 @@ where $g$ is given in (\ref{g}) and $\bX_{it} = (X_{it1},...,X_{itp})^T$ is a ve
 We estimate parameters $\Theta=\{A_{lt}, \bbeta_1,\bbeta_2,\xi\}$ using Markov chain Monte Carlo. Details...
 
 \section{Data analysis}\label{s:analysis}
+The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.stat.ga.us/FireData/}).
+
+\textbf{Plots of a couple year's of data}
+
+Although some counties contain acres burned for years prior to 1965, we choose to start at 1965 because that is the first year for which data are available for all counties.
+We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_1 = 0.90$ and using $n_q = 100$.
+We set $q_1 = 0.90$ because we only have 49 years of data for each site.
+
 
 \subsection{Results}\label{s:results}
 

@@ -51,7 +51,7 @@ qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs)
 for (p in 1:nprocs) {
   for (b in 1:nbases) {
     this.row <- (p - 1) * nbases + b
-    this.qs <- qs.results[[this.row]]
+    this.qs <- qs.results[[this.row]][1:5, ]
     qs.results.mn[this.row, ]  <- apply(this.qs, 2, mean, 
                                         na.rm = TRUE)
     qs.results.se[this.row, ]  <- apply(this.qs, 2, sd, 

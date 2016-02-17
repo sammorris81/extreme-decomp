@@ -241,9 +241,12 @@ theme_clean <- function(base_size = 12) {
     )
 }
 
-map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
+map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
   require(ggplot2)
   require(maps)
+  if (is.null(midpoint)) {
+    midpoint <- 1.5
+  }
   georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
                  plot = FALSE)
   subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
@@ -259,7 +262,33 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "") {
   p <- p + coord_map("polyconic")
   p <- p + labs(title = main, fill = fill.legend)
   p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", 
-                                mid = "#ffffff", midpoint = 1.5)
+                                mid = "#ffffff", midpoint = midpoint)
+  p <- p + theme_clean()
+  return(p)
+}
+
+map.sc.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
+  require(ggplot2)
+  require(maps)
+  if (is.null(midpoint)) {
+    midpoint <- 1.5
+  }
+  sc <- map("county", "south carolina", fill = TRUE, col = "transparent",
+            plot = FALSE)
+  subregion <- sapply(strsplit(sc$names, ","), function(x) x[2])
+  county_map <- map_data(map = "county", region = "south carolina")
+  
+  basis <- data.frame(Y, subregion)
+  extcoef_map <- merge(county_map, basis, all.x = TRUE)
+  
+  # using fill = Y because that's the column of extcoef_map with the actual data
+  p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
+  p <- p + geom_polygon(colour = "grey", aes(fill = Y))
+  p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
+  p <- p + coord_map("polyconic")
+  p <- p + labs(title = main, fill = fill.legend)
+  p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", 
+                                mid = "#ffffff", midpoint = midpoint)
   p <- p + theme_clean()
   return(p)
 }

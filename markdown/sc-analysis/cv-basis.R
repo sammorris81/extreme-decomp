@@ -14,7 +14,7 @@ source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
 source(file = "../../code/R/PCAX.R", chdir = TRUE)
 source(file = "../../code/R/mcmc.R")
 # load(file = "../code/analysis/fire/gaCntyFires.RData")
-load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+load(file = "../../code/analysis/sc/sc_preprocess/fire_data.RData")
 
 if (Sys.info()["nodename"] == "cwl-mth-sam-001" | 
     Sys.info()["nodename"] == "cwl-mth-sam-002") {
@@ -29,7 +29,7 @@ if (Sys.info()["nodename"] == "cwl-mth-sam-001" |
 # test for missing
 # get the Georgia map and coordinates
 # from georgia_preprocess in code/analysis/fire
-load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+load(file = "../../code/analysis/sc/sc_preprocess/sc_map.RData")
 d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
@@ -54,7 +54,7 @@ for (fold in 1:nfolds) {
   Y.tst[cv.idx[[fold]]] <- NA
   
   # build ec matrix: ns x ns
-  ec <- get.pw.ec(Y = Y.tst, qlim = c(0.90, 1), verbose = TRUE, update = 50)
+  ec <- get.pw.ec(Y = Y.tst, qlim = c(0.95, 1), verbose = TRUE, update = 50)
   ec.hat[[fold]] <- ec$ec
   qlim.min.range[fold, ] <- range(ec$qlims[, 1])
   qlim.max.range[fold, ] <- range(ec$qlims[, 2])
@@ -67,20 +67,20 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 library(ggplot2)
 library(gridExtra)
 # just want to see if it looks as weird when we run all the data
-ec <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
-p.1 <- map.ga.ggplot(Y = ec[, 4], 
+ec <- get.pw.ec(Y = Y, qlim = c(0.95, 1), verbose = TRUE, update = 50)$ec
+p.1 <- map.sc.ggplot(Y = ec[, 4], 
                      main = paste("Extremal Coefficients full data"),
                      fill.legend = "EC")
 
-p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 4], 
+p.2 <- map.sc.ggplot(Y = ec.hat[[1]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 4], 
+p.3 <- map.sc.ggplot(Y = ec.hat[[2]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 4], 
+p.4 <- map.sc.ggplot(Y = ec.hat[[4]][, 4], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
@@ -90,24 +90,26 @@ p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 4],
 grid.arrange(p.1, p.2, p.3, p.4, ncol = 2, widths = c(1.5, 1.5), 
              top = "EC comparison for CV")
 
-p.1 <- map.ga.ggplot(Y = ec[, 10], 
+p.1 <- map.sc.ggplot(Y = ec[, 10], 
                      main = paste("Extremal Coefficients full data"),
                      fill.legend = "EC")
 
-p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 10], 
+p.2 <- map.sc.ggplot(Y = ec.hat[[1]][, 10], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 10], 
+p.3 <- map.sc.ggplot(Y = ec.hat[[2]][, 10], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
-p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 10], 
+p.4 <- map.sc.ggplot(Y = ec.hat[[4]][, 10], 
                      main = paste("Extremal Coefficients cross validation"),
                      fill.legend = "EC")
 
 grid.arrange(p.1, p.2, p.3, p.4, ncol = 2, widths = c(1.5, 1.5), 
              top = "EC comparison for CV")
+
+
 
 d <- rdist(cents)
 diag(d) <- 0
@@ -118,22 +120,17 @@ s <- cents
 s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
 s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
 
-# get a reasonable bandwidth for the kernel smoother 
-d <- rdist(s)
-diag(d) <- 0
-ksmooth.bw <- quantile(d[upper.tri(d)], probs = 0.05)
-
 cat("Start basis function estimation \n")
 # basis function estimates using only the training data
 L <- 10
-out       <- get.factors.EC(ec, L = L, s = s, bw = ksmooth.bw)
+out       <- get.factors.EC(ec, L = L, s = s)
 B.est     <- out$est
 ec.smooth <- out$EC.smooth
 
 plots <- vector(mode = "list", length = L)
 for (i in 1:L) {
   title <- paste("basis function", i)
-  plots[[i]] <- map.ga.ggplot(Y = B.est[, i], main = title,
+  plots[[i]] <- map.sc.ggplot(Y = B.est[, i], main = title,
                               midpoint = median(B.est[, i]))
 }
 multiplot(plotlist = plots, cols = 4)

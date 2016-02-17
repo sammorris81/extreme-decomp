@@ -8,16 +8,21 @@ nprocs <- length(procs)
 bases   <- c(2, 5, 10, 15, 20)
 nbases  <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
-nprobs <- length(probs.for.qs)
+probs.for.bs <- c(0.95, 0.99)
+nprobs.qs <- length(probs.for.qs)
+nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
-qs.results <- vector(mode = "list", length = nbases)  # each element is a matrix
-bs.results <- matrix(NA, nbases * nprocs, nfolds)
+qs.results <- vector(mode = "list", length = nbases * nprocs)  # each element is a matrix
+bs.results <- vector(mode = "list", length = nbases * nprocs)
 
 for (b in 1:(nbases * nprocs)) {
-  qs.results[[b]]  <- matrix(NA, nfolds, nprobs)
-  colnames(qs.results[[b]])  <- probs.for.qs
-  rownames(qs.results[[b]])  <- paste("fold:", 1:nfolds)
+  qs.results[[b]] <- matrix(NA, nfolds, nprobs.qs)
+  bs.results[[b]] <- matrix(NA, nfolds, nprobs.bs)
+  colnames(qs.results[[b]]) <- probs.for.qs
+  colnames(bs.results[[b]]) <- probs.for.bs
+  rownames(qs.results[[b]]) <- paste("fold:", 1:nfolds)
+  rownames(bs.results[[b]]) <- paste("fold:", 1:nfolds)
 }
 
 # timing is a data.frame that contains time, hostname, basis, and fold
@@ -40,14 +45,18 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
                            proc = split[1], basis = split[2], 
                            fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
-  qs.results[[idx]][fold, ]  <- as.numeric(table.set$x[1:nprobs])
-  bs.results[idx, fold] <- as.numeric(table.set$x[nprobs + 1])
+  qs.results[[idx]][fold, ] <- as.numeric(table.set$x[1:nprobs.qs])
+  if (length(table.set$x) == nprobs.qs + nprobs.bs + 2) {
+    bs.start <- nprobs.qs + 1
+    bs.end   <- bs.start + 1
+    bs.results[[idx]][fold, ] <- as.numeric(table.set$x[bs.start:bs.end])
+  }
 }
 
 # combine lists into a single matrix that averages qs over all folds for 
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
-qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs)
+qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs.qs)
 for (p in 1:nprocs) {
   for (b in 1:nbases) {
     this.row <- (p - 1) * nbases + b

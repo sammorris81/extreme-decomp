@@ -41,10 +41,10 @@ for (i in 1:length(files)) {
   fold    <- as.numeric(split[3])
   
   # separate out the test and training data
-  Y.tst   <- Y[sort(cv.idx[[fold]])]  # make sure that the order matches preds
+  Y.tst   <- Y[cv.idx[[fold]]]  # make sure that the order matches preds
   Y[cv.idx[[fold]]] <- NA  # remove the testing data
   
-  thresh <- rep(0, nrow(Y))
+  thresh95 <- thresh99 <- rep(0, nrow(Y))
   neighbors <- 5
   d <- rdist(s)
   diag(d) <- 0
@@ -52,19 +52,24 @@ for (i in 1:length(files)) {
   # take the 5 closest neighbors when finding the threshold
   for (j in 1:nrow(Y)) {
     these <- order(d[j, ])[2:(neighbors + 1)]  # the closest is always site i
-    thresh[j] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+    thresh95[j] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+    thresh99[j] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
   }
-  thresh <- matrix(thresh, nrow(Y), ncol(Y))
-  thresh.tst <- thresh[sort(cv.idx[[fold]])]
+  thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
+  thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
+  thresh95.tst <- thresh95[sort(cv.idx[[fold]])]
+  thresh99.tst <- thresh99[sort(cv.idx[[fold]])]
   
   qs.update <- QuantScore(preds = fit$y.pred, probs = probs.for.qs, 
                           validate = Y.tst)
-  bs.update <- BrierScore(preds = fit$y.pred, validate = Y.tst, 
-                          thresh = thresh.tst)
+  bs.update95 <- BrierScore(preds = fit$y.pred, validate = Y.tst, 
+                            thresh = thresh95.tst)
+  bs.update99 <- BrierScore(preds = fit$y.pred, validate = Y.tst, 
+                            thresh = thresh99.tst)
   
   results.old <- results
-  results <- c(qs.update, bs.update, tail(results.old, 2))
-  names(results) <- c(probs.for.qs, "bs", "timing", "system")
+  results <- c(qs.update, bs.update95, bs.update99, tail(results.old, 2))
+  names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
   write.table(results, file = table.file)
   
   upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"

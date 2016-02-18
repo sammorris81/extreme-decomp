@@ -57,11 +57,15 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
 qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs.qs)
+bs.results.mn <- bs.results.se <- matrix(NA, nbases * 2, nprobs.bs)
 for (p in 1:nprocs) {
   for (b in 1:nbases) {
     this.row <- (p - 1) * nbases + b
-    this.qs <- qs.results[[this.row]][1:5, ]
+    this.qs <- qs.results[[this.row]][c(1:5, 9:10), ]
+    this.bs <- bs.results[[this.row]][c(1:5, 9:10), ]
     qs.results.mn[this.row, ]  <- apply(this.qs, 2, mean, 
+                                        na.rm = TRUE)
+    bs.results.mn[this.row, ]  <- apply(this.bs, 2, mean, 
                                         na.rm = TRUE)
     qs.results.se[this.row, ]  <- apply(this.qs, 2, sd, 
                                         na.rm = TRUE) / sqrt(10)

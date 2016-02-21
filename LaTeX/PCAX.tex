@@ -1,7 +1,5 @@
-\documentclass[12pt]{article}
-\usepackage{fullpage}
+\documentclass[11pt]{article}
 \usepackage{amssymb, amsthm, amsmath}
-\usepackage{doublespace}
 \usepackage{bm}
 \usepackage{graphicx}
 \usepackage[authoryear]{natbib}
@@ -9,93 +7,18 @@
 \usepackage{verbatim}
 \usepackage{lineno}
 \usepackage{times}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{epstopdf}
-%\usepackage{hyperref}   % is required to write URL
+\usepackage{soul}
+\usepackage{color}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{times}
+\usepackage{changepage}
 
-
-\linespread{1.5}
-
-\newcommand{\btheta}{ \mbox{\boldmath $\theta$}}
-\newcommand{\bmu}{ \mbox{\boldmath $\mu$}}
-\newcommand{\balpha}{ \mbox{\boldmath $\alpha$}}
-\newcommand{\bbeta}{ \mbox{\boldmath $\beta$}}
-\newcommand{\tbeta}{ \mbox{$\tilde \beta$}}
-\newcommand{\bdelta}{ \mbox{\boldmath $\delta$}}
-\newcommand{\blambda}{ \mbox{\boldmath $\lambda$}}
-\newcommand{\bgamma}{ \mbox{\boldmath $\gamma$}}
-\newcommand{\brho}{ \mbox{\boldmath $\rho$}}
-\newcommand{\bpsi}{ \mbox{\boldmath $\psi$}}
-\newcommand{\bepsilon}{ \mbox{\boldmath $\epsilon$}}
-\newcommand{\bomega}{ \mbox{\boldmath $\omega$}}
-\newcommand{\bDelta}{ \mbox{\boldmath $\Delta$}}
-\newcommand{\bSigma}{ \mbox{\boldmath $\Sigma$}}
-\newcommand{\boldeta}{ \mbox{\boldmath $\eta$}}
-\newcommand{\bone}{ \mbox{\boldmath $1$}}
-\newcommand{\bA}{ \mbox{\bf A}}
-\newcommand{\ba}{ \mbox{\bf a}}
-\newcommand{\bP}{ \mbox{\bf P}}
-\newcommand{\bx}{ \mbox{\bf x}}
-\newcommand{\bX}{ \mbox{\bf X}}
-\newcommand{\bB}{ \mbox{\bf B}}
-\newcommand{\bZ}{ \mbox{\bf Z}}
-\newcommand{\by}{ \mbox{\bf y}}
-\newcommand{\bY}{ \mbox{\bf Y}}
-\newcommand{\bz}{ \mbox{\bf z}}
-\newcommand{\bh}{ \mbox{\bf h}}
-\newcommand{\br}{ \mbox{\bf r}}
-\newcommand{\bt}{ \mbox{\bf t}}
-\newcommand{\bs}{ \mbox{\bf s}}
-\newcommand{\bb}{ \mbox{\bf b}}
-\newcommand{\bL}{ \mbox{\bf L}}
-\newcommand{\bu}{ \mbox{\bf u}}
-\newcommand{\bg}{ \mbox{\bf g}}
-\newcommand{\bv}{ \mbox{\bf v}}
-\newcommand{\bV}{ \mbox{\bf V}}
-\newcommand{\bW}{ \mbox{\bf W}}
-\newcommand{\bG}{ \mbox{\bf G}}
-\newcommand{\bH}{ \mbox{\bf H}}
-\newcommand{\bD}{ \mbox{\bf D}}
-\newcommand{\bK}{ \mbox{\bf K}}
-\newcommand{\bM}{ \mbox{\bf M}}
-\newcommand{\bw}{ \mbox{\bf w}}
-\newcommand{\bo}{ \mbox{\bf o}}
-\newcommand{\bfe}{ \mbox{\bf e}}
-\newcommand{\alphahat}{{\hat \alpha}}
-\newcommand{\iid}{\stackrel{iid}{\sim}}
-\newcommand{\indep}{\stackrel{indep}{\sim}}
-\newcommand{\calR}{{\cal R}}
-\newcommand{\calG}{{\cal G}}
-\newcommand{\calD}{{\cal D}}
-\newcommand{\calS}{{\cal S}}
-\newcommand{\calB}{{\cal B}}
-\newcommand{\calA}{{\cal A}}
-\newcommand{\calT}{{\cal T}}
-\newcommand{\calO}{{\cal O}}
-\newcommand{\calGP}{{\cal GP}}
-\newcommand{\mR}{{\cal R}}
-\newcommand{\mC}{{\cal C}}
-\newcommand{\argmax}{{\mathop{\rm arg\, max}}}
-\newcommand{\argmin}{{\mathop{\rm arg\, min}}}
-\newcommand{\Frechet}{\mbox{Fr$\acute{\mbox{e}}$chet}}
-\newcommand{\Matern}{ \mbox{Mat$\acute{\mbox{e}}$rn}}
-
-
-\newcommand{\beq}{ \begin{equation}}
-\newcommand{\eeq}{ \end{equation}}
-\newcommand{\beqn}{ \begin{eqnarray}}
-\newcommand{\eeqn}{ \end{eqnarray}}
-\newtheorem{corollary}{Corollary}
-\newtheorem{proposition}{Proposition}
-\newtheorem{lemma}{Lemma}
-\newtheorem{theorem}{Theorem}
-
-\newtheorem{mydef}{Definition}
-\newtheorem{mythm}{Theorem}
-\newtheorem{mylemma}{Lemma}
-\newtheorem{myproposition}{Proposition}
-\newtheorem{mycor}{Corollary}
+\usepackage[left=1in,top=1in,right=1in]{geometry}
+\pdfpageheight 11in
+\pdfpagewidth 8.5in
+\linespread{2.0}
+\input{mycommands.sty}
 
 
 \begin{document}\linenumbers
@@ -124,17 +47,17 @@
 \section{Model}\label{s:model}
 
 
-Let $Y_{it}$ be the observation at location $\bs_i$ for $i\in\{1,...,n_s\}$ and time $t\in\{1,...,n_t\}$.  To focus attention on the extreme values, we consider data above a threshold $T$.  The marginal distribution of $Y_{it}$ is then determined by the probability of exceeding the threshold and the distribution of the excursions. Denote the exceedance probability as Prob$[Y_{it}>T] = p_{it}$.  Extreme value theory says that for sufficiently large $T$ the excursion distribution can be approximated using a generalized Pareto distribution (GPD).  Therefore we model $Y_{it}|Y_{it}>T \sim$ GDP$(\sigma_{it},\xi)$, where the GDP  scale and shape parameters are denoted $\sigma_{it}>0$ and $\xi$, respectively. 
+Let $Y_{it}$ be the observation at location $\bs_i$ for $i\in\{1,...,n_s\}$ and time $t\in\{1,...,n_t\}$.  To focus attention on the extreme values, we consider data above a threshold $T$.  The marginal distribution of $Y_{it}$ is then determined by the probability of exceeding the threshold and the distribution of the excursions. Denote the exceedance probability as Prob$[Y_{it}>T] = p_{it}$.  Extreme value theory says that for sufficiently large $T$ the excursion distribution can be approximated using a generalized Pareto distribution (GPD).  Therefore we model $Y_{it}|Y_{it}>T \sim$ GDP$(\sigma_{it},\xi)$, where the GDP  scale and shape parameters are denoted $\sigma_{it}>0$ and $\xi$, respectively.
 
 {\bf spectral, max-linear...finally we settle on...} Spatial extremal dependence is captured using a max-stable copula (define).  Let $Z_{it}$ be a max-stable process with $\Frechet$ marginal distributions (define GEV etc...).  Our objective is to identify a low-rank model for spatial dependence in $Z_{it}$.  Decompose  $Z_{it}$ as $Z_{it}=\theta_{it}\varepsilon_{it}$ where $\theta_{it}$ is a spatial process and $\varepsilon_{it}\iid$ GEV$(1,\alpha,\alpha)$ is a nugget.  The spatial component is written as a combination of $L$ basis functions $B_{il}$
 \beq \label{theta}
-  \theta_{it} = \left(\sum_{l=1}^LB_{il}^{1/\alpha}A_{lt}\right)^{\alpha}. 
+  \theta_{it} = \left(\sum_{l=1}^LB_{il}^{1/\alpha}A_{lt}\right)^{\alpha}.
 \eeq
 If $B_{il}>0$, $\sum_{l=1}^LB_{il}=1$, and the $A_{lt}$ have positive stable (PS) distribution $A_{lt}\sim$ PS$(\alpha)$ (define), then $Z_{it}$ is max-stable and has $\Frechet$ marginal distributions.
 
 The $Z_{it}$ are conditionally independent given the spatial random effects, with conditional distribution $Z_{it}|\theta_{it}\sim$.  As a result, the likelihood is $Y_{it}|\theta_{it} \indep g(y;\theta_{it},p_{it},\sigma_{it},\xi)$ where
 \beq\label{g}
-   g(y;\theta,p,\sigma,\xi)  = 
+   g(y;\theta,p,\sigma,\xi)  =
 \eeq
 Therefore, the likelihood factors across observations which is computationally convenient. Marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence in the $Z_{it}$, and thus the $Y_{it}$.   Spatial dependence can be summarized by the extremal coefficient (EC) $\vartheta_{ij}\in[1,2]$, where
 \beq\label{ECdev}
@@ -145,8 +68,8 @@ For the PS random effects model the EC has the form
 \beq\label{EC}
    \vartheta_{ij} = \sum_{l=1}^L \left(B_{il}^{1/\alpha}+B_{jl}^{1/\alpha}\right)^\alpha.
 \eeq
-In particular, $\vartheta_{ii} = 2^{\alpha}$ for all $i$.  Since $\sum_{l=1}^LB_{il}=1$ for all $i$, we have $\sum_{l=1}^L(\sum_{i=1}^{n_s}B_{il}/n_s) = 1$.  Therefore, the relative contribution of term $l$ can be measured by 
-\beq 
+In particular, $\vartheta_{ii} = 2^{\alpha}$ for all $i$.  Since $\sum_{l=1}^LB_{il}=1$ for all $i$, we have $\sum_{l=1}^L(\sum_{i=1}^{n_s}B_{il}/n_s) = 1$.  Therefore, the relative contribution of term $l$ can be measured by
+\beq
   v_l = \sum_{i=1}^{n_s}B_{il}/n_s,
 \eeq
 with $\sum_{l=1}^Lv_l=1$.  The order of the terms is arbitrary, and so we assume without loss of generality that $v_1\ge...\ge v_L$.
@@ -175,23 +98,23 @@ Assuming the true $B_{il}$ are smooth over space, the initial estimates ${\hat \
   {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
   {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
 \eeq
-where $w_{iu} = \exp(-\phi||\bs_i-\bs_u'||^2)$ is the Gaussian kernel function with bandwidth $\phi$.  The elements ${\hat \vartheta}_{ii}$ do not contributed any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.  To eliminate the influence of these estimates we set $w_{ii}=0$.  However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provides information about small-scale spatial variability. 
+where $w_{iu} = \exp(-\phi||\bs_i-\bs_u'||^2)$ is the Gaussian kernel function with bandwidth $\phi$.  The elements ${\hat \vartheta}_{ii}$ do not contributed any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.  To eliminate the influence of these estimates we set $w_{ii}=0$.  However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provides information about small-scale spatial variability.
 
-The dependence parameters are estimated by comparing estimates ${\tilde \vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.  For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$. Given $\alpha=\alphahat$, it remains to estimate $\bB$.  These estimate ${\hat \bB}$ is taken as the minimizer of 
+The dependence parameters are estimated by comparing estimates ${\tilde \vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.  For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$. Given $\alpha=\alphahat$, it remains to estimate $\bB$.  These estimate ${\hat \bB}$ is taken as the minimizer of
 \beq\label{Bhat}
 m(\bB) = \sum_{i<j} \left({\tilde \vartheta}_{ij} - \vartheta_{ij}\right)^2
-  = 
+  =
   \sum_{i<j} \left\{{\tilde \vartheta}_{ji} - \sum_{l=1}^L[B_{il}^{1/\alphahat} + B_{jl}^{1/\alphahat}]^{\alphahat}\right\}^2
 \eeq
-under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.  
+under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.
 
-The order of the $B_{il}$ is not defined.  Therefore, we sort the terms so that $v_1>...>v_L$.  
+The order of the $B_{il}$ is not defined.  Therefore, we sort the terms so that $v_1>...>v_L$.
 
 
 
 \section{Implementation details}\label{s:MCMC}
 
-The model has three tuning parameters: the quantile threshold $q$, the kernel bandwidth $\phi$, and the number of terms $L$.  How to pick?  Say $q=0.95$ or whatever seems to give GPD marginals.  $\phi$ is something reasonable.  For $L$, we start small and increase until the smallest proportion $v_L$ is less than, say 0.05.  
+The model has three tuning parameters: the quantile threshold $q$, the kernel bandwidth $\phi$, and the number of terms $L$.  How to pick?  Say $q=0.95$ or whatever seems to give GPD marginals.  $\phi$ is something reasonable.  For $L$, we start small and increase until the smallest proportion $v_L$ is less than, say 0.05.
 
 Given the estimates of $\alpha$ and $\bB$, the hierarchical model is
 \beqn \label{bayesmodel}
@@ -199,7 +122,7 @@ Given the estimates of $\alpha$ and $\bB$, the hierarchical model is
   \theta_{it} &=& \left(\sum_{l=1}^L{\hat B}_{il}^{1/\alphahat}A_{lt}\right)^{\alphahat}
   \mbox{\ \ \ where \ \ \ }
   A_{lt} \iid PS(\alphahat)\nonumber\\
-  \mbox{logit}(p_{it}) &=& \bX_{it}^T\bbeta_1 
+  \mbox{logit}(p_{it}) &=& \bX_{it}^T\bbeta_1
   \mbox{\ \ \ and \ \ \ }
   \mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2 \nonumber
 \eeqn
@@ -218,6 +141,48 @@ We set $q_1 = 0.90$ because we only have 49 years of data for each site.
 
 
 \subsection{Results}\label{s:results}
+We use 10-fold cross-validation to assess the model performance.
+For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
+The remaining 10\% of sites and years are withheld for testing model predictions.
+To assess the predictions for the test set, we use quantile scores and Brier scores \hl{citation}.
+The quantile score is given by \hl{give formula}.
+The Brier score is given by \hl{give formula}.
+For both of these methods, we use a negative orientation, so a lower score indicates a better fit.
+
+\begin{table}[htbp]
+\caption{Average quantile scores for selected quantiles and Brier scores ($\times 1000$) for selected thresholds}
+\centering
+\small
+	\begin{tabular}{l|rr|rr|rr|rr|rr}
+	 \multicolumn{1}{c}{} & \multicolumn{2}{c}{L = 2} & \multicolumn{2}{c}{L = 5} & \multicolumn{2}{c}{L = 10} & \multicolumn{2}{c}{L = 15} & \multicolumn{2}{c}{L = 20} \\
+	 \cline{2-11}
+	 & Basis & Kernel & Basis & Kernel & Basis & Kernel & Basis & Kernel & Basis & Kernel \\
+	 \hline
+	 QS(0.95) & 157.23 & 146.18 & 156.96 & 145.07 & 151.15 & 139.47 & 147.76 & 138.49 & 147.19 & 138.35 \\
+	 QS(0.99) &  93.47 &  86.27 &  90.23 &  83.43 &  88.56 &  81.29 &  85.84 &  80.14 &  86.93 &  80.57 \\
+	 \hline
+	 BS(0.95) &  91.61 &  84.21 &  91.45 &  84.04 &  88.43 &  82.29 &  87.57 &  81.83 &  87.17 &  81.70 \\
+	 BS(0.99) &  44.63 &  41.53 &  44.55 &  41.70 &  43.18 &  40.72 &  42.81 &  40.71 &  42.43 &  40.64 \\
+	 \hline
+	\end{tabular}
+\end{table}
+
+
+\begin{figure}  % markdown/fire-analysis/combine-tables.R
+	\centering
+	\includegraphics[width=0.47\linewidth]{plots/qs-mean}
+	\caption{Average quantile score for selected quantiles}
+\end{figure}
+
+\begin{figure}  % markdown/fire-analysis/combine-tables.R
+	\centering
+	\includegraphics[width=0.47\linewidth]{plots/timing}
+	\caption{Timing comparison of basis functions to kernel functions for the spatial process (100 iterations)}
+\end{figure}
+
+Based upon the cross-validation results, we reran the full data analysis using $L = 15$ basis functions.
+
+
 
 \subsection{Model checking and sensitivity analysis}
 
@@ -233,15 +198,6 @@ We set $q_1 = 0.90$ because we only have 49 years of data for each site.
 \end{singlespace}
 
 \end{document}
-
-
-\begin{figure}
-	\caption{Estimated $\bbeta$ for the EEG data.}\label{f:4fits}
-	\begin{center}\begin{picture}(420,420)
-		\includegraphics[height=6in,width=6in]{4fits}
-		\end{picture}\end{center}
-\end{figure}
-
 
 
 

@@ -7,8 +7,8 @@ source(file = "./package_load.R", chdir = T)
 # fact that they need to add up to 1 across all basis functions at each site.
 # opting for 2, 5, 10, 15, and then looking a max stable method with fixed 
 # alpha.
-method <- "basis" # using kern for the results from abba
-L      <- 10  # will be using this to get basis functions for covariates
+method <- "kern" # using kern for the results from abba
+L      <- 15  # will be using this to get basis functions for covariates
 results.file <- paste("./cv-results/", method, "-", L, ".RData", sep = "")
 
 # load in the data
@@ -29,10 +29,10 @@ s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
 s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
 
 # find the extremal coefficients
-ec.hat <- get.pw.ec(Y = Y, qlim = c(0.95, 1), verbose = TRUE, update = 50)$ec
+ec.hat <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
 
 ################################################################################
-## Estimate the basis functions
+## Estimate the rho and alpha
 ################################################################################
 
 cat("Start basis function estimation \n")
@@ -40,7 +40,15 @@ cat("Start basis function estimation \n")
 out       <- get.factors.EC(ec.hat, L = L, s = s)
 B.est     <- out$est
 ec.smooth <- out$EC.smooth
+
+cat("Start estimation of rho and alpha \n")
+# alpha and rho estimates using only the training data
+out       <- get.rho.alpha(EC = ec.hat, s = s, knots = s)
+rho       <- out$rho
+ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
+dw2       <- out$dw2
+w         <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
 
 ################################################################################
 #### Run the MCMC:
@@ -48,7 +56,7 @@ alpha     <- out$alpha
 #### The response is the total acreage burned in a year 
 ####   Y[i, t] = acres burned in county i and year t 
 ####   X[i, t, p] = pth covariate for site i in year t
-####     Using (1, time, B, B * time) where time = (t - nt / 2) / nt
+####     Using (1, time, sites, sites * time) where time = (t - nt / 2) / nt
 ################################################################################
 
 ns <- nrow(Y)
@@ -90,9 +98,11 @@ update <- 1000
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.est, alpha = alpha, 
+# note: we use w as our basis functions because the MCMC should be identical
+#       once the bandwidth and alpha terms are estimated.
+fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = w, alpha = alpha, 
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
 
 cat("Finished fit and predict \n")
 
-save(B.est, thresh, alpha, fit, file = results.file)
+save(B.est, thresh, alpha, rho, fit, file = results.file)

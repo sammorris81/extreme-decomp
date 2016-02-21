@@ -61,16 +61,28 @@ bs.results.mn <- bs.results.se <- matrix(NA, nbases * 2, nprobs.bs)
 for (p in 1:nprocs) {
   for (b in 1:nbases) {
     this.row <- (p - 1) * nbases + b
-    this.qs <- qs.results[[this.row]][c(1:5, 9:10), ]
-    this.bs <- bs.results[[this.row]][c(1:5, 9:10), ]
-    qs.results.mn[this.row, ]  <- apply(this.qs, 2, mean, 
-                                        na.rm = TRUE)
-    bs.results.mn[this.row, ]  <- apply(this.bs, 2, mean, 
-                                        na.rm = TRUE)
-    qs.results.se[this.row, ]  <- apply(this.qs, 2, sd, 
-                                        na.rm = TRUE) / sqrt(10)
+    this.qs <- qs.results[[this.row]]
+    this.bs <- bs.results[[this.row]]
+    qs.results.mn[this.row, ] <- apply(this.qs, 2, mean, 
+                                       na.rm = TRUE)
+    bs.results.mn[this.row, ] <- apply(this.bs, 2, mean, 
+                                       na.rm = TRUE)
+    qs.results.se[this.row, ] <- apply(this.qs, 2, sd, 
+                                       na.rm = TRUE) / sqrt(10)
+    bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
+                                       na.rm = TRUE) / sqrt(10)
   }
 }
+
+t.test(qs.results[[4]][, 1], qs.results[[9]][, 1], paired = TRUE)
+t.test(qs.results[[4]][, 2], qs.results[[9]][, 2], paired = TRUE)
+t.test(qs.results[[4]][, 3], qs.results[[9]][, 3], paired = TRUE)
+t.test(qs.results[[4]][, 4], qs.results[[9]][, 4], paired = TRUE)
+t.test(qs.results[[4]][, 5], qs.results[[9]][, 5], paired = TRUE)
+
+t.test(bs.results[[4]][, 2], bs.results[[9]][, 2], paired = TRUE)
+t.test(bs.results[[5]][, 2], bs.results[[10]][, 2], paired = TRUE)
+
 
 colnames(qs.results.mn) <- colnames(qs.results.se) <- probs.for.qs
 these.rownames <- paste(rep(procs, each = nbases), 
@@ -84,6 +96,8 @@ bs.results.se <- apply(bs.results, 1, sd) / sqrt(10)
 round(qs.results.mn, 3)
 round(qs.results.se, 3)
 
+dev.new(width = 4, height = 3)
+par(mfrow=c(1, 1), mar=c(5.1, 5.1, 2.1, 2.1))
 matplot(x = probs.for.qs, y = t(qs.results.mn),
         col = c(rep("dodgerblue4", nbases), 
                 rep("firebrick4", nbases)), 
@@ -92,37 +106,49 @@ matplot(x = probs.for.qs, y = t(qs.results.mn),
         type = "b", pch = c(rep(21, nbases), rep(22, nbases)),
         lty = c(rep(1, nbases), rep(2, nbases)),
         cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex = 1.5, lwd=1.5,
-        main = "Average quantile score at selected quantiles",
+        # main = "Average quantile score at selected quantiles",
         ylab = "Mean quantile score", xlab = "Quantile")
-legend("topright", legend = c("Basis functions", "Kernel"), 
+legend("topright", legend = c("Basis functions", "Kernel functions"), 
        lty = c(1, 2), pch = c(21, 22), 
        col = c("dodgerblue4", "firebrick4"), 
        pt.bg = c("dodgerblue1", "firebrick1"),
        title = "Spatial Process", 
        lwd = 1.5, cex=1.5)
+dev.print(device = pdf, file = "../../LaTeX/plots/qs-mean.pdf")
+dev.off()
 
 # look at timing - try to keep like computers together (in minutes)
 timing <- read.table(file = "./cv-tables/timing.txt")
 timing.mn <- apply(timing, 1, mean)
 
 dev.new(width = 4, height = 3)
-par(mfrow=c(1, 1), mar=c(5.1, 5.1, 4.1, 2.1))
+par(mfrow=c(1, 1), mar=c(5.1, 5.1, 2.1, 2.1))
 ylim = range(timing.mn)
 ylim[2] <- ylim[2] + 100
 plot(bases, timing.mn[1:5], type = "b", 
      ylim = ylim, 
-     xaxt = "n", xlab = "Number of basis functions", 
-     ylab = "Timing", 
+     xaxt = "n", xlab = "Number of basis functions", ylab = "Timing (seconds)", 
+     col = "dodgerblue4", bg = "dodgerblue1", pch = 21,
      # main = "Timing comparison of 100 iterations: Basis functions vs kernel", 
-     cex.lab=1.5, cex.axis=1.5, cex.main=1.5, lwd=1.5)
+     cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex = 1.5, lwd=1.5)
 axis(1, at = bases, labels = TRUE)
-lines(bases, timing.mn[6:10], lty = 2, type = "b", lwd = 1.5)
-legend("topleft", legend = c("Basis functions", "Kernel"), 
-       lty = c(1, 2), lwd = 1.5, pch = 1,
+lines(bases, timing.mn[6:10], lty = 2, type = "b", lwd = 1.5,
+      col = "firebrick4", bg = "firebrick1", pch = 22, cex = 1.5)
+legend("topleft", legend = c("Basis functions", "Kernel functions"), 
+       lty = c(1, 2), lwd = 1.5, pch = c(21, 22),
+       col = c("dodgerblue4", "firebrick4"),
+       pt.bg = c("dodgerblue1", "firebrick1"),
        title = "Spatial Process", 
        cex=1.5)
-dev.print(device = pdf, file = "plots/timing.pdf")
+dev.print(device = pdf, file = "../../LaTeX/plots/timing.pdf")
 dev.off()
+
+
+
+
+
+
+
 
 
 rm(list=ls())

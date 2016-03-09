@@ -9,7 +9,7 @@ source(file = "./package_load.R", chdir = T)
 # alpha.
 method <- "basis" # using kern for the results from abba
 L      <- 15  # will be using this to get basis functions for covariates
-results.file <- paste("./cv-results/", method, "-", L, ".RData", sep = "")
+results.file <- paste("./cv-results/", method, "-", L, "-1st.RData", sep = "")
 
 # load in the data
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")

@@ -234,14 +234,14 @@ theme_clean <- function(base_size = 12) {
       panel.background    =   element_blank(),
       panel.grid      =   element_blank(),
       axis.ticks.length   =   unit(0,"cm"),
-      axis.ticks.margin   =   unit(0,"cm"),
       panel.margin    =   unit(0,"lines"),
       plot.margin     =   unit(c(0,0,0,0),"lines"),
       complete = TRUE
     )
 }
 
-map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
+map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL, 
+                          limits = NULL) {
   require(ggplot2)
   require(maps)
   if (is.null(midpoint)) {
@@ -255,14 +255,20 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
   basis <- data.frame(Y, subregion)
   extcoef_map <- merge(county_map, basis, all.x = TRUE)
   
+  if (is.null(limits)) {
+    limits <- c(min(Y), max(Y))
+  }
+  
   # using fill = Y because that's the column of extcoef_map with the actual data
   p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
   p <- p + geom_polygon(colour = "grey", aes(fill = Y))
   p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
   p <- p + coord_map("polyconic")
-  p <- p + labs(title = main, fill = fill.legend)
+  p <- p + ggtitle(main)  # make the title
+  p <- p + labs(fill = fill.legend)
   p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4", 
-                                mid = "#ffffff", midpoint = midpoint)
+                                mid = "#ffffff", midpoint = midpoint,
+                                limits = limits)
   p <- p + theme_clean()
   return(p)
 }

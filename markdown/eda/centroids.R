@@ -2,11 +2,11 @@
 library(maps)
 library(maptools)
 library(fields)
-source(file = "../code/analysis/fire/adj.R", chdir = TRUE)
-source(file = "../code/R/auxfunctions.R", chdir = TRUE)
-load(file = "../code/analysis/fire/gaCntyFires.RData")
-load(file = "../code/analysis/fire/fire_data.RData")
-load(file = "../code/analysis/fire/chi.RData")
+source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
+source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
+load(file = "../../code/analysis/fire/gaCntyFires.RData")
+load(file = "../../code/analysis/fire/fire_data.RData")
+load(file = "../../code/analysis/fire/chi.RData")
 
 georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
                plot = FALSE)

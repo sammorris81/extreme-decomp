@@ -85,7 +85,7 @@ diag(d) <- 0
 # take the 5 closest neighbors when finding the threshold
 for (i in 1:ns) {
   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
-  thresh[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+  thresh[i] <- quantile(Y[these, ], probs = 0.90, na.rm = TRUE)
 }
 thresh <- matrix(thresh, ns, nt)
 

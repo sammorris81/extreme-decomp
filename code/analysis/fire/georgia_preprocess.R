@@ -142,7 +142,6 @@ cents <- coordinates(georgia_sp)
 save(cents, georgia, IDs, georgia_sp, 
      file="georgia_preprocess/georgia_map.RData")
 
-
 ################################################################################
 #### Get the estimate for chi to be used in the extremal coefficient
 ################################################################################

@@ -100,37 +100,61 @@ for (i in 1:ns) {
   }
 }
 
-#### randomly select 10 counties ####
+#### plot time series for 10 counties ####
 set.seed(1)
 counties <- sample(1:ns, 10, replace = FALSE)
-colors <- rainbow_hcl(n = length(counties), alpha = 0.75)
+colors <- rainbow_hcl(n = length(counties))
 # counties <- c(counties, which(Y == max(Y), arr.ind = TRUE)[2])
 # counties <- c(counties, which(Y == min(Y), arr.ind = TRUE)[2])
-matplot(log(Y[, counties]), pch = 1, type = "b",
-        col = colors, cex = 1.25, lty = 3,
+matplot(log(Y[, counties]), type = "l",
+        col = colors, cex = 1.25, lty = 1,
         ylab = "log(Y)", xaxt = "n",
-        main = "time series at 10 counties, solid circles exceed threshold")
+        main = paste("time series at ", length(counties), 
+                     " randomly selected counties", sep = ""))
 axis(1, at = seq(1, nt), labels = rownames(Y))
-for (i in 1:length(counties)) {
-  this.county <- counties[i]
-  these <- which(Y[, this.county] > thresh[, this.county])
-  points(these, log(Y[these, this.county]), pch = 19,
-         col = colors[i], cex = 1.25, lty = 3)
-}
+# for (i in 1:length(counties)) {
+#   this.county <- counties[i]
+#   these <- which(Y[, this.county] > thresh[, this.county])
+#   points(these, log(Y[these, this.county]), pch = 19,
+#          col = colors[i], cex = 1.25, lty = 3)
+# }
 
+#### plot time series for 25 counties ####
+set.seed(1)
+counties <- sample(1:ns, 25, replace = FALSE)
+colors <- rainbow_hcl(n = length(counties))
+# counties <- c(counties, which(Y == max(Y), arr.ind = TRUE)[2])
+# counties <- c(counties, which(Y == min(Y), arr.ind = TRUE)[2])
+matplot(log(Y[, counties]), type = "l",
+        col = colors, cex = 1.25, lty = 1,
+        ylab = "log(Y)", xaxt = "n",
+        main = paste("time series at ", length(counties), 
+                     " randomly selected counties", sep = ""))
+axis(1, at = seq(1, nt), labels = rownames(Y))
+# for (i in 1:length(counties)) {
+#   this.county <- counties[i]
+#   these <- which(Y[, this.county] > thresh[, this.county])
+#   points(these, log(Y[these, this.county]), pch = 19,
+#          col = colors[i], cex = 1.25, lty = 3)
+# }
 
+#### plot exceedances ####
+set.seed(1)
+counties <- sample(1:ns, 80, replace = FALSE)
+colors <- rainbow_hcl(n = length(counties))
 for (i in 1:length(counties)) {
   this.county <- counties[i]
   these <- which(Y[, this.county] > thresh[, this.county])
   if (i == 1) {
-    plot(these, log(Y[these, this.county]), type = "b", pch = 19,
+    plot(these, log(Y[these, this.county]), type = "l", pch = 19,
          col = colors[i], xaxt = "n", xlab = "", xlim = c(1, nt),
-         ylim = c(3, 12), ylab = "log(Y)", lty = 3, cex = 1.5, lwd = 1.5,
-         main = "observations over spatial threshold")
+         ylim = c(3, 12), ylab = "log(Y)", lty = 1, lwd = 1.5,
+         main = paste("observations over spatial threshold for ",
+                      length(counties), " counties", sep = ""))
   } else {
-    lines(these, log(Y[these, this.county]), type = "b", pch = 19,
-          col = colors[i], cex = 1.5, lwd = 1.5, lty = 3)
+    lines(these, log(Y[these, this.county]), pch = 19,
+          col = colors[i], lwd = 1.5, lty = 1)
   }
 }
-
+axis(1, at = seq(1, nt), labels = rownames(Y))
 

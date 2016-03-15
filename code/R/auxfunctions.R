@@ -240,8 +240,8 @@ theme_clean <- function(base_size = 12) {
     )
 }
 
-map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL, 
-                          limits = NULL) {
+map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "", 
+                          midpoint = NULL, limits = NULL) {
   require(ggplot2)
   require(maps)
   if (is.null(midpoint)) {
@@ -252,7 +252,14 @@ map.ga.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL,
   subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
   county_map <- map_data(map = "county", region = "georgia")
   
-  basis <- data.frame(Y, subregion)
+  # a hack in case the data is in a different order than subregion
+  if (is.null(counties)) {
+    cat("To guarantee accurate maps, it is recommended to include",
+        "a list of counties.")
+    basis <- data.frame(Y, subregion) 
+  } else {
+    basis <- data.frame(Y, subregion = counties) 
+  }
   extcoef_map <- merge(county_map, basis, all.x = TRUE)
   
   if (is.null(limits)) {

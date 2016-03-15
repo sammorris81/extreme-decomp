@@ -43,6 +43,11 @@ for (i in 1:ncol(B.1)) {
 keep.bases <- which(colSums(B) > 5)  
 B <- B[, keep.bases]
 
+map.ga.ggplot(Y = B[, 26], counties = counties, 
+              main = "2d b-spline 1", 
+              midpoint = diff(range(B[, 26])) / 2, 
+              limits = c(0, max(B[, 26])))
+
 p1 <- map.ga.ggplot(Y = B[, 1], counties = counties, 
                     main = "2d b-spline 1", 
                     midpoint = diff(range(B[, 1])) / 2, 

@@ -14,8 +14,9 @@ n <- nrow(cents)
 
 # standardize the locations
 s <- cents
-s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
-s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
+s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
 
 # cv.idx and ec.hat were calculated ahead of time
 load(file = "./cv-extcoef.RData")
@@ -61,7 +62,7 @@ for (i in 1:ns) {
 ################################################################################
 ## need spatially smoothed threshold - only using training data
 ################################################################################
-thresh <- rep(0, ns)
+thresh <- thresh95 <- thresh99 <- rep(0, ns)
 neighbors <- 5
 d <- rdist(s)
 diag(d) <- 0
@@ -70,18 +71,24 @@ diag(d) <- 0
 for (i in 1:ns) {
   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
   thresh[i] <- quantile(Y[these, ], probs = 0.90, na.rm = TRUE)
+  thresh95[j] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+  thresh99[j] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
 }
-thresh <- matrix(thresh, ns, nt)
-thresh.tst <- thresh[cv.idx[[cv]]]
+thresh   <- matrix(thresh, ns, nt)
+thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
+thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
+thresh.tst   <- thresh[cv.idx[[cv]]]
+thresh95.tst <- thresh95[cv.idx[[fold]]]
+thresh99.tst <- thresh99[cv.idx[[fold]]]
 
 ################################################################################
 ## run the MCMC
 ################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 1000
+# iters  <- 30000
+# burn   <- 20000
+# update <- 1000
 
-# iters <- 20000; burn <- 15000; update <- 100  # for testing
+iters <- 200; burn <- 150; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -92,12 +99,15 @@ cat("Finished fit and predict \n")
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
-results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs, 
-                      validate = Y.tst)
-
-results <- c(results, fit$timing)
+qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs, 
+                         validate = Y.tst)
+bs.results95 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+                           thresh = thresh95.tst)
+bs.results99 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+                           thresh = thresh99.tst)
+results <- c(qs.results, bs.results95, bs.results99, fit$timing)
 results <- c(results, Sys.info()["nodename"])
-names(results) <- c(probs.for.qs, "timing", "system")
+names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
 
 write.table(results, file = table.file)
 

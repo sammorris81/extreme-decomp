@@ -26,8 +26,8 @@ neighbors <- 5
 d.scale <- rdist(s)
 diag(d.scale) <- 0
 
-df.1 <- 5
-df.2 <- 6
+df.1 <- 4
+df.2 <- 4
 B.1 <- bs(s[, 1], df = df.1, Boundary.knots = c(-0.1, 1.1))
 B.2 <- bs(s[, 2], df = df.2, Boundary.knots = c(-0.1, 1.1))
 
@@ -40,8 +40,10 @@ for (i in 1:ncol(B.1)) {
 
 # plots of the basis functions suggest that when colSums <  4, the basis function
 # only averages over a small number of counties.
-keep.bases <- which(colSums(B) > 5)  
+keep.bases <- which(colSums(B) > 0)  
 B <- B[, keep.bases]
+
+dim(B)
 
 map.ga.ggplot(Y = B[, 26], counties = counties, 
               main = "2d b-spline 1", 

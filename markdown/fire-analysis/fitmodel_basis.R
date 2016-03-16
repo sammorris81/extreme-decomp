@@ -78,8 +78,8 @@ thresh   <- matrix(thresh, ns, nt)
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 thresh.tst   <- thresh[cv.idx[[cv]]]
-thresh95.tst <- thresh95[cv.idx[[fold]]]
-thresh99.tst <- thresh99[cv.idx[[fold]]]
+thresh95.tst <- thresh95[cv.idx[[cv]]]
+thresh99.tst <- thresh99[cv.idx[[cv]]]
 
 ################################################################################
 ## run the MCMC

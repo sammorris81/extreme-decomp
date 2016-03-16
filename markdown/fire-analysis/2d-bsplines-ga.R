@@ -18,37 +18,12 @@ thresh <- rep(0, ns)
 counties <- rownames(cents)
 
 #### standardize the locations ####
-s <- cents
-s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
-s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
-s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
-neighbors <- 5
-d.scale <- rdist(s)
-diag(d.scale) <- 0
+B <- bspline.2d(s = cents, scale = TRUE, df.x = 5, df.y = 5)
 
-df.1 <- 5
-df.2 <- 5
-B.1 <- bs(s[, 1], df = df.1, Boundary.knots = c(-0.1, 1.1))
-B.2 <- bs(s[, 2], df = df.2, Boundary.knots = c(-0.1, 1.1))
-
-B <- matrix(NA, nrow = ns, ncol = df.1 * df.2)
-for (i in 1:ncol(B.1)) {
-  for (j in 1:ncol(B.2)) {
-    B[, (i - 1) * df.2 + j] <- B.1[, i] * B.2[, j]
-  }
-}
-
-# plots of the basis functions suggest that when colSums <  4, the basis function
-# only averages over a small number of counties.
-keep.bases <- which(colSums(B) > 0)  
-B <- B[, keep.bases]
-
-dim(B)
-
-map.ga.ggplot(Y = B[, 26], counties = counties, 
+map.ga.ggplot(Y = B[, 25], counties = counties, 
               main = "2d b-spline 1", 
-              midpoint = diff(range(B[, 26])) / 2, 
-              limits = c(0, max(B[, 26])))
+              midpoint = diff(range(B[, 25])) / 2, 
+              limits = c(0, max(B[, 25])))
 
 p1 <- map.ga.ggplot(Y = B[, 1], counties = counties, 
                     main = "2d b-spline 1", 

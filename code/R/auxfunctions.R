@@ -446,3 +446,27 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
   
   return(list(ec = ec, qlims = qlims))
 }
+
+bspline.2d <- function(s, scale = TRUE, df.x, df.y) {
+  if (scale) {
+    s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+    s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
+    s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
+  }
+  
+  B.x <- bs(s[, 1], df = df.x, Boundary.knots = c(-0.1, 1.1))
+  B.y <- bs(s[, 2], df = df.y, Boundary.knots = c(-0.1, 1.1))
+  
+  B <- matrix(NA, nrow = ns, ncol = df.x * df.y)
+  for (i in 1:ncol(B.x)) {
+    for (j in 1:ncol(B.y)) {
+      B[, (i - 1) * df.y + j] <- B.x[, i] * B.y[, j]
+    }
+  }
+  
+  # if the basis has no weight for any sites, remove from group
+  keep.bases <- which(colSums(B) > 0)  
+  B <- B[, keep.bases]
+  
+  return(B)
+}

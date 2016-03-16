@@ -53,10 +53,14 @@ if (margin == "ebf") {
     B.cov <- get.factors.EC(ec.hat[[cv]], L = L, s = s)$est
   }
 } else if (margin == "2bs") {
-  # we already scale the spatial locations, so not necessary to rescale
-  B.cov <- bspline.2d(s = s, scale = FALSE, df.x = sqrt(L), df.y = sqrt(L))
-} else if (margin == "2nd") {
-  B.cov <- cbind(s[, 1], s[, 2], s[, 1] * s[, 2], s[, 1]^2, s[, 2]^2)
+  if (L == 4) {
+    # we can't do 2 degrees of freedom for basis functions, so opting for 
+    # second order linear trend
+    B.cov <- cbind(s[, 1], s[, 2], s[, 1] * s[, 2], s[, 1]^2, s[, 2]^2)
+  } else if (L > 4) {
+    # we already scale the spatial locations, so not necessary to rescale
+    B.cov <- bspline.2d(s = s, scale = FALSE, df.x = sqrt(L), df.y = sqrt(L))
+  }
 }
 
 ################################################################################
@@ -111,11 +115,11 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 1000
+# iters  <- 30000
+# burn   <- 20000
+# update <- 1000
 
-# iters <- 200; burn <- 150; update <- 10  # for testing
+iters <- 200; burn <- 150; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc

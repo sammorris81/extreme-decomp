@@ -14,8 +14,9 @@ n <- nrow(cents)
 
 # standardize the locations
 s <- cents
-s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
-s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
+s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
 
 # cv.idx and ec.hat were calculated ahead of time
 load(file = "./cv-extcoef.RData")
@@ -81,13 +82,13 @@ thresh.tst <- thresh[cv.idx[[cv]]]
 # burn   <- 20000
 # update <- 1000
 
-iters <- 100; burn <- 90; update <- 50  # for testing
+iters <- 3000; burn <- 200; update <- 50  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.est, alpha = alpha, 
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.est, alpha = alpha, beta1 = beta1,
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # # calculate the scores

@@ -84,7 +84,11 @@ Y[cv.idx[[cv]]] <- NA  # remove the testing data
 
 ns <- nrow(Y)
 nt <- ncol(Y)
-np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
+if (margin == "2bs" & L == 4) {
+  np <- 2 + (L + 1) * 2  # 2nd order spatial trend has 5
+} else {
+  np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
+}
 
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
@@ -120,11 +124,11 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 1000
+# iters  <- 30000
+# burn   <- 20000
+# update <- 1000
 
-# iters <- 200; burn <- 150; update <- 10  # for testing
+iters <- 200; burn <- 150; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -153,4 +157,4 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, thresh, alpha, fit, cv.idx, results, file = results.file)
+save(B.sp, out, thresh, alpha, fit, cv.idx, results, file = results.file)

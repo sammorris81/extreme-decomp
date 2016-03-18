@@ -26,23 +26,23 @@ for (b in 1:(nbases * nprocs)) {
 }
 
 # timing is a data.frame that contains time, hostname, basis, and fold
-timing <- data.frame(timing = double(), hostname = factor(), 
+timing <- data.frame(timing = double(), hostname = factor(),
                      proc = factor(), basis = factor(), fold = factor())
 for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
-  basis.idx <- which(bases == split[2])  
+  basis.idx <- which(bases == split[2])
   idx       <- (proc.idx - 1) * nbases + basis.idx
   fold      <- as.numeric(split[3])
-  table.set <- read.table(paste("cv-tables/", files[i], sep = ""), 
+  table.set <- read.table(paste("cv-tables/", files[i], sep = ""),
                           stringsAsFactors = FALSE)
-  
+
   # first extract the timing information from the end of the vector
   timing.tail <- tail(table.set$x, 2)
-  timing.row <- data.frame(timing = as.numeric(timing.tail[1]), 
+  timing.row <- data.frame(timing = as.numeric(timing.tail[1]),
                            host = timing.tail[2],
-                           proc = split[1], basis = split[2], 
+                           proc = split[1], basis = split[2],
                            fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
   qs.results[[idx]][fold, ] <- as.numeric(table.set$x[1:nprobs.qs])
@@ -53,7 +53,7 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   }
 }
 
-# combine lists into a single matrix that averages qs over all folds for 
+# combine lists into a single matrix that averages qs over all folds for
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
 qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs.qs)
@@ -63,11 +63,11 @@ for (p in 1:nprocs) {
     this.row <- (p - 1) * nbases + b
     this.qs <- qs.results[[this.row]]
     this.bs <- bs.results[[this.row]]
-    qs.results.mn[this.row, ] <- apply(this.qs, 2, mean, 
+    qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
                                        na.rm = TRUE)
-    bs.results.mn[this.row, ] <- apply(this.bs, 2, mean, 
+    bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
                                        na.rm = TRUE)
-    qs.results.se[this.row, ] <- apply(this.qs, 2, sd, 
+    qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
                                        na.rm = TRUE) / sqrt(10)
     bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
                                        na.rm = TRUE) / sqrt(10)
@@ -85,7 +85,7 @@ t.test(bs.results[[5]][, 2], bs.results[[10]][, 2], paired = TRUE)
 
 
 colnames(qs.results.mn) <- colnames(qs.results.se) <- probs.for.qs
-these.rownames <- paste(rep(procs, each = nbases), 
+these.rownames <- paste(rep(procs, each = nbases),
                         rep(bases, times = nprocs))
 rownames(qs.results.mn) <- rownames(qs.results.se) <- these.rownames
 rownames(bs.results) <- these.rownames
@@ -99,8 +99,8 @@ round(qs.results.se, 3)
 dev.new(width = 4, height = 3)
 par(mfrow=c(1, 1), mar=c(5.1, 5.1, 2.1, 2.1))
 matplot(x = probs.for.qs, y = t(qs.results.mn),
-        col = c(rep("dodgerblue4", nbases), 
-                rep("firebrick4", nbases)), 
+        col = c(rep("dodgerblue4", nbases),
+                rep("firebrick4", nbases)),
         bg = c(rep("dodgerblue1", nbases),
                rep("firebrick1", nbases)),
         type = "b", pch = c(rep(21, nbases), rep(22, nbases)),
@@ -108,11 +108,11 @@ matplot(x = probs.for.qs, y = t(qs.results.mn),
         cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex = 1.5, lwd=1.5,
         # main = "Average quantile score at selected quantiles",
         ylab = "Mean quantile score", xlab = "Quantile")
-legend("topright", legend = c("Basis functions", "Kernel functions"), 
-       lty = c(1, 2), pch = c(21, 22), 
-       col = c("dodgerblue4", "firebrick4"), 
+legend("topright", legend = c("ECB", "GKB"),
+       lty = c(1, 2), pch = c(21, 22),
+       col = c("dodgerblue4", "firebrick4"),
        pt.bg = c("dodgerblue1", "firebrick1"),
-       title = "Spatial Process", 
+       title = "Spatial Process",
        lwd = 1.5, cex=1.5)
 dev.print(device = pdf, file = "../../LaTeX/plots/qs-mean.pdf")
 dev.off()
@@ -125,20 +125,20 @@ dev.new(width = 4, height = 3)
 par(mfrow=c(1, 1), mar=c(5.1, 5.1, 2.1, 2.1))
 ylim = range(timing.mn)
 ylim[2] <- ylim[2] + 100
-plot(bases, timing.mn[1:5], type = "b", 
-     ylim = ylim, 
-     xaxt = "n", xlab = "Number of basis functions", ylab = "Timing (seconds)", 
+plot(bases, timing.mn[1:5], type = "b",
+     ylim = ylim,
+     xaxt = "n", xlab = "Number of basis functions", ylab = "Timing (seconds)",
      col = "dodgerblue4", bg = "dodgerblue1", pch = 21,
-     # main = "Timing comparison of 100 iterations: Basis functions vs kernel", 
+     # main = "Timing comparison of 100 iterations: Basis functions vs kernel",
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex = 1.5, lwd=1.5)
 axis(1, at = bases, labels = TRUE)
 lines(bases, timing.mn[6:10], lty = 2, type = "b", lwd = 1.5,
       col = "firebrick4", bg = "firebrick1", pch = 22, cex = 1.5)
-legend("topleft", legend = c("Basis functions", "Kernel functions"), 
+legend("topleft", legend = c("ECB", "GKF"),
        lty = c(1, 2), lwd = 1.5, pch = c(21, 22),
        col = c("dodgerblue4", "firebrick4"),
        pt.bg = c("dodgerblue1", "firebrick1"),
-       title = "Spatial Process", 
+       title = "Spatial Process",
        cex=1.5)
 dev.print(device = pdf, file = "../../LaTeX/plots/timing.pdf")
 dev.off()

@@ -109,7 +109,7 @@ colors <- rainbow_hcl(n = length(counties))
 matplot(log(Y[, counties]), type = "l",
         col = colors, cex = 1.25, lty = 1,
         ylab = "log(Y)", xaxt = "n",
-        main = paste("time series at ", length(counties), 
+        main = paste("time series at ", length(counties),
                      " randomly selected counties", sep = ""))
 axis(1, at = seq(1, nt), labels = rownames(Y))
 # for (i in 1:length(counties)) {
@@ -125,12 +125,19 @@ counties <- sample(1:ns, 25, replace = FALSE)
 colors <- rainbow_hcl(n = length(counties))
 # counties <- c(counties, which(Y == max(Y), arr.ind = TRUE)[2])
 # counties <- c(counties, which(Y == min(Y), arr.ind = TRUE)[2])
+par(mar = c(4.1, 4.1, 0.6, 0.6))
 matplot(log(Y[, counties]), type = "l",
-        col = colors, cex = 1.25, lty = 1,
-        ylab = "log(Y)", xaxt = "n",
-        main = paste("time series at ", length(counties), 
-                     " randomly selected counties", sep = ""))
-axis(1, at = seq(1, nt), labels = rownames(Y))
+        col = colors, cex.lab = 1.5, cex.axis = 1.5, lty = 1,
+        ylab = "log(acres burned)",
+        xaxt = "n", xlab = "Year" #, xlim = c(0, (nt + 1))
+        #main = paste("time series at ", length(counties),
+        #             " randomly selected counties", sep = "")
+        )
+
+years <- rownames(Y)
+years <- c("1995", years, "2015")
+axis(1, at = seq(0, (nt + 1), by = 5), labels = seq(1965, 2015, by = 5),
+     cex.axis = 1.5)
 # for (i in 1:length(counties)) {
 #   this.county <- counties[i]
 #   these <- which(Y[, this.county] > thresh[, this.county])
@@ -158,3 +165,52 @@ for (i in 1:length(counties)) {
 }
 axis(1, at = seq(1, nt), labels = rownames(Y))
 
+# mean residual life plot - first center and scale
+library(ismev)
+Y.adj <- Y <- t(Y)
+qs <- apply(Y, 1, quantile, probs = c(0.25, 0.75))
+for (i in 1:ns) {
+  Y.adj[i, ] <- (Y[i, ] - median(Y[i, ])) / diff(qs[, i])
+}
+
+Y.adj <- Y.adj + min(Y.adj)
+
+mrl.plot(Y.adj)
+mrl.plot(Y.adj[1, ])
+mrl.plot(Y.adj[2, ])
+
+par(mfrow = c(1, 2))
+mrl.plot(sqrt(Y))
+mrl.plot(Y.adj, nint = 1000)
+str(Y)
+mean(Y)
+range(Y)
+mrl.plot(sqrt(Y), nint = 1000)
+gpd.fitrange(Y[1, ], umin = -1.2, umax = 2, nint = 20)
+gpd.fitrange(Y[1, ], umin = 10, umax = 1900, nint = 20)
+
+
+mrl.plot(Y.adj, nint = 100)
+title("MRL plot, full range of Y.adj")
+
+colors <- rainbow_hcl(n = 4)
+mrl.plot(Y.adj, umin = quantile(Y.adj, probs = 0.4), 
+         umax = quantile(Y.adj, probs = 0.999), nint = 100, 
+         xlab = "Adjusted Y")
+title("MRL plot, zoom range to q(0.999)")
+
+x <- quantile(Y.adj, probs = 0.90)
+abline(v = x, lty = 1, col = colors[1])
+text(x = x + 0.3, y = 60, labels = 1)
+
+x <- quantile(Y.adj, probs = 0.95)
+abline(v = x, lty = 1)
+text(x = x, y = 70, labels = "q(0.95)", pos = 4, lwd = 1.25)
+
+x <- quantile(Y.adj, probs = 0.98)
+abline(v = x, lty = 1, col = colors[3])
+text(x = x + 0.3, y = 60, labels = 3)
+
+x <- quantile(Y.adj, probs = 0.99)
+abline(v = x, lty = 1, col = colors[4])
+text(x = x + 0.3, y = 60, labels = 4)

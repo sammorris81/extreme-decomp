@@ -38,7 +38,7 @@ Y <- t(Y)  # Y is originally nt x ns
 # set up the 10 fold cross validation
 n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
-nfolds <- 5
+nfolds <- 10
 cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 
 # loop over the list for cross-validation and get the basis functions

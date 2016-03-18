@@ -13,4 +13,4 @@ table.file   <- paste("./cv-tables/", process, "-", margin, "-", L, "-", cv,
                       ".txt", sep = "")
 
 # fit the model and get predictions
-source(file = "./fitmodel.R"
+source(file = "./fitmodel.R")

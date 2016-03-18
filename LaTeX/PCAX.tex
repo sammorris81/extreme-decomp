@@ -84,37 +84,48 @@ In this section we develop an algorithm to estimate the spatial dependence param
   \item[] (3) Estimate the spatial dependence parameters by minimizing the difference between model-based coefficients, $\vartheta_{ij}$, and smoothed coefficients, ${\tilde \vartheta}_{ij}$.
 \end{itemize}
 
-To estimate the spatial dependence we first remove variation in the marginal distribution.  Let $U_{it} = \sum_{k=1}^{n_t} I[Y_{ik}<Y_{it}]/n_t$, so that the $U_{it}$ are approximately uniform at each location.  Then for some extreme probability $q\in(0,1)$, solving (\ref{ECdev}) suggest the estimate
+To estimate the spatial dependence we first remove variation in the marginal distribution through a sample rank transformation so that the marginal distribution at each location is approximately uniform.
+Let $U_{it} = r_t(\bY_{i})/(n_t + 1)$, where $r_t(\bY_{i})$ is the sample rank of the $t$th entry of $\bY_{i}$.
+Then for some extreme probability $q\in(0,1)$, solving (\ref{ECdev}) suggest the estimate
 \beq\label{EChat0}
    {\hat \vartheta}_{ij}(q) = \frac{\log[Q_{ij}(q)]}{\log(q)},
 \eeq
-where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less then $q$.  Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<\cdots<q_{n_q}$
+where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less then $q$.
+Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<\cdots<q_{n_q}$
 \beq\label{EChat1}
 {\hat \vartheta}_{ij} = \frac{1}{n_q}\sum_{j=1}^{n_q}{\hat \vartheta}_{ij}(q_j).
 \eeq
+If the data are max-stable (e.g. block maxima) then we can set $q_1 = 0$ and average over all observations.
 
-Assuming the true $B_{il}$ are smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.  Let
+Assuming the true $B_{il}$ are smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.
+Let
 \beq\label{EChat2}
   {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
   {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
 \eeq
-where $w_{iu} = \exp(-\phi||\bs_i-\bs_u'||^2)$ is the Gaussian kernel function with bandwidth $\phi$.  The elements ${\hat \vartheta}_{ii}$ do not contributed any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.  To eliminate the influence of these estimates we set $w_{ii}=0$.  However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provides information about small-scale spatial variability.
+where $w_{iu} = \exp(-\phi||\bs_i-\bs_u'||^2)$ is the Gaussian kernel function with bandwidth $\phi$.
+The elements ${\hat \vartheta}_{ii}$ do not contributed any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.
+To eliminate the influence of these estimates we set $w_{ii}=0$.
+However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provides information about small-scale spatial variability.
 
-The dependence parameters are estimated by comparing estimates ${\tilde \vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.  For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$. Given $\alpha=\alphahat$, it remains to estimate $\bB$.  These estimate ${\hat \bB}$ is taken as the minimizer of
+The dependence parameters are estimated by comparing estimates $\tilde{\vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.
+For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$.
+Given $\alpha = \alphahat$, it remains to estimate $\bB$.
+The estimate, $\hat{\bB}$, is taken as the minimizer of
 \beq\label{Bhat}
 m(\bB) = \sum_{i<j} \left({\tilde \vartheta}_{ij} - \vartheta_{ij}\right)^2
   =
   \sum_{i<j} \left\{{\tilde \vartheta}_{ji} - \sum_{l=1}^L[B_{il}^{1/\alphahat} + B_{jl}^{1/\alphahat}]^{\alphahat}\right\}^2
 \eeq
 under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.
-
-The order of the $B_{il}$ is not defined.  Therefore, we sort the terms so that $v_1>...>v_L$.
-
-
+The order of the $B_{il}$ is not defined.
+Therefore, we sort the terms so that $v_1>...>v_L$.
 
 \section{Implementation details}\label{s:MCMC}
-
-The model has three tuning parameters: the quantile threshold $q$, the kernel bandwidth $\phi$, and the number of terms $L$.  How to pick?  Say $q=0.95$ or whatever seems to give GPD marginals.  $\phi$ is something reasonable.  For $L$, we start small and increase until the smallest proportion $v_L$ is less than, say 0.05.
+The model has three tuning parameters: the quantile threshold $q_1$, the kernel bandwidth $\phi$, and the number of terms $L$.
+If the data are already max-stable (e.g. block maxima), then we can use $q_l = 0$; however, in the case of data that are not max-stable, then $q$ should be high enough to give GPD marginals.
+We set $\phi$ to be twice the distance between the two closest sites.
+To pick the optimal number of knots, $L$, we run the model with multiple options and select the $L$ that gives the best predictive performance as measured by 5-fold cross validation and the quantile and Brier score \citep{Gneiting2007}.
 
 Given the estimates of $\alpha$ and $\bB$, the hierarchical model is
 \beqn \label{bayesmodel}
@@ -126,24 +137,59 @@ Given the estimates of $\alpha$ and $\bB$, the hierarchical model is
   \mbox{\ \ \ and \ \ \ }
   \mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2 \nonumber
 \eeqn
-where $g$ is given in (\ref{g}) and $\bX_{it} = (X_{it1},...,X_{itp})^T$ is a vector of spatiotemporal covariates.  To complete the Bayesian model, we select independent normal priors with mean zero and variance 100 for the components of $\bbeta_1$ and $\bbeta_2$ and standard normal prior for $\xi$.
+where $g$ is given in (\ref{g}) and $\bX_{it} = (X_{it1},...,X_{itp})^T$ is a vector of spatiotemporal covariates.
+To complete the Bayesian model, we select independent normal priors with mean zero and variance $\sigma^2_{\beta_1}, \sigma^2_{\beta_1}$ for the components of $\bbeta_1$ and $\bbeta_2$ and normal prior with mean 0 and variance 0.25 for $\xi$.
+Finally, we use independent IG$(0.1, 0.1)$ priors on $\sigma^2_{\beta_1}, \sigma^2_{\beta_1}$.
 
-We estimate parameters $\Theta=\{A_{lt}, \bbeta_1,\bbeta_2,\xi\}$ using Markov chain Monte Carlo. Details...
+We estimate parameters $\Theta=\{A_{lt}, \bbeta_1, \bbeta_2, \xi, \sigma^2_{\beta_1}, \sigma^2_{\beta_2}\}$ using Markov chain Monte Carlo methods.
+We use a Metropolis-Hastings algorithm to update the model parameters with random walk candidate distributions for all parameters except $\sigma^2_{\beta_1}, \sigma^2_{\beta_2}$.
+To update $\sigma^2_{\beta_1}$ and $\sigma^2_{\beta_2}$, we use Gibbs sampling.
 
 \section{Data analysis}\label{s:analysis}
 The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.stat.ga.us/FireData/}).
+Figure \ref{fig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
+Based on this plot, and some other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
 
-\textbf{Plots of a couple year's of data}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.80\linewidth]{plots/spag-rand-25}
+  \caption{Time series of $\log$(acres burned) for 25 randomly selected counties.}
+  \label{fig:firets25}
+\end{figure}
 
-Although some counties contain acres burned for years prior to 1965, we choose to start at 1965 because that is the first year for which data are available for all counties.
 We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_1 = 0.90$ and using $n_q = 100$.
-We set $q_1 = 0.90$ because we only have 49 years of data for each site.
+With more data, it would possible to increase $q_1$, but we set $q_1 = 0.90$ to increase the stability when estimating $\hat{\vartheta}_{ij}$.
 
+Because these data are not max-stable, we select a site-specific threshold $T_i$ to use in the analysis with the following algorithm.
+Without some adjustment to the data, it is challenging to borrow information across sites to inform the threshold selection.
+We first compute
+\begin{align}
+  \tilde{\bY}_i = \frac{\bY_i - \text{med}(\bY_i)}{\text{IQR}(\bY_i)}
+\end{align}
+where med$(\cdot)$ is the median, and IQR$(\cdot)$ is the inter-quartile range.
+Then we combine all sites together and plot a mean residual plot for $\tilde{\bY_i}, i = 1, \ldots, n_s$.
+The mean residual plot is given in Figure \ref{fig:mrlthresh}, with a vertical line indicating the quantile we use for the county-specific values $\bT$.
+Based upon the mean residual plot, we select $q(0.95)$ for the spatially smoothed threshold.
+To calculate $T_i$ for each county, we find $\hat{q}(0.95)$ by taking the 95$th$ quantile for county $i$ and the five closest counties.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width = 0.6\linewidth]{plots/mrl-zoom.pdf}  % markdown/eda/eda-plotting.R
+  \caption{Mean residual plot with line indicating the $T = q(0.95)$ for the analysis.}
+  \label{fig:mrlthresh}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width = 0.47\linewidth, trim = 0 10em 0 10em]{plots/spatial-q95.pdf}
+  \caption{Spatially smoothed threshold values for each county.}
+  \label{fig:mrlthresh}
+\end{figure}
 
 \subsection{Results}\label{s:results}
-We use 10-fold cross-validation to assess the model performance.
-For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
-The remaining 10\% of sites and years are withheld for testing model predictions.
+We use 5-fold cross-validation to assess the predictive performance of a model.
+For each method, we randomly select 80\% of the observations across counties and years to be used as a training set to fit the model.
+The remaining 20\% of sites and years are withheld for testing model predictions.
 To assess the predictions for the test set, we use quantile scores and Brier scores \hl{citation}.
 The quantile score is given by \hl{give formula}.
 The Brier score is given by \hl{give formula}.
@@ -172,12 +218,14 @@ For both of these methods, we use a negative orientation, so a lower score indic
 	\centering
 	\includegraphics[width=0.47\linewidth]{plots/qs-mean}
 	\caption{Average quantile score for selected quantiles}
+  \label{fig:avgqscore}
 \end{figure}
 
 \begin{figure}  % markdown/fire-analysis/combine-tables.R
 	\centering
 	\includegraphics[width=0.47\linewidth]{plots/timing}
 	\caption{Timing comparison of basis functions to kernel functions for the spatial process (100 iterations)}
+  \label{fig:timingcompare}
 \end{figure}
 
 Based upon the cross-validation results, we reran the full data analysis using $L = 15$ basis functions.

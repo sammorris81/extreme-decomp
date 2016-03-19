@@ -14,7 +14,7 @@ source(file = "../../code/R/mcmc.R")
 # load(file = "../code/analysis/fire/gaCntyFires.RData")
 # load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 
-if (Sys.info()["nodename"] == "cwl-mth-sam-001" | 
+if (Sys.info()["nodename"] == "cwl-mth-sam-001" |
     Sys.info()["nodename"] == "cwl-mth-sam-002") {
   setMKLthreads(1)
   do.upload <- TRUE

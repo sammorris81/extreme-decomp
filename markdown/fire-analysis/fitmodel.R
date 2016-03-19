@@ -14,11 +14,22 @@ d <- rdist(cents)
 diag(d) <- 0
 n <- nrow(cents)
 
+# get candidate knot grid for Gaussian kernel functions
+grid.x <- seq(min(cents[, 1]), max(cents[, 1]), length = 100)
+grid.y <- seq(min(cents[, 2]), max(cents[, 2]), length = 100)
+cents.grid <- as.matrix(expand.grid(grid.x, grid.y))
+inGA <- map.where("state", x = cents.grid[, 1], y = cents.grid[, 2])
+cents.grid <- cents.grid[inGA == "georgia", ]
+cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
+
 # standardize the locations
 s <- cents
 s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
-s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
-s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
+s.min   <- apply(s, 2, min)
+s[, 1] <- (s[, 1] - s.min[1]) / s.scale
+s[, 2] <- (s[, 2] - s.min[2]) / s.scale
+cents.grid[, 1] <- (cents.grid[, 1] - s.min[1]) / s.scale
+cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
 
 ################################################################################
 #### Load in cross-validation setup ############################################
@@ -36,9 +47,12 @@ if (process == "ebf") {
   ec.smooth <- out$EC.smooth
   alpha     <- out$alpha
 } else {
+  # get the knot locations
+  knots <- cover.design(cents.grid, nd = L)$design
+
   cat("Start estimation of rho and alpha \n")
   # alpha and rho estimates using only the training data
-  out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = s)
+  out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
   rho       <- out$rho
   ec.smooth <- out$EC.smooth
   alpha     <- out$alpha
@@ -51,20 +65,24 @@ if (process == "ebf") {
 ################################################################################
 if (margin == "ebf") {
   if (process == "ebf") {  # we can just copy the empirical basis functions
-    cat("Using spatial basis functions for covariates \n")
+    cat("B.cov = B.sp \n")
     B.cov <- B.sp
   } else {  # we need to construct the empirical basis functions
     cat("Estimating basis functions for covariates \n")
     B.cov <- get.factors.EC(ec.hat[[cv]], L = L, s = s)$est
   }
-} else if (margin == "2bs") {
-  if (L == 4) {
-    # we can't do 2 degrees of freedom for basis functions, so opting for 
-    # second order linear trend
-    B.cov <- cbind(s[, 1], s[, 2], s[, 1] * s[, 2], s[, 1]^2, s[, 2]^2)
-  } else if (L > 4) {
-    # we already scale the spatial locations, so not necessary to rescale
-    B.cov <- bspline.2d(s = s, scale = FALSE, df.x = sqrt(L), df.y = sqrt(L))
+} else if (margin == "gsk") {
+  if (process == "ebf") {
+    # get the knot locations
+    knots <- cover.design(cents.grid, nd = L)$design
+
+    cat("Start estimation of Gaussian kernels for covariates \n")
+    # alpha and rho estimates using only the training data
+    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
+    B.cov <- getW(rho = out$rho, dw2 = out$dw2)
+  } else{
+    cat("B.cov = B.sp \n")
+    B.cov <- B.sp
   }
 }
 
@@ -84,11 +102,7 @@ Y[cv.idx[[cv]]] <- NA  # remove the testing data
 
 ns <- nrow(Y)
 nt <- ncol(Y)
-if (margin == "2bs" & L == 4) {
-  np <- 2 + (L + 1) * 2  # 2nd order spatial trend has 5
-} else {
-  np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
-}
+np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
@@ -122,19 +136,28 @@ thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
 
 ################################################################################
+#### initial values ############################################################
+################################################################################
+# the default estimate usually puts the intercept at something much larger
+# than 0 thereby making it difficult to get sigma^2_beta1 to be reasonably
+# sized which greatly impacts the ability to get the MCMC to mix.
+beta1.init <- rep(0, np)
+
+################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
 iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <- 200; burn <- 150; update <- 10  # for testing
+# iters <-2000; burn <- 500; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.sp, alpha = alpha,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+                beta1 = beta1.init, iters = iters, burn = burn, update = update,
+                iterplot = FALSE)
 cat("Finished fit and predict \n")
 
 # calculate the scores

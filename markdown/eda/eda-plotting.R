@@ -193,9 +193,13 @@ gpd.fitrange(Y[1, ], umin = 10, umax = 1900, nint = 20)
 mrl.plot(Y.adj, nint = 100)
 title("MRL plot, full range of Y.adj")
 
+mrl.plot(Y.adj, umin = min(Y.adj),
+         umax = quantile(Y.adj, probs = 0.99), nint = 100,
+         xlab = "Adjusted Y")
+
 colors <- rainbow_hcl(n = 4)
-mrl.plot(Y.adj, umin = quantile(Y.adj, probs = 0.4), 
-         umax = quantile(Y.adj, probs = 0.999), nint = 100, 
+mrl.plot(Y.adj, umin = quantile(Y.adj, probs = 0.4),
+         umax = quantile(Y.adj, probs = 0.999), nint = 100,
          xlab = "Adjusted Y")
 title("MRL plot, zoom range to q(0.999)")
 

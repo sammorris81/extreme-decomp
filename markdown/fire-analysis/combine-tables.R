@@ -3,9 +3,11 @@ rm(list = ls())
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
-procs <- c("basis", "kern")  # what process determines the spatial structure
+procs <- c("ebf", "gsk")  # what process determines the spatial structure
 nprocs <- length(procs)
-bases   <- c(2, 5, 10, 15, 20)
+margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
+nmargs <- length(margs)
+bases   <- c(5, 10, 15, 20)
 nbases  <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)
@@ -13,10 +15,11 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
-qs.results <- vector(mode = "list", length = nbases * nprocs)  # each element is a matrix
-bs.results <- vector(mode = "list", length = nbases * nprocs)
+# each element of these lists is a matrix
+qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
+bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
 
-for (b in 1:(nbases * nprocs)) {
+for (b in 1:(nbases * nmargs * nprocs)) {
   qs.results[[b]] <- matrix(NA, nfolds, nprobs.qs)
   bs.results[[b]] <- matrix(NA, nfolds, nprobs.bs)
   colnames(qs.results[[b]]) <- probs.for.qs
@@ -27,14 +30,22 @@ for (b in 1:(nbases * nprocs)) {
 
 # timing is a data.frame that contains time, hostname, basis, and fold
 timing <- data.frame(timing = double(), hostname = factor(),
-                     proc = factor(), basis = factor(), fold = factor())
+                     proc = factor(), margin = factor(),
+                     basis = factor(), fold = factor())
 for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
-  basis.idx <- which(bases == split[2])
-  idx       <- (proc.idx - 1) * nbases + basis.idx
-  fold      <- as.numeric(split[3])
+  margin.idx <- which(procs == split[2])
+  basis.idx <- which(bases == split[3])
+
+  # idx: 1 - 4: ebf, ebf
+  # idx: 5 - 8: ebf, gsk
+  # idx: 9 - 12: gsk, ebf
+  # idx: 13 - 16: gsk, gsk
+  idx       <- (proc.idx - 1) * (nbases * nmargs) +
+               (margin.idx - 1) * nbases + basis.idx
+  fold      <- as.numeric(split[4])
   table.set <- read.table(paste("cv-tables/", files[i], sep = ""),
                           stringsAsFactors = FALSE)
 
@@ -42,15 +53,13 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   timing.tail <- tail(table.set$x, 2)
   timing.row <- data.frame(timing = as.numeric(timing.tail[1]),
                            host = timing.tail[2],
-                           proc = split[1], basis = split[2],
-                           fold = as.factor(fold))
+                           proc = split[1], margin = split[2],
+                           basis = split[3], fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
   qs.results[[idx]][fold, ] <- as.numeric(table.set$x[1:nprobs.qs])
-  if (length(table.set$x) == nprobs.qs + nprobs.bs + 2) {
-    bs.start <- nprobs.qs + 1
-    bs.end   <- bs.start + 1
-    bs.results[[idx]][fold, ] <- as.numeric(table.set$x[bs.start:bs.end])
-  }
+  bs.start <- nprobs.qs + 1
+  bs.end   <- bs.start + 1
+  bs.results[[idx]][fold, ] <- as.numeric(table.set$x[bs.start:bs.end])
 }
 
 # combine lists into a single matrix that averages qs over all folds for

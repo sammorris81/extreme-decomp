@@ -148,7 +148,7 @@ beta1.init <- rep(0, np)
 ################################################################################
 iters  <- 30000
 burn   <- 20000
-update <- 1000
+update <- 100
 
 # iters <-2000; burn <- 500; update <- 10  # for testing
 
@@ -157,7 +157,7 @@ set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = thresh, B = B.sp, alpha = alpha,
                 beta1 = beta1.init, iters = iters, burn = burn, update = update,
-                iterplot = FALSE)
+                iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # calculate the scores

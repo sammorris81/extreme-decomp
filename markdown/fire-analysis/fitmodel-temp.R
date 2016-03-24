@@ -49,7 +49,7 @@ if (process == "ebf") {
 } else {
   # get the knot locations
   knots <- cover.design(cents.grid, nd = L)$design
-
+  
   cat("Start estimation of rho and alpha \n")
   # alpha and rho estimates using only the training data
   out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
@@ -75,7 +75,7 @@ if (margin == "ebf") {
   if (process == "ebf") {
     # get the knot locations
     knots <- cover.design(cents.grid, nd = L)$design
-
+    
     cat("Start estimation of Gaussian kernels for covariates \n")
     # alpha and rho estimates using only the training data
     out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
@@ -104,6 +104,11 @@ ns <- nrow(Y)
 nt <- ncol(Y)
 np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 
+## standardize spatial basis functions
+for (i in 1:L) {
+  B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
+}
+
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
@@ -131,7 +136,7 @@ for (i in 1:ns) {
 thresh90 <- matrix(thresh90, ns, nt)
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
-thresh90.tst <- thresh90[cv.idx[[cv]]]
+thresh.tst   <- thresh90[cv.idx[[cv]]]
 thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
 
@@ -152,18 +157,65 @@ update <- 100
 
 # iters <-2000; burn <- 500; update <- 10  # for testing
 
+## Prior 1
+# beta1.tau.a = 1, beta1.tau.b = 1
+# beta2.tau.a = 1, beta2.tau.b = 1
+
+## Prior 2
+# beta1.tau.a = 0.1, beta1.tau.b = 0.1
+# beta2.tau.a = 1, beta2.tau.b = 1
+
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
+fit1 <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
+                 # beta1 = beta1.init,
+                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                 beta2.tau.a = 10, beta2.tau.b = 10,
+                 # beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                 beta1.sd = 10, beta2.sd = 1, iters = iters, burn = burn, 
+                 update = update, iterplot = FALSE)
+cat("Finished fit and predict \n")
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+# fit the model using the training data
+fit2 <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
+                 # beta1 = beta1.init,
+                 beta1.tau.a = 1, beta1.tau.b = 1,
+                 beta2.tau.a = 1, beta2.tau.b = 1,
+                 # beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                 beta1.sd = 10, beta2.sd = 1, iters = iters, burn = burn, 
+                 update = update, iterplot = FALSE)
+cat("Finished fit and predict \n")
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+# fit the model using the training data
+fit3 <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
                 # beta1 = beta1.init,
-                # beta1.tau.a = 0.1, beta1.tau.b = 0.1,  # seems to be reasonable
                 beta1.tau.a = 1, beta1.tau.b = 1,
-                beta2.tau.a = 1, beta2.tau.b = 1,
+                beta2.tau.a = 10, beta2.tau.b = 10,
                 # beta2.tau.a = 0.1, beta2.tau.b = 0.1,
                 beta1.sd = 10, beta2.sd = 1, iters = iters, burn = burn, 
-                update = update, iterplot = TRUE)
+                update = update, iterplot = FALSE)
 cat("Finished fit and predict \n")
+
+
+## get posterior distribution for each county
+mus <- logsigs <- matrix(0, nrow = (iters - burn), ncol = ns)
+
+betamu <- apply(fit$beta1, 2, mean)
+betalogsig <- apply(fit$beta2, 2, mean)
+
+# get an intercept and time coefficient for each county
+betamu.ints <- betamu[1] + B.est %*% betamu[3:(L + 2)]
+betamu.time <- betamu[2] + B.est %*% betamu[(L + 3):np]
+betalogsig.ints <- betalogsig[1] + B.est %*% betalogsig[3:(L + 2)]
+betalogsig.time <- betalogsig[2] + B.est %*% betalogsig[(L + 3):np]
+
+
+
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

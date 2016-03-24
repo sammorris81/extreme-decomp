@@ -72,16 +72,16 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   # INITIAL VALUES:
   if (is.null(beta2)) {
     beta2    <- rep(0, p.sig)
-    beta2[1] <- log(sqrt(6) * sd(as.vector(y[y > thresh]), na.rm = TRUE) / pi)
+    beta2[1] <- log(sqrt(6) * sd(as.vector(y), na.rm = TRUE) / pi)
   }
   
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
-    beta.1.1 <- mean(y[y > thresh], na.rm = TRUE) - exp(beta2[1]) * 0.577
+    # beta.1.1 <- mean(y, na.rm = TRUE) - exp(beta2[1]) * 0.577
     # if (abs(beta.1.1) > 20) {
     #   beta.1.1 <- sign(beta.1.1) * 20
     # }
-    beta1[1] <- beta.1.1
+    # beta1[1] <- beta.1.1
   }
   
   mu <- logsig <- 0
@@ -356,7 +356,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         #      xlab = acc.rate.logsig[p.sig], type = "l")
         
         plot(keep.beta.sd[start:iter, 2], 
-             main = bquote(paste(mu, ": ", sigma[sigma])), type = "l")
+             main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
         
         plot(keep.xi[start:iter], main = bquote(xi), 
              xlab = acc.rate.xi, type = "l")

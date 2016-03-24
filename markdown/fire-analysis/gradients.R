@@ -45,6 +45,8 @@ grad.logsig.beta <- function(beta, beta.mn, beta.sd, X.sig, y, theta, mu, xi,
   # loglikelihood:
   tx.1 <- theta^(-xi) * (xi.y.sig - xi.mu.sig)
   lltx <- (tx.1 + theta^(-xi))^(-1 / xi_star - 1) / xi_star
-  for (p in 1:p.sig)
+  for (p in 1:p.sig) {
+    grad.p <- lltx * (X.sig[, , p] * )
+  }
   
 }

@@ -201,6 +201,35 @@ fit3 <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
                 update = update, iterplot = FALSE)
 cat("Finished fit and predict \n")
 
+par(mfrow = c(3, 4))
+these.iters <- seq(1, 10000, by = 2)
+for (i in 1:12) {
+  plot(fit1$beta1[these.iters, i], type = "l", 
+       main = "Beta mu Fit 1", ylab = bquote(beta[.(i)]))
+}
+
+for (i in 1:12) {
+  plot(fit2$beta1[, i], type = "l", 
+       main = "Beta mu Fit 2", ylab = bquote(beta[.(i)]))
+}
+
+for (i in 1:12) {
+  plot(fit3$beta1[, i], type = "l", 
+       main = "Beta mu Fit 3", ylab = bquote(beta[.(i)]))
+}
+
+for (i in 1:12) {
+  plot(fit1$beta2[, i], type = "l", 
+       main = "Beta sig Fit 1", ylab = bquote(beta[.(i)]))
+}
+for (i in 1:12) {
+  plot(fit2$beta2[, i], type = "l", 
+       main = "Beta sig Fit 2", ylab = bquote(beta[.(i)]))
+}
+for (i in 1:12) {
+  plot(fit3$beta2[, i], type = "l", 
+       main = "Beta sig Fit 3", ylab = bquote(beta[.(i)]))
+}
 
 ## get posterior distribution for each county
 mus <- logsigs <- matrix(0, nrow = (iters - burn), ncol = ns)

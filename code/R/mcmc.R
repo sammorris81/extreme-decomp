@@ -31,8 +31,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                    beta1 = NULL, beta1.mn = 0, beta1.sd = 10, 
                    beta2 = NULL, beta2.mn = 0, beta2.sd = 1,
                    xi = 0.001, 
-                   beta1.tau.a = 1, beta1.tau.b = 1, 
-                   beta2.tau.a = 1, beta2.tau.b = 1,
+                   beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
+                   beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
@@ -77,11 +77,6 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
-    # beta.1.1 <- mean(y, na.rm = TRUE) - exp(beta2[1]) * 0.577
-    # if (abs(beta.1.1) > 20) {
-    #   beta.1.1 <- sign(beta.1.1) * 20
-    # }
-    # beta1[1] <- beta.1.1
   }
   
   mu <- logsig <- 0
@@ -173,65 +168,52 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       }
     }
 
-    for (j in 1:p.sig) { # beta2
-      att.beta2[j] <- att.beta2[j] + 1
-      canb       <- rnorm(1, beta2[j], MH.beta2[j])
-      canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
-      canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-      R          <- sum(canll - curll) +
-        dnorm(canb, beta2.mn, beta2.sd, log = TRUE) -
-        dnorm(beta2[j], beta2.mn, beta2.sd, log = TRUE)
-      if (log(runif(1)) < R) {
-        acc.beta2[j] <- acc.beta2[j] + 1
-        beta2[j]     <- canb
-        logsig       <- canlogs
-        curll        <- canll
-      }
-    }
-
-    # # beta1 - in a block
-    # att.beta1 <- att.beta1 + 1
-    # canb      <- rnorm(p.mu, beta1, MH.beta1)
-    # canmu     <- 0
-    # for (j in 1:p.mu) {  # beta1
-    #   canmu   <- canmu + X.mu[, , j] * canb[j]
-    # }
-    # canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-    # R            <- sum(canll - curll) +
-    #                 sum(dnorm(canb, 0, beta1.sd, log = TRUE) -
-    #                     dnorm(beta1, 0, beta1.sd, log = TRUE))
-    # if (log(runif(1)) < R) {
-    #   acc.beta1 <- acc.beta1 + 1
-    #   beta1     <- canb
-    #   mu        <- canmu
-    #   curll     <- canll
-    # }
-    # 
-    # 
-    # att.beta2 <- att.beta2 + 1
-    # canb      <- rnorm(p.sig, beta2, MH.beta2)
-    # canlogs   <- 0
     # for (j in 1:p.sig) { # beta2
-    #   canlogs <- canlogs + X.sig[, , j] * canb[j]
-    # }
-    # canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-    # R          <- sum(canll - curll) +
-    #               sum(dnorm(canb, 0, beta2.sd, log = TRUE) -
-    #                   dnorm(beta2, 0, beta2.sd, log = TRUE))
-    # if (log(runif(1)) < R) {
-    #   acc.beta2 <- acc.beta2 + 1
-    #   beta2     <- canb
-    #   logsig    <- canlogs
-    #   curll     <- canll
+    #   att.beta2[j] <- att.beta2[j] + 1
+    #   canb       <- rnorm(1, beta2[j], MH.beta2[j])
+    #   canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
+    #   canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+    #   R          <- sum(canll - curll) +
+    #     dnorm(canb, beta2.mn, beta2.sd, log = TRUE) -
+    #     dnorm(beta2[j], beta2.mn, beta2.sd, log = TRUE)
+    #   if (log(runif(1)) < R) {
+    #     acc.beta2[j] <- acc.beta2[j] + 1
+    #     beta2[j]     <- canb
+    #     logsig       <- canlogs
+    #     curll        <- canll
+    #   }
     # }
 
-    # update prior standard deviations: prior IG(0.1, 0.1)
-    beta1.var <- 1 / rgamma(1, beta1.tau.a + p.mu / 2,
-                            beta1.tau.b + sum((beta1 - beta1.mn)^2) / 2)
-    beta2.var <- 1 / rgamma(1, beta2.tau.a + p.sig / 2,
-                            beta2.tau.b + sum((beta2 - beta2.mn)^2) / 2)
-    beta1.sd  <- sqrt(beta1.var)
-    beta2.sd  <- sqrt(beta2.var)
+    att.beta2 <- att.beta2 + 1
+    canb      <- rnorm(p.sig, beta2, MH.beta2)
+    canlogs   <- 0
+    for (j in 1:p.sig) { # beta2
+      canlogs <- canlogs + X.sig[, , j] * canb[j]
+    }
+    canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+    R          <- sum(canll - curll) +
+                  sum(dnorm(canb, 0, beta2.sd, log = TRUE) -
+                      dnorm(beta2, 0, beta2.sd, log = TRUE))
+    if (log(runif(1)) < R) {
+      acc.beta2 <- acc.beta2 + 1
+      beta2     <- canb
+      logsig    <- canlogs
+      curll     <- canll
+    }
+    
+    # update prior standard deviations: prior IG(a, b)
+    if (!beta1.sd.fix) {
+      beta1.var <- 1 / rgamma(1, beta1.tau.a + p.mu / 2,
+                              beta1.tau.b + sum((beta1 - beta1.mn)^2) / 2)
+      beta1.sd  <- sqrt(beta1.var)
+    }
+    
+    if (!beta2.sd.fix) {
+      beta2.var <- 1 / rgamma(1, beta2.tau.a + p.sig / 2,
+                              beta2.tau.b + sum((beta2 - beta2.mn)^2) / 2)
+      
+      beta2.sd  <- sqrt(beta2.var)
+    }
     
     # xi
     att.xi <- att.xi + 1
@@ -321,49 +303,66 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         acc.rate.mu     <- round(acc.beta1 / att.beta1, 3)
         acc.rate.logsig <- round(acc.beta2 / att.beta2, 3)
         acc.rate.xi     <- round(acc.xi / att.xi, 3)
-        par(mfrow = c(3, 3))
+        
         if (iter > burn) {
           start <- burn + 1
         } else {
           start <- max(iter - 2000, 1)
         }
         
-        plot(keep.beta1[start:iter, 1], 
-             main = bquote(paste(mu, ": ", beta[0])), 
-             xlab = acc.rate.mu[1], type = "l")
+        if (!exists("this.plot")) {
+          this.plot <- "mu"
+        }
         
-        plot(keep.beta1[start:iter, 2], 
-             main = bquote(paste(mu, ": ", beta[t])),
-             xlab = acc.rate.mu[2], type = "l")
-        # plot(keep.beta1[1:iter, p], main = "beta1[p]", type = "l")
-        
-        # plot(keep.beta1[start:iter, p.mu], main = "beta1[p]", 
-        #      xlab = acc.rate.mu[p.mu], type = "l")
-        
-        plot(keep.beta.sd[start:iter, 1], 
-             main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
-        
-        plot(keep.beta2[start:iter, 1],
-             main = bquote(paste(sigma, ": ", beta[0])), 
-             xlab = acc.rate.logsig[1], type = "l")
-        
-        plot(keep.beta2[start:iter, 2], 
-             main = bquote(paste(sigma, ": ", beta[t])),
-             xlab = acc.rate.logsig[2], type = "l")
-        # plot(keep.beta2[1:iter, p], main = "beta2[p]", type = "l")
-        
-        # plot(keep.beta2[start:iter, p.sig], main = "beta2[p]", 
-        #      xlab = acc.rate.logsig[p.sig], type = "l")
-        
-        plot(keep.beta.sd[start:iter, 2], 
-             main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
-        
-        plot(keep.xi[start:iter], main = bquote(xi), 
-             xlab = acc.rate.xi, type = "l")
-        
-        plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
-        
-        plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+        if (this.plot == "mu") {
+          par(mfrow = c(3, 4))
+          for (plot.idx in 1:12) {
+            plot(keep.beta1[start:iter, plot.idx], 
+                 main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
+                 xlab = acc.rate.mu[plot.idx], type = "l")
+          }
+          this.plot <- "sig"
+        } else if (this.plot == "sig") {
+          for (plot.idx in 1:12) {
+            plot(keep.beta2[start:iter, plot.idx], 
+                 main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
+                 xlab = acc.rate.logsig[plot.idx], type = "l")
+          }
+          this.plot <- "all"
+        } else {
+          par(mfrow = c(3, 3))
+          
+          plot(keep.beta1[start:iter, 1], 
+               main = bquote(paste(mu, ": ", beta[0])), 
+               xlab = acc.rate.mu[1], type = "l")
+          
+          plot(keep.beta1[start:iter, 2], 
+               main = bquote(paste(mu, ": ", beta[t])),
+               xlab = acc.rate.mu[2], type = "l")
+          
+          plot(keep.beta.sd[start:iter, 1], 
+               main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
+          
+          plot(keep.beta2[start:iter, 1],
+               main = bquote(paste(sigma, ": ", beta[0])), 
+               xlab = acc.rate.logsig[1], type = "l")
+          
+          plot(keep.beta2[start:iter, 2], 
+               main = bquote(paste(sigma, ": ", beta[t])),
+               xlab = acc.rate.logsig[2], type = "l")
+          
+          plot(keep.beta.sd[start:iter, 2], 
+               main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
+          
+          plot(keep.xi[start:iter], main = bquote(xi), 
+               xlab = acc.rate.xi, type = "l")
+          
+          plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
+          
+          plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+          
+          this.plot <- "mu"
+        }
       }
       cat("    Finished fit:", iter, "of", iters, "iters \n")
     }
@@ -385,7 +384,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
        xi = keep.xi[return.iters],
-       betavar = keep.beta.sd[return.iters, , drop = FALSE],
+       betasd = keep.beta.sd[return.iters, , drop = FALSE],
        theta.mn = theta.mn,
        A = keep.A[return.iters, , , drop = FALSE], 
        y.pred = keep.y,

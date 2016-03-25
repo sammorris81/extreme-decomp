@@ -128,7 +128,7 @@ for (i in 1:ns) {
   thresh95[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
   thresh99[i] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
 }
-thresh90 <- matrix(thresh90, ns, nt)
+thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 thresh90.tst <- thresh90[cv.idx[[cv]]]
@@ -157,7 +157,7 @@ set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 1, beta2.tau.b = 1, beta1.sd.fix = FALSE,
+                beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
 cat("Finished fit and predict \n")
 
@@ -181,4 +181,5 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, out, thresh, alpha, fit, cv.idx, results, file = results.file)
+save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
+     alpha, fit, cv.idx, results, file = results.file)

@@ -39,52 +39,19 @@ load(file = "./cv-extcoef.RData")
 ################################################################################
 #### Get weight functions for spatial process ##################################
 ################################################################################
-if (process == "ebf") {
-  cat("Start basis function estimation \n")
-  # basis function estimates using only the training data
-  out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
-  B.sp      <- out$est
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
-} else {
-  # get the knot locations
-  knots <- cover.design(cents.grid, nd = L)$design
-
-  cat("Start estimation of rho and alpha \n")
-  # alpha and rho estimates using only the training data
-  out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-  rho       <- out$rho
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
-  dw2       <- out$dw2
-  B.sp      <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
-}
+cat("Start estimation of rho and alpha \n")
+# alpha and rho estimates using only the training data
+out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = s)
+rho       <- out$rho
+ec.smooth <- out$EC.smooth
+alpha     <- out$alpha
+dw2       <- out$dw2
+B.sp      <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
 
 ################################################################################
 #### Covariate basis functions #################################################
 ################################################################################
-if (margin == "ebf") {
-  if (process == "ebf") {  # we can just copy the empirical basis functions
-    cat("B.cov = B.sp \n")
-    B.cov <- B.sp
-  } else {  # we need to construct the empirical basis functions
-    cat("Estimating basis functions for covariates \n")
-    B.cov <- get.factors.EC(ec.hat[[cv]], L = L, s = s)$est
-  }
-} else if (margin == "gsk") {
-  if (process == "ebf") {
-    # get the knot locations
-    knots <- cover.design(cents.grid, nd = L)$design
-
-    cat("Start estimation of Gaussian kernels for covariates \n")
-    # alpha and rho estimates using only the training data
-    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-    B.cov <- getW(rho = out$rho, dw2 = out$dw2)
-  } else{
-    cat("B.cov = B.sp \n")
-    B.cov <- B.sp
-  }
-}
+B.cov <- B.sp
 
 ################################################################################
 #### Run the MCMC ##############################################################
@@ -154,6 +121,7 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 iters  <- 30000
 burn   <- 20000
 update <- 1000
+# update <- 100
 
 # iters <-2000; burn <- 500; update <- 10  # for testing
 

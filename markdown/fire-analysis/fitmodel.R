@@ -148,17 +148,20 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 ################################################################################
 iters  <- 30000
 burn   <- 20000
-update <- 1000
+# update <- 1000
+update <- 100
 
 # iters <-2000; burn <- 500; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
+# fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
+fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # calculate the scores

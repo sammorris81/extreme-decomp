@@ -39,10 +39,10 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   margin.idx <- which(procs == split[2])
   basis.idx <- which(bases == split[3])
 
-  # idx: 1 - 4: ebf, ebf
-  # idx: 5 - 8: ebf, gsk
-  # idx: 9 - 12: gsk, ebf
-  # idx: 13 - 16: gsk, gsk
+  # idx: 1 - 4: ebf spatial, ebf marginal
+  # idx: 5 - 8: ebf spatial, gsk marginal
+  # idx: 9 - 12: gsk spatial, ebf marginal
+  # idx: 13 - 16: gsk spatial, gsk marginal
   idx       <- (proc.idx - 1) * (nbases * nmargs) +
                (margin.idx - 1) * nbases + basis.idx
   fold      <- as.numeric(split[4])
@@ -65,23 +65,32 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
 # combine lists into a single matrix that averages qs over all folds for
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
-qs.results.mn <- qs.results.se <- matrix(NA, nbases * 2, nprobs.qs)
-bs.results.mn <- bs.results.se <- matrix(NA, nbases * 2, nprobs.bs)
+qs.results.mn <- qs.results.se <- matrix(NA, nbases * nmargs * 2, nprobs.qs)
+bs.results.mn <- bs.results.se <- matrix(NA, nbases * nmargs * 2, nprobs.bs)
+# idx: 1 - 4: ebf spatial, ebf marginal
+# idx: 5 - 8: ebf spatial, gsk marginal
+# idx: 9 - 12: gsk spatial, ebf marginal
+# idx: 13 - 16: gsk spatial, gsk marginal
 for (p in 1:nprocs) {
-  for (b in 1:nbases) {
-    this.row <- (p - 1) * nbases + b
-    this.qs <- qs.results[[this.row]]
-    this.bs <- bs.results[[this.row]]
-    qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
-                                       na.rm = TRUE)
-    bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
-                                       na.rm = TRUE)
-    qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
-                                       na.rm = TRUE) / sqrt(10)
-    bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
-                                       na.rm = TRUE) / sqrt(10)
+  for (m in 1:nmargs) {
+    for (b in 1:nbases) {
+      this.row <- (p - 1) * (nbases * nmargs) +
+                  (m - 1) * nbases + b
+      this.qs <- qs.results[[this.row]][-7, ]
+      this.bs <- bs.results[[this.row]][-7, ]
+      qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
+                                         na.rm = TRUE)
+      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
+                                         na.rm = TRUE)
+      qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
+                                         na.rm = TRUE) / sqrt(10)
+      bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
+                                         na.rm = TRUE) / sqrt(10)
+    }
   }
 }
+
+round(100 * bs.results.mn, 3)
 
 t.test(qs.results[[4]][, 1], qs.results[[9]][, 1], paired = TRUE)
 t.test(qs.results[[4]][, 2], qs.results[[9]][, 2], paired = TRUE)

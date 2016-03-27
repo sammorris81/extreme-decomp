@@ -7,7 +7,7 @@ procs <- c("ebf", "gsk")  # what process determines the spatial structure
 nprocs <- length(procs)
 margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
 nmargs <- length(margs)
-bases   <- c(5, 10, 15, 20)
+bases   <- c(5, 10, 15, 20, 25)
 nbases  <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)
@@ -76,11 +76,11 @@ for (p in 1:nprocs) {
     for (b in 1:nbases) {
       this.row <- (p - 1) * (nbases * nmargs) +
                   (m - 1) * nbases + b
-      this.qs <- qs.results[[this.row]][-7, ]
-      this.bs <- bs.results[[this.row]][-7, ]
+      this.qs <- qs.results[[this.row]][1:5, ]
+      this.bs <- bs.results[[this.row]][1:5, ]
       qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
                                          na.rm = TRUE)
-      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
+      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean, 
                                          na.rm = TRUE)
       qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
                                          na.rm = TRUE) / sqrt(10)
@@ -90,7 +90,115 @@ for (p in 1:nprocs) {
   }
 }
 
-round(100 * bs.results.mn, 3)
+process.col <- c(rep("ebf", nbases * 2), rep("gsk", nbases * 2))
+margin.col  <- c(rep("ebf", nbases), rep("gsk", nbases), 
+                 rep("ebf", nbases), rep("gsk", nbases))
+bases.col   <- rep(bases, 4)
+results.df <- data.frame(process = as.factor(process.col), 
+                         margin = as.factor(margin.col), 
+                         bases = as.integer(bases.col),
+                         bs95 = as.double(100 * bs.results.mn[, 1]),
+                         bs99 = as.double(100 * bs.results.mn[, 2]),
+                         qs95 = as.double(qs.results.mn[, 1]),
+                         qs99 = as.double(qs.results.mn[, 5]))
+
+# look at plots by process/margin
+these <- results.df$process == "ebf" & results.df$margin == "ebf"
+plot(results.df$bases[these], results.df$bs95[these], type = "l",
+     main = "Brier score (x 100) for exceeding q(0.95)",
+     ylim = range(results.df$bs95), ylab = "Brier score (x 100)",
+     xlab = "Number of knots/basis functions",
+     col = "dodgerblue1", lty = 1)
+these <- results.df$process == "ebf" & results.df$margin == "gsk"
+lines(results.df$bases[these], results.df$bs95[these], 
+      col = "dodgerblue1", lty = 2)
+these <- results.df$process == "gsk" & results.df$margin == "ebf"
+lines(results.df$bases[these], results.df$bs95[these], 
+      col = "firebrick1", lty = 1)
+these <- results.df$process == "gsk" & results.df$margin == "gsk"
+lines(results.df$bases[these], results.df$bs95[these], 
+      col = "firebrick1", lty = 2)
+legend("topright", legend = c("Process: ebf Margin: ebf              ", 
+                              "Process: ebf Margin: gsk              ", 
+                              "Process: gsk Margin: ebf              ", 
+                              "Process: gsk Margin: gsk              "),
+       lty = c(1, 2, 1, 2), 
+       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1"))
+
+
+# look at plots by process/margin
+these <- results.df$process == "ebf" & results.df$margin == "ebf"
+plot(results.df$bases[these], results.df$bs99[these], type = "l",
+     main = "Brier score (x 100) for exceeding q(0.99)",
+     ylim = range(results.df$bs99), ylab = "Brier score (x 100)",
+     xlab = "Number of knots/basis functions",
+     col = "dodgerblue1", lty = 1)
+these <- results.df$process == "ebf" & results.df$margin == "gsk"
+lines(results.df$bases[these], results.df$bs99[these], 
+      col = "dodgerblue1", lty = 2)
+these <- results.df$process == "gsk" & results.df$margin == "ebf"
+lines(results.df$bases[these], results.df$bs99[these], 
+      col = "firebrick1", lty = 1)
+these <- results.df$process == "gsk" & results.df$margin == "gsk"
+lines(results.df$bases[these], results.df$bs99[these], 
+      col = "firebrick1", lty = 2)
+legend("topright", legend = c("Process: ebf Margin: ebf              ", 
+                              "Process: ebf Margin: gsk              ", 
+                              "Process: gsk Margin: ebf              ", 
+                              "Process: gsk Margin: gsk              "),
+       lty = c(1, 2, 1, 2), 
+       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1"))
+
+# look at plots by process/margin
+these <- results.df$process == "ebf" & results.df$margin == "ebf" & results.df$bases != 25
+plot(results.df$bases[these], results.df$qs95[these], type = "l",
+     main = "Quantile score for q(0.95)",
+     ylim = range(results.df$qs95[results.df$bases != 25]), ylab = "Quantile score",
+     xlab = "Number of knots/basis functions",
+     col = "dodgerblue1", lty = 1)
+these <- results.df$process == "ebf" & results.df$margin == "gsk" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs95[these], 
+      col = "dodgerblue1", lty = 2)
+these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs95[these], 
+      col = "firebrick1", lty = 1)
+these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs95[these], 
+      col = "firebrick1", lty = 2)
+legend("topright", legend = c("Process: ebf Margin: ebf              ", 
+                              "Process: ebf Margin: gsk              ", 
+                              "Process: gsk Margin: ebf              ", 
+                              "Process: gsk Margin: gsk              "),
+       lty = c(1, 2, 1, 2), 
+       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1"))
+
+
+# look at plots by process/margin
+these <- results.df$process == "ebf" & results.df$margin == "ebf" & results.df$bases != 25
+plot(results.df$bases[these], results.df$qs99[these], type = "l",
+     main = "Quantile score for q(0.99)",
+     ylim = range(results.df$qs99[results.df$bases != 25]), ylab = "Quantile score",
+     xlab = "Number of knots/basis functions",
+     col = "dodgerblue1", lty = 1)
+these <- results.df$process == "ebf" & results.df$margin == "gsk" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs99[these], 
+      col = "dodgerblue1", lty = 2)
+these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs99[these], 
+      col = "firebrick1", lty = 1)
+these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 25
+lines(results.df$bases[these], results.df$qs99[these], 
+      col = "firebrick1", lty = 2)
+legend("topright", legend = c("Process: ebf Margin: ebf              ", 
+                              "Process: ebf Margin: gsk              ", 
+                              "Process: gsk Margin: ebf              ", 
+                              "Process: gsk Margin: gsk              "),
+       lty = c(1, 2, 1, 2), 
+       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1"))
+
+
+
+
 
 t.test(qs.results[[4]][, 1], qs.results[[9]][, 1], paired = TRUE)
 t.test(qs.results[[4]][, 2], qs.results[[9]][, 2], paired = TRUE)

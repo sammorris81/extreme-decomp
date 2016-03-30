@@ -1,3 +1,4 @@
+rm(list = ls())
 library(colorspace)
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 
@@ -166,7 +167,9 @@ for (i in 1:length(counties)) {
 axis(1, at = seq(1, nt), labels = rownames(Y))
 
 # mean residual life plot - first center and scale
-library(ismev)
+# library(ismev) - rewrote mrl plot in auxfunctions
+library(Rcpp)
+source("../../code/R/auxfunctions.R", chdir = TRUE)
 Y.adj <- Y <- t(Y)
 qs <- apply(Y, 1, quantile, probs = c(0.25, 0.75))
 for (i in 1:ns) {
@@ -197,11 +200,26 @@ mrl.plot(Y.adj, umin = min(Y.adj),
          umax = quantile(Y.adj, probs = 0.99), nint = 100,
          xlab = "Adjusted Y")
 
+quartz(width = 16, height = 8)
+par(mfrow = c(1, 2))
 colors <- rainbow_hcl(n = 4)
-mrl.plot(Y.adj, umin = quantile(Y.adj, probs = 0.4),
-         umax = quantile(Y.adj, probs = 0.999), nint = 100,
+mrl.plot(Y.adj, umin = min(Y.adj), umax = quantile(Y.adj, probs = 0.995), 
+         nint = 100, xlab = "Adjusted Y")
+x <- quantile(Y.adj, probs = 0.90)
+abline(v = x)
+text(x = x - 0.1, y = 23, labels = "q(0.90)", pos = 2, cex = 1.5)
+x <- quantile(Y.adj, probs = 0.95)
+abline(v = x)
+text(x = x + 0.1, y = 23, labels = "q(0.95)", pos = 4, cex = 1.5)
+
+mrl.plot(Y.adj, umin = quantile(Y.adj, probs = 0.90), umax = 20, nint = 100,
          xlab = "Adjusted Y")
-title("MRL plot, zoom range to q(0.999)")
+x <- quantile(Y.adj, probs = 0.95)
+abline(v = x)
+text(x = x + 0.1, y = 65, labels = "q(0.95)", pos = 4, cex = 1.5)
+# title("MRL plot, zoom range to q(0.999)")
+dev.print(device = pdf, file = "plots/mrl-plots-fire.pdf")
+dev.off()
 
 x <- quantile(Y.adj, probs = 0.90)
 abline(v = x, lty = 1, col = colors[1])

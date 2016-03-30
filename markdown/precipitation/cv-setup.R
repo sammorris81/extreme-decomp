@@ -77,6 +77,16 @@ for (fold in 1:nfolds) {
   cat("finished fold:", fold, "\n")
 }
 
+# want to see if madogram comes back similar to what we have
+library(SpatialExtremes)
+fold <- 1
+Y.tst <- Y
+Y.tst[cv.idx[[fold]]] <- NA
+Y.tst.t <- t(Y.tst)
+ec.hat <- madogram(Y.tst.t, s, which = "ext")
+
+t(t(apply(Y.tst.t, 2, rank, na.last = "keep")) / colSums(is.finite(Y.tst.t)))
+
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
 library(ggplot2)

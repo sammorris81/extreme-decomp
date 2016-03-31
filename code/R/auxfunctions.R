@@ -447,6 +447,92 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
   return(list(ec = ec, qlims = qlims))
 }
 
+
+get.pw.ec.fmado <- function(Y, thresh = NULL, nq = 100, qlim = c(0, 1), 
+                            site.idx = 1, verbose = FALSE, update = NULL) {
+  # between qlim[1] and qlim[2]
+  # if qlim[2] == 1, then we'll set it to the max quantile for the two sites
+  
+  if (site.idx == 2) {  # each column represents a site
+    Y <- t(Y)  # transform to rows
+  }
+  
+  ns <- nrow(Y)
+  nt <- ncol(Y)
+  
+  # we want a way to handle POT and max-stable in the same funciton.
+  # if the data are max-stable, we can just set the threshold at -Inf 
+  # for all sites.
+  if (is.null(thresh)) {
+    thresh <- rep(-Inf, ns)
+  } else if (length(thresh) == 1) {
+    cat("\t Using the same threshold for all sites")
+    thresh <- rep(thresh, ns) 
+  } else if (length(thresh) != ns) {
+    stop("If defined, thresh must be of length: 1, or length: ns.")
+  }
+  
+  # find empirical cdf at threshold values
+  for (i in 1:ns) {
+    thresh[i] <- mean(Y[i, ] < thresh[i])
+  }
+  
+  # get values of empirical cdf for Y
+  Y <- apply(Y, 1, rank, na.last = "keep") / (rowSums(is.finite(Y)) + 1)
+  
+  if (is.null(update)) {
+    update <- floor(ns / 4)
+  }
+  
+  ec <- fmado <- matrix(0, ns, ns)
+  eps <- .Machine$double.eps^0.5
+  
+  # qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
+  # qlim.idx <- 1
+  these <- ns
+  for (i in 1:ns) {
+    for (j in i:ns) {
+      
+      # only want to include years which have both observations
+      these.ij   <- which(colSums(is.na(Y[c(i, j), ])) == 0)
+      U <- Y[c(i, j), these.ij]
+      for (k in 1:2) {
+        U[k, ] <- rank(U[k, ]) / (length(these.ij) + 1)
+      }
+      colmax.ij  <- apply(U, 2, max)
+      min.ij     <- max(min(U), qlim[1]) + eps
+      max.ij     <- min(max(U), qlim[2]) - eps
+      if (max.ij < min.ij) {
+        cat("  i:", i, "j:", j, "\n")
+      }
+      quantiles  <- seq(min.ij, max.ij, length = nq)
+      if (max(quantiles) == 1) {
+        cat("  i:", i, "j:", j, "\n")
+      }
+      qhat <- rep(NA, length(quantiles))
+      Q.ij <- rep(NA, length(quantiles))
+      for (q in 1:length(quantiles)) {
+        qhat[q] <- mean(U[1, ] < quantiles[q])
+        Q.ij[q] <- mean(colmax.ij < quantiles[q])
+      }
+      
+      # we're using qhat here because we want to make sure that the quantile by
+      # which we divide is only as precise as the data will allow.
+      ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(qhat))
+      ec[i, j] <- ec[j, i] <- min(ec[i, j], 2)  # keep it within the range
+      ec[i, j] <- ec[j, i] <- max(ec[i, j], 1)  # keep it within the range
+      
+      qlims[qlim.idx, ] <- c(min.ij, max.ij)
+      qlim.idx <- qlim.idx + 1
+    }
+    if (verbose & (i %% update == 0)) {
+      cat("  Finished i =", i, "\n")
+    }
+  }
+  
+  return(list(ec = ec, qlims = qlims))
+}
+
 bspline.2d <- function(s, scale = TRUE, df.x, df.y) {
   ns <- nrow(s)
 

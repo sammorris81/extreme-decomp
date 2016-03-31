@@ -32,11 +32,10 @@ if (Sys.info()["nodename"] == "cwl-mth-sam-001" |
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 d <- rdist(cents)
 diag(d) <- 0
-n <- nrow(cents)
+ns <- nrow(cents)
 Y <- t(Y)  # Y is originally nt x ns
 
 # set up the 10 fold cross validation
-n.tot <- nrow(Y) * ncol(Y)
 set.seed(28)  #cv
 nfolds <- 10
 cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
@@ -60,6 +59,40 @@ for (fold in 1:nfolds) {
   qlim.max.range[fold, ] <- range(ec$qlims[, 2])
   
   cat("finished fold:", fold, "\n")
+}
+
+# standardize the locations
+s <- cents
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min   <- apply(s, 2, min)
+s[, 1] <- (s[, 1] - s.min[1]) / s.scale
+s[, 2] <- (s[, 2] - s.min[2]) / s.scale
+
+thresh80 <- thresh90 <- thresh95 <- thresh99 <- rep(0, ns)
+neighbors <- 5
+d <- rdist(s)
+diag(d) <- 0
+
+ec.hat.2 <- vector(mode = "list", length = nfolds) 
+for (fold in 1:nfolds) {
+  Y.tst <- Y
+  Y.tst[cv.idx[[fold]]] <- NA
+  
+  # take the 5 closest neighbors when finding the threshold
+  # for (i in 1:ns) {
+  #   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
+  #   thresh80[i] <- quantile(Y.tst[these, ], probs = 0.80, na.rm = TRUE)
+  #   thresh90[i] <- quantile(Y.tst[these, ], probs = 0.90, na.rm = TRUE)
+  #   thresh95[i] <- quantile(Y.tst[these, ], probs = 0.95, na.rm = TRUE)
+  #   thresh99[i] <- quantile(Y.tst[these, ], probs = 0.99, na.rm = TRUE)
+  # }
+  # the 5nn approach sometimes gives thresholds that are over 100% of the 
+  # marginal data.
+  thresh80 <- apply(Y.tst, 1, quantile, probs = 0.80)
+  thresh90 <- apply(Y.tst, 1, quantile, probs = 0.90)
+  
+  ec <- get.pw.ec.fmado(Y = Y.tst[c(9, 12), ], thresh = thresh90[c(9, 12)])
+  ec.hat.2[[fold]] <- ec$ec
 }
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")

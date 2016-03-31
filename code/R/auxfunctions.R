@@ -478,7 +478,11 @@ get.pw.ec.fmado <- function(Y, thresh = NULL, nq = 100, qlim = c(0, 1),
   }
   
   # get values of empirical cdf for Y
-  Y <- apply(Y, 1, rank, na.last = "keep") / (rowSums(is.finite(Y)) + 1)
+  # need t(apply) because apply gives back nt x ns
+  Y <- t(apply(Y, 1, rank, na.last = "keep")) / (rowSums(is.finite(Y)) + 1)
+  
+  # shift and scale to account for threshold
+  Y <- (Y - thresh) / (1 - thresh)
   
   if (is.null(update)) {
     update <- floor(ns / 4)

@@ -453,10 +453,7 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
 
 
 get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
-                            nq = 100, qlim = c(0, 1),
-                            site.idx = 1, verbose = FALSE, update = NULL) {
-  # between qlim[1] and qlim[2]
-  # if qlim[2] == 1, then we'll set it to the max quantile for the two sites
+                            qlim = c(0, 1), site.idx = 1) {
 
   if (site.idx == 2) {  # each column represents a site
     Y <- t(Y)  # transform to rows

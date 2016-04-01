@@ -56,11 +56,7 @@ nfolds <- 5  # picking 5 because data are max-stable and 64 years of data
 cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 
 # loop over the list for cross-validation and get the basis functions
-# before getting started, find the upper quantile limit
-
-# check qlims - recording the min and max for all qlims on each fold
-qlim.min.range <- matrix(0, nrow = nfolds, ncol = 2)
-qlim.max.range <- matrix(0, nrow = nfolds, ncol = 2)
+# before getting started
 
 ec.hat <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
@@ -68,23 +64,11 @@ for (fold in 1:nfolds) {
   Y.tst[cv.idx[[fold]]] <- NA
 
   # build ec matrix: ns x ns
-  ec <- get.pw.ec(Y = Y.tst, qlim = c(0, 1), verbose = TRUE, update = 50)
+  ec <- get.pw.ec.fmado(Y = Y.tst)
   ec.hat[[fold]] <- ec$ec
-  qlim.min.range[fold, ] <- range(ec$qlims[, 1])
-  qlim.max.range[fold, ] <- range(ec$qlims[, 2])
 
   cat("finished fold:", fold, "\n")
 }
-
-# want to see if madogram comes back similar to what we have
-library(SpatialExtremes)
-fold <- 1
-Y.tst <- Y
-Y.tst[cv.idx[[fold]]] <- NA
-Y.tst.t <- t(Y.tst)
-ec.hat <- fmadogram(Y.tst.t[, 1:100], s[1:100, ])
-
-t(t(apply(Y.tst.t, 2, rank, na.last = "keep")) / colSums(is.finite(Y.tst.t)))
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 

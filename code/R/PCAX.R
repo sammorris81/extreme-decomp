@@ -59,7 +59,11 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     convergence <- rep(FALSE, n)  # storage for optim convergence
     iter  <- iter + 1
     prev  <- B
-    maxit <- ifelse(iter == iters | iter > 100, 100, 2 * iter + 2)
+    if (iter > 100) {
+      maxit <- 100
+    } else {
+      maxit <- 50
+    }
 
     for (i in 1:n) {
       # if (!convergence[i]) {
@@ -74,10 +78,13 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
           convergence[i] <- FALSE
         }
       # }
+      if (i %% 100 == 0) {
+        cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
+      }
     }
 
-    Delta_B[iter]   <- mean((prev-B)^2)
-    Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
+    # Delta_B[iter]   <- mean((prev-B)^2)
+    # Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
     if(verbose & (iter %% 5 == 0)){
       cat("  Done with iteration ", iter, ", still need to converge at ",
           sum(!convergence), " sites \n", sep = "")
@@ -121,7 +128,7 @@ SSE <- function(B1, B2, Y, alpha, lambda = 1000){
   return(sse)
 }
 
-SSE.grad <- function(B1, B2, Y, alpha, lambda = 1000){
+SSE.grad <- function(B1, B2, Y, alpha, lambda = 1000, exclude = 1){
 
   BB   <- B1^(1 / alpha)
   B2   <- B2^(1 / alpha)
@@ -159,7 +166,6 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
   E1          <- ifelse(ECmat == 0, 0, 1)
   if (is.null(s)) {s <- 1:n}
   if (is.null(bw)) {bw <- 2 * min(dist(s))}
-
 
   d2       <- as.matrix(dist(s) / bw)^2
   W        <- exp(-d2)

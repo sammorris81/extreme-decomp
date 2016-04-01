@@ -46,6 +46,28 @@ for (fold in 1:nfolds) {
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
+#### Try to precalculate the basis functions #########
+#### Hoping to save a little time in the analysis ####
+s.scale         <- s
+s.scale.factor  <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min           <- apply(s, 2, min)
+s.scale[, 1]    <- (s[, 1] - s.min[1]) / s.scale.factor
+s.scale[, 2]    <- (s[, 2] - s.min[2]) / s.scale.factor
+
+L <- 5
+alpha <- rep(0, nfolds)
+ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+for (fold in 1:nfolds) {
+  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+  B.sp[[fold]]      <- out$est
+  ec.smooth[[fold]] <- out$EC.smooth
+  alpha[fold]       <- out$alpha
+}
+
+filename <- paste("ebf-", L, ".RData", sep = "")
+save(B.sp, ec.smooth, alpha, file = filename)
+
+
 #### plot some of the time series ####
 library(colorspace)
 

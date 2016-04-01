@@ -495,6 +495,7 @@ get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
   # qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   # qlim.idx <- 1
   fmado <- madogramCPP(data = Y)
+  fmado <- ifelse(fmado >= 1 / 6, 1 / 6, fmado)
   ec <- (1 + 2 * fmado) / (1 - 2 * fmado)
 
   return(list(ec = ec, fmadogram = fmado))

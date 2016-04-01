@@ -1,6 +1,7 @@
 rm(list = ls())
 library(colorspace)
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 
 # do a rank transformation of the data
 # matplot makes one line per column of the dataset so we want Y as
@@ -120,15 +121,27 @@ axis(1, at = seq(1, nt), labels = rownames(Y))
 #          col = colors[i], cex = 1.25, lty = 3)
 # }
 
+
 #### plot time series for 25 counties ####
 set.seed(1)
 counties <- sample(1:ns, 25, replace = FALSE)
-colors <- rainbow_hcl(n = length(counties))
+color <- rainbow_hcl(n = 4)  # colors for 4 different regions
+
+# get the correct coloring
+s.mid <- apply(cents, 2, median)
+s.these <- cents[counties, ]
+colors <- rep(NA, length(counties))
+colors[s.these[, 1] >= s.mid[1] & s.these[, 2] < s.mid[2]] <- color[1]    # SE
+colors[s.these[, 1] < s.mid[1] & s.these[, 2] < s.mid[2]] <- color[2]     # SW
+colors[s.these[, 1] >=  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[3]  # NE
+colors[s.these[, 1] <  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[4]   # NE
+
 # counties <- c(counties, which(Y == max(Y), arr.ind = TRUE)[2])
 # counties <- c(counties, which(Y == min(Y), arr.ind = TRUE)[2])
+quartz(width = 16, height = 8)
 par(mar = c(4.1, 4.1, 0.6, 0.6))
 matplot(log(Y[, counties]), type = "l",
-        col = colors, cex.lab = 1.5, cex.axis = 1.5, lty = 1,
+        col = colors, cex.lab = 1.5, cex.axis = 1.5, lty = 1, lwd = 1.5,
         ylab = "log(acres burned)",
         xaxt = "n", xlab = "Year" #, xlim = c(0, (nt + 1))
         #main = paste("time series at ", length(counties),
@@ -139,12 +152,11 @@ years <- rownames(Y)
 years <- c("1995", years, "2015")
 axis(1, at = seq(0, (nt + 1), by = 5), labels = seq(1965, 2015, by = 5),
      cex.axis = 1.5)
-# for (i in 1:length(counties)) {
-#   this.county <- counties[i]
-#   these <- which(Y[, this.county] > thresh[, this.county])
-#   points(these, log(Y[these, this.county]), pch = 19,
-#          col = colors[i], cex = 1.25, lty = 3)
-# }
+
+legend("bottomleft", col = color, lty = 1, cex = 1.5, lwd = 1.5,
+       legend = c("Southeast", "Southwest", "Northeast", "Northwest"))
+dev.print(device = pdf, file = "plots/fire-spag-rand-25.pdf")
+dev.off()
 
 #### plot exceedances ####
 set.seed(1)
@@ -203,7 +215,7 @@ mrl.plot(Y.adj, umin = min(Y.adj),
 quartz(width = 16, height = 8)
 par(mfrow = c(1, 2))
 colors <- rainbow_hcl(n = 4)
-mrl.plot(Y.adj, umin = min(Y.adj), umax = quantile(Y.adj, probs = 0.995), 
+mrl.plot(Y.adj, umin = min(Y.adj), umax = quantile(Y.adj, probs = 0.995),
          nint = 100, xlab = "Adjusted Y")
 x <- quantile(Y.adj, probs = 0.90)
 abline(v = x)
@@ -218,7 +230,7 @@ x <- quantile(Y.adj, probs = 0.95)
 abline(v = x)
 text(x = x + 0.1, y = 65, labels = "q(0.95)", pos = 4, cex = 1.5)
 # title("MRL plot, zoom range to q(0.999)")
-dev.print(device = pdf, file = "plots/mrl-plots-fire.pdf")
+dev.print(device = pdf, file = "plots/fire-mrl-plots.pdf")
 dev.off()
 
 x <- quantile(Y.adj, probs = 0.90)

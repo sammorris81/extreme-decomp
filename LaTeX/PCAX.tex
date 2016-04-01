@@ -163,15 +163,17 @@ The positive stable density can be challenging to evaluate due to the integral i
 One technique to avoid this complication is to incorporate auxiliary i.i.d. Uniform(0, 1) random variables (Stephenson et al, \hl{ref}).
 We opt for a numerical approximation to the integral using 51 evenly spaced quantiles for a Beta(0.5, 0.5) distribution.
 
-\section{Analysis of extreme Georgia fires}\label{s:analysis}
+\section{Data analysis}\label{s:analysis}
+
+\section{Analysis of extreme Georgia fires}\label{s:georgia}
 The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.stat.ga.us/FireData/}).
 Figure \ref{fig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
 Based on this plot, and some other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]  % markdown/eda/eda-plotting.R
   \centering
-  \includegraphics[width=0.80\linewidth]{plots/spag-rand-25}
-  \caption{Time series of $\log$(acres burned) for 25 randomly selected counties. \hl{need to change coloring to different region in GA (NE, NW, SE, SW)}}
+  \includegraphics[width=0.80\linewidth]{plots/fire-spag-rand-25}
+  \caption{Time series of $\log$(acres burned) for 25 randomly selected counties.}
   \label{fig:firets25}
 \end{figure}
 
@@ -192,14 +194,14 @@ To calculate $T_i$ for each county, we find $\hat{q}(0.95)$ by taking the 95$th$
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width = \linewidth]{plots/mrl-plots-fire.pdf}  % markdown/eda/eda-plotting.R
+  \includegraphics[width = \linewidth]{plots/fire-mrl-plots.pdf}  % markdown/eda/eda-plotting.R
   \caption{Mean residual plot from min(Adj Y) to q(0.995) (left). Mean residual plot from q(0.90) to 20 (right). Vertical lines for q(0.90) and q(0.95) are given in the plots.}
   \label{fig:mrlthresh}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width = 0.47\linewidth, trim = 0 10em 0 10em]{plots/spatial-q95.pdf}
+  \includegraphics[width = 0.47\linewidth, trim = 0 10em 0 10em]{plots/fire-spatial-q95.pdf}
   \caption{Spatially smoothed threshold values for each county.}
   \label{fig:mrlthresh}
 \end{figure}
@@ -254,21 +256,21 @@ For both of these methods, we use a negative orientation, so a lower score indic
 
 \begin{figure}  % markdown/fire-analysis/combine-tables.R
   \centering
-  \includegraphics[width=\linewidth]{plots/bs-mean-fire}
+  \includegraphics[width=\linewidth]{plots/fire-bs-mean}
   \caption{Average Brier score for exceeding q(0.95) (left). Average Brier score for exceeding q(0.99) (right).}
   \label{fig:avgqscore}
 \end{figure}
 
 \begin{figure}  % markdown/fire-analysis/combine-tables.R
 	\centering
-	\includegraphics[width=\linewidth]{plots/qs-mean-fire}
+	\includegraphics[width=\linewidth]{plots/fire-qs-mean}
 	\caption{Average quantile score for q(0.95) (left). Average quantile score for q(0.99) (right).}
   \label{fig:avgqscore}
 \end{figure}
 
 \begin{figure}  % markdown/fire-analysis/combine-tables.R
 	\centering
-	\includegraphics[width=0.47\linewidth]{plots/timing}
+	\includegraphics[width=0.47\linewidth]{plots/fire-timing}
 	\caption{Timing comparison of basis functions to kernel functions for the spatial process (100 iterations)}
   \label{fig:timingcompare}
 \end{figure}
@@ -279,6 +281,14 @@ Based upon the cross-validation results, we reran the full data analysis using $
 
 \subsection{Model checking and sensitivity analysis}
 
+\subsection{Precipitation analysis}
+
+
+\begin{figure}  % markdown/precipitation/cv-setup
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-ts}
+  \caption{Time series of yearly max precipitation for current (1969 -- 2000) (left). Time series of yearly max precipitation for future (2039 -- 2070) (right).}
+\end{figure}
 
 \section{Conclusions}\label{s:con}
 

@@ -1,13 +1,5 @@
 rm(list=ls())
-library(splines)
-library(maps)
-library(maptools)
-library(fields)
-library(evd)
-library(ggplot2)
-# library(gridExtra)  # not available on hpc
-# library(rapport)    # not available on hpc
-library(Rcpp)
+source(file = "./package_load.R", chdir = T)
 
 ################################################################################
 #### Load in the data ##########################################################
@@ -18,24 +10,6 @@ load(file = "precip.RData")
 Y <- Yvec
 # only keep s and Yvec
 rm(Yvec, Ymat, s1, s2)
-
-################################################################################
-#### Load functions and other misc setup #######################################
-################################################################################
-source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
-source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
-source(file = "../../code/R/PCAX.R", chdir = TRUE)
-source(file = "../../code/R/mcmc.R")
-
-# we don't need to upload the beowulf if it's running on beowulf
-if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
-  setMKLthreads(1)
-  do.upload <- TRUE
-} else if (Sys.info()["sysname"] == "Darwin") {
-  do.upload <- TRUE
-} else {
-  do.upload <- FALSE
-}
 
 ################################################################################
 #### Preprocess locations and data and setup cross-validation ##################
@@ -71,6 +45,61 @@ for (fold in 1:nfolds) {
 }
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
+
+#### plot some of the time series ####
+library(colorspace)
+
+set.seed(7568)  # plot
+these <- sample(2622, 50)
+color <- rainbow_hcl(n = 4)  # SE, SW, NE, NW
+
+s.mid <- apply(s, 2, median)
+s.these <- s[these, ]
+colors <- rep(NA, length(these))
+colors[s.these[, 1] >= s.mid[1] & s.these[, 2] < s.mid[2]] <- color[1]    # SE
+colors[s.these[, 1] < s.mid[1] & s.these[, 2] < s.mid[2]] <- color[2]     # SW
+colors[s.these[, 1] >=  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[3]  # NE
+colors[s.these[, 1] <  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[4]   # NE
+
+current <- 1:32
+future  <- 33:64
+quartz(width = 16, height = 8)
+par(mfrow = c(1, 2))
+for (i in 1:length(these)) {
+  if (i == 1) {
+    plot(Y[these[i], current], type = "l", ylim = range(Y[, current]),
+         # main = "Yearly max daily precipitation (1969 - 2000)",
+         ylab = "Max precipitation", xaxt = "n", xlab = "Year",
+         col = colors[i], lwd = 1.5,
+         cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+    axis(1, at = c(current), labels = year[current], cex.axis = 1.5)
+  } else {
+    lines(Y[these[i], 1:32], col = colors[i], lwd = 1.5)
+  }
+}
+
+legend("bottomright", col = color, lty = 1, cex = 1.5, lwd = 1.5,
+       legend = c("Southeast", "Southwest", "Northeast", "Northwest"))
+
+
+for (i in 1:length(these)) {
+  if (i == 1) {
+    plot(Y[these[i], future], type = "l", ylim = range(Y[, future]),
+         # main = "Yearly max daily precipitation (2039 - 2070)",
+         ylab = "Max precipitation", xaxt = "n", xlab = "Year",
+         col = colors[i], lwd = 1.5,
+         cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+    axis(1, at = c(current), labels = year[current], cex.axis = 1.5)
+  } else {
+    lines(Y[these[i], future], col = colors[i], lwd = 1.5)
+  }
+}
+
+legend("bottomright", col = color, lty = 1, cex = 1.5, lwd = 1.5,
+       legend = c("Southeast", "Southwest", "Northeast", "Northwest"))
+dev.print(device = pdf, file = "plots/precip-ts.pdf")
+
+dev.off()
 
 library(ggplot2)
 library(gridExtra)

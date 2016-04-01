@@ -452,53 +452,55 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
 }
 
 
-get.pw.ec.fmado <- function(Y, thresh = NULL, nq = 100, qlim = c(0, 1), 
+get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
+                            nq = 100, qlim = c(0, 1),
                             site.idx = 1, verbose = FALSE, update = NULL) {
   # between qlim[1] and qlim[2]
   # if qlim[2] == 1, then we'll set it to the max quantile for the two sites
-  
+
   if (site.idx == 2) {  # each column represents a site
     Y <- t(Y)  # transform to rows
   }
-  
+
   ns <- nrow(Y)
   nt <- ncol(Y)
-  
+
   # we want a way to handle POT and max-stable in the same funciton.
-  # if the data are max-stable, we can just set the threshold at -Inf 
+  # if the data are max-stable, we can just set the threshold at -Inf
   # for all sites.
   if (is.null(thresh)) {
     thresh <- rep(-Inf, ns)
   } else if (length(thresh) == 1) {
-    cat("\t Using the same threshold for all sites")
-    thresh <- rep(thresh, ns) 
+    cat("\t Using the same threshold for all sites \n")
+    thresh <- rep(thresh, ns)
   } else if (length(thresh) != ns) {
     stop("If defined, thresh must be of length: 1, or length: ns.")
   }
-  
-  # find empirical cdf at threshold values
-  for (i in 1:ns) {
-    thresh[i] <- mean(Y[i, ] < thresh[i], na.rm = TRUE)
+
+  if (!thresh.quant) {  # find empirical cdf at threshold values
+    for (i in 1:ns) {
+      thresh[i] <- mean(Y[i, ] < thresh[i], na.rm = TRUE)
+    }
   }
-  
+
   # get values of empirical cdf for Y
   # need t(apply) because apply gives back nt x ns
   Y <- t(apply(Y, 1, rank, na.last = "keep")) / (rowSums(is.finite(Y)) + 1)
-  
+
   # shift and scale to account for threshold
   Y <- (Y - thresh) / (1 - thresh)
   Y[Y <= 0] <- 0
-  
+
   if (is.null(update)) {
     update <- floor(ns / 4)
   }
-  
+
   # qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   # qlim.idx <- 1
   fmado <- madogramCPP(data = Y)
   ec <- (1 + 2 * fmado) / (1 - 2 * fmado)
-  
-  return(list(ec = ec))
+
+  return(list(ec = ec, fmadogram = fmado))
 }
 
 bspline.2d <- function(s, scale = TRUE, df.x, df.y) {
@@ -527,8 +529,8 @@ bspline.2d <- function(s, scale = TRUE, df.x, df.y) {
   return(B)
 }
 
-mrl.plot <- function (data, umin = min(data), umax = max(data) - 0.1, 
-                      conf = 0.95, nint = 100, xlab = NULL, ylab = NULL, 
+mrl.plot <- function (data, umin = min(data), umax = max(data) - 0.1,
+                      conf = 0.95, nint = 100, xlab = NULL, ylab = NULL,
                       main = NULL) {
   x <- xu <- xl <- numeric(nint)
   u <- seq(umin, umax, length = nint)
@@ -540,7 +542,7 @@ mrl.plot <- function (data, umin = min(data), umax = max(data) - 0.1,
     xu[i] <- x[i] + (qnorm((1 + conf)/2) * sdev)/sqrt(n)
     xl[i] <- x[i] - (qnorm((1 + conf)/2) * sdev)/sqrt(n)
   }
-  
+
   if (is.null(xlab)) {
     xlab <- "u"
   }

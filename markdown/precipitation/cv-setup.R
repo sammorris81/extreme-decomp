@@ -28,8 +28,7 @@ source(file = "../../code/R/PCAX.R", chdir = TRUE)
 source(file = "../../code/R/mcmc.R")
 
 # we don't need to upload the beowulf if it's running on beowulf
-if (Sys.info()["nodename"] == "cwl-mth-sam-001" |
-    Sys.info()["nodename"] == "cwl-mth-sam-002") {
+if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
   setMKLthreads(1)
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Darwin") {

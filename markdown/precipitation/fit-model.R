@@ -10,13 +10,12 @@ load(file = "precip.RData")
 #### spatial setup ####
 d <- rdist(s)
 diag(d) <- 0
-n <- nrow(cents)
+n <- nrow(s)
 
 # get candidate knot grid for Gaussian kernel functions
 cents.grid <- s
 
 # standardize the locations
-s <- cents
 s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min   <- apply(s, 2, min)
 s[, 1] <- (s[, 1] - s.min[1]) / s.scale

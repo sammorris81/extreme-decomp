@@ -55,7 +55,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
   # keep running the algorithm until we get convergence at all sites.
   convergence <- rep(FALSE, n)
   iter        <- 0
-  while (sum(!convergence) > 0 | iter < iters) {
+  while (sum(!convergence) > 0) {
     convergence <- rep(FALSE, n)  # storage for optim convergence
     iter  <- iter + 1
     prev  <- B

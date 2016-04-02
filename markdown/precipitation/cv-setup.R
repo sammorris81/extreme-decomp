@@ -1,6 +1,7 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
 
+setMKLthreads(5)
 ################################################################################
 #### Load in the data ##########################################################
 ################################################################################
@@ -62,11 +63,72 @@ for (fold in 1:nfolds) {
   B.sp[[fold]]      <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
+
+  cat("Finished fold ", fold, " of ", nfolds, ". \n")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
 save(B.sp, ec.smooth, alpha, file = filename)
 
+L <- 10
+alpha <- rep(0, nfolds)
+ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+for (fold in 1:nfolds) {
+  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+  B.sp[[fold]]      <- out$est
+  ec.smooth[[fold]] <- out$EC.smooth
+  alpha[fold]       <- out$alpha
+
+  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+}
+
+filename <- paste("ebf-", L, ".RData", sep = "")
+save(B.sp, ec.smooth, alpha, file = filename)
+
+L <- 15
+alpha <- rep(0, nfolds)
+ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+for (fold in 1:nfolds) {
+  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+  B.sp[[fold]]      <- out$est
+  ec.smooth[[fold]] <- out$EC.smooth
+  alpha[fold]       <- out$alpha
+
+  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+}
+
+filename <- paste("ebf-", L, ".RData", sep = "")
+save(B.sp, ec.smooth, alpha, file = filename)
+
+L <- 20
+alpha <- rep(0, nfolds)
+ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+for (fold in 1:nfolds) {
+  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+  B.sp[[fold]]      <- out$est
+  ec.smooth[[fold]] <- out$EC.smooth
+  alpha[fold]       <- out$alpha
+
+  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+}
+
+filename <- paste("ebf-", L, ".RData", sep = "")
+save(B.sp, ec.smooth, alpha, file = filename)
+
+L <- 25
+alpha <- rep(0, nfolds)
+ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+for (fold in 1:nfolds) {
+  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+  B.sp[[fold]]      <- out$est
+  ec.smooth[[fold]] <- out$EC.smooth
+  alpha[fold]       <- out$alpha
+
+  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+}
+
+filename <- paste("ebf-", L, ".RData", sep = "")
+save(B.sp, ec.smooth, alpha, file = filename)
 
 #### plot some of the time series ####
 library(colorspace)

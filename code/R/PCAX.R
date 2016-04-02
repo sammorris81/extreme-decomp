@@ -78,7 +78,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
           convergence[i] <- FALSE
         }
       # }
-      if (i %% 100 == 0) {
+      if (i %% 200 == 0) {
         cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
       }
     }

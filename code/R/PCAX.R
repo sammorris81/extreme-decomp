@@ -66,19 +66,20 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     }
 
     for (i in 1:n) {
-      # if (!convergence[i]) {
+      if (!convergence[i]) {
         fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
                      alpha = alpha,
                      lower = rep(0.0, L), upper = rep(1.0, L),
                      method = "L-BFGS-B", control = list(maxit = 1000))
 
-        B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+        # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
         if (fit$convergence == 0) {
           convergence[i] <- TRUE
+          B[i, ] <- abs(fit$par) / sum(abs(fit$par))
         } else if (fit$convergence != 0) {
           convergence[i] <- FALSE
         }
-      # }
+      }
       if (i %% 200 == 0) {
         cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
       }

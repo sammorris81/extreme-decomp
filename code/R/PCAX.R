@@ -53,43 +53,69 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
   Delta_val <- rep(NA, iters)
 
   # keep running the algorithm until we get convergence at all sites.
-  convergence <- rep(FALSE, n)
+  convergence.outer <- rep(FALSE, n)
   iter        <- 0
-  while (sum(!convergence) > 0) {
-    convergence <- rep(FALSE, n)  # storage for optim convergence
+  while (sum(!convergence.outer) > 0) {
     iter  <- iter + 1
     prev  <- B
-    if (iter > 100) {
-      maxit <- 100
-    } else {
-      maxit <- 50
-    }
 
-    for (i in 1:n) {
-      if (!convergence[i]) {
-        fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
-                     alpha = alpha,
-                     lower = rep(0.0, L), upper = rep(1.0, L),
-                     method = "L-BFGS-B", control = list(maxit = 1000))
+    convergence.inner <- rep(FALSE, n)  # storage for optim convergence
+    cat("  Starting initial convergence \n")
+    while (sum(!convergence.inner) > 0) {
+      for (i in 1:n) {
+        if (!convergence.inner[i]) {
+          fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
+                       alpha = alpha,
+                       lower = rep(0.0, L), upper = rep(1.0, L),
+                       method = "L-BFGS-B", control = list(maxit = 1000))
 
-        # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
-        if (fit$convergence == 0) {
-          convergence[i] <- TRUE
-          B[i, ] <- abs(fit$par) / sum(abs(fit$par))
-        } else if (fit$convergence != 0) {
-          convergence[i] <- FALSE
+          # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+          if (fit$convergence == 0) {
+            convergence.inner[i] <- TRUE
+            B[i, ] <- abs(fit$par) / sum(abs(fit$par))  # change if converged
+          } else if (fit$convergence != 0) {
+            convergence.inner[i] <- FALSE
+          }
         }
+        if (i %% 200 == 0) {
+          cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
+        }
+      }
+    }
+    cat("  End initial convergence \n")
+
+    cat("  Start convergence check \n")
+    convergence.outer <- rep(FALSE, n)
+    for (i in 1:n) {  # double check that everything has converged
+      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
+                   alpha = alpha,
+                   lower = rep(0.0, L), upper = rep(1.0, L),
+                   method = "L-BFGS-B", control = list(maxit = 1000))
+
+      # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+      if (fit$convergence == 0) {
+        convergence.outer[i] <- TRUE
+        B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+      } else if (fit$convergence != 0) {
+        convergence.outer[i] <- FALSE
       }
       if (i %% 200 == 0) {
         cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
       }
     }
+    cat("  End convergence check \n")
 
-    # Delta_B[iter]   <- mean((prev-B)^2)
-    # Delta_val[iter] <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
+    if (iter == 1) {
+      Delta_B   <- mean((prev - B)^2)
+      Delta_val <- sum((EC-make.EC(B,alpha))^2,na.rm=TRUE)
+    } else {
+      Delta_B   <- c(Delta_B, mean((prev - B)^2))
+      Delta_val <- c(Delta_val, sum((EC - make.EC(B, alpha))^2, na.rm = TRUE))
+    }
+
     if(verbose & (iter %% 5 == 0)){
       cat("  Done with iteration ", iter, ", still need to converge at ",
-          sum(!convergence), " sites \n", sep = "")
+          sum(!convergence.outer), " sites \n", sep = "")
     }
 
   }
@@ -111,7 +137,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 
   output <- list(est = B, pct = pct, alpha = alpha, EC.smooth = ECs,
                  Delta.B = Delta_B, Delta.val = Delta_val,
-                 convergence = convergence, seconds = tock-tick)
+                 convergence = convergence.outer, seconds = tock-tick)
 
   return(output)
 }

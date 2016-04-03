@@ -13,6 +13,14 @@ Y <- Yvec
 rm(Yvec, Ymat, s1, s2)
 
 ################################################################################
+#### For computational restraints, only use s[, 1] > -90 #######################
+################################################################################
+# This is basically the cutoff used by Reich and Shaby (2012)
+keep.these <- which(s[, 1] > -90)
+s <- s[keep.these, ]
+Y <- Y[keep.these, ]
+
+################################################################################
 #### Preprocess locations and data and setup cross-validation ##################
 ################################################################################
 # get distance matrix
@@ -64,7 +72,7 @@ for (fold in 1:nfolds) {
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
@@ -79,7 +87,7 @@ for (fold in 1:nfolds) {
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
@@ -94,7 +102,7 @@ for (fold in 1:nfolds) {
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
@@ -109,7 +117,7 @@ for (fold in 1:nfolds) {
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
@@ -124,7 +132,7 @@ for (fold in 1:nfolds) {
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n")
+  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")

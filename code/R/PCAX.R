@@ -60,14 +60,20 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     prev  <- B
 
     convergence.inner <- rep(FALSE, n)  # storage for optim convergence
+    iter.inner <- 0
+    maxit <- 1000
     cat("  Starting initial convergence \n")
     while (sum(!convergence.inner) > 0) {
+      iter.inner <- iter.inner + 1
+      if (iter.inner %% 5 == 0) {
+        maxit <- maxit + 500
+      }
       for (i in 1:n) {
         if (!convergence.inner[i]) {
           fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
                        alpha = alpha,
-                       lower = rep(0.0, L), upper = rep(1.0, L),
-                       method = "L-BFGS-B", control = list(maxit = 1000))
+                       lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
+                       method = "L-BFGS-B", control = list(maxit = maxit))
 
           # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
           if (fit$convergence == 0) {
@@ -78,7 +84,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
           }
         }
         if (i %% 200 == 0) {
-          cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
+          cat("    Finished site ", i, " of ", n, " during inner iter ",
+              iter.inner, " of outer iter ", iter, " \n", sep = "")
         }
       }
     }
@@ -89,7 +96,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     for (i in 1:n) {  # double check that everything has converged
       fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
                    alpha = alpha,
-                   lower = rep(0.0, L), upper = rep(1.0, L),
+                   lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                    method = "L-BFGS-B", control = list(maxit = 1000))
 
       # B[i, ] <- abs(fit$par) / sum(abs(fit$par))
@@ -100,7 +107,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
         convergence.outer[i] <- FALSE
       }
       if (i %% 200 == 0) {
-        cat("    Finished site ", i, " of ", n, " during iteration ", iter, " \n", sep = "")
+        cat("    Finished site ", i, " of ", n, " during outer iteration ",
+            iter, " \n", sep = "")
       }
     }
     cat("  End convergence check \n")

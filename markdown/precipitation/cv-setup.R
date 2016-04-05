@@ -138,6 +138,17 @@ for (fold in 1:nfolds) {
 filename <- paste("ebf-", L, ".RData", sep = "")
 save(B.sp, ec.smooth, alpha, file = filename)
 
+#### plot some of the basis functions ####
+nx <- length(unique(s[, 1]))
+ny <- length(unique(s[, 2]))
+par(mfrow = c(3, 2))
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 1], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 2], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 3], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 4], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 5], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 6], nx = nx, ny = ny)
+
 #### plot some of the time series ####
 library(colorspace)
 

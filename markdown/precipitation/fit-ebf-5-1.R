@@ -6,10 +6,16 @@ process <- "ebf" # ebf: empirical basis functions, gsk: gaussian kernels
 margin  <- "gsk" # ebf: empirical basis functions, gsk: gaussian kernels
 L       <- 5     # number of knots to use for the basis functions
 cv      <- 1     # which cross-validation set to use
+
+# basis functions are precomputed, so if we change cv settings, we'll
+# need to rerun all of cv-setup.
+basis.file   <- paste("./ebf-", L, ".RData", sep = "")
+load(basis.file)
 results.file <- paste("./cv-results/", process, "-", margin, "-", L, "-", cv,
                       ".RData", sep = "")
 table.file   <- paste("./cv-tables/", process, "-", margin, "-", L, "-", cv,
                       ".txt", sep = "")
+
 
 # fit the model and get predictions
 source(file = "./fitmodel.R")

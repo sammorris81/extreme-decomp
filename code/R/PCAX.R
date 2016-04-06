@@ -238,9 +238,9 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
 get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
                           init.rho = NULL, verbose = TRUE){
   require(fields)
-  tick   <- proc.time()[3]
+  tick <- proc.time()[3]
 
-  n      <- ncol(EC)
+  n <- ncol(EC)
   if (is.null(s)) {s <- 1:n}
   if (is.null(knots)) {knots <- s}  # place knots at sites
   if (is.null(bw)) {bw <- 2 * min(dist(s))}

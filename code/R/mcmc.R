@@ -27,74 +27,76 @@
 #
 ################################################################################
 
-ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha, 
-                   beta1 = NULL, beta1.mn = 0, beta1.sd = 10, 
+ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
+                   beta1 = NULL, beta1.mn = 0, beta1.sd = 10,
                    beta2 = NULL, beta2.mn = 0, beta2.sd = 1,
-                   xi = 0.001, 
+                   xi = 0.001,
+                   can.mu.sd = 0.1, can.sig.sd = 0.1,
+                   beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
                    beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                    beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
   # BOOKKEEPING
-  
+
   ns   <- nrow(y)
   nt   <- ncol(y)
   L    <- ncol(B)
-  
+
   if (is.null(X.mu)) {
     X.mu <- X
   }
   if (is.null(X.sig)) {
     X.sig <- X
   }
-  
+
   p.mu    <- dim(X.mu)[3]
   p.sig   <- dim(X.sig)[3]
-  
+
   miss  <- is.na(y)
   y     <- ifelse(y < thresh, thresh, y)
-  
+
   # initial missing values to be set at threshold
   # looping over time because threshold is a vector of ns length
   if (any(miss)) {
     missing.times <- which(colSums(miss) > 0)
   }
-  
+
   # dPS approximation:
-  
+
   npts      <- 50
   Ubeta     <- qbeta(seq(0, 1, length = npts + 1), 0.5, 0.5)
   MidPoints <- (Ubeta[-1] + Ubeta[-(npts + 1)]) / 2
   BinWidth  <- Ubeta[-1] - Ubeta[-(npts + 1)]
   bins      <- list(npts = npts, MidPoints = MidPoints, BinWidth = BinWidth)
-  
+
   # INITIAL VALUES:
   if (is.null(beta2)) {
     beta2    <- rep(0, p.sig)
     beta2[1] <- log(sqrt(6) * sd(as.vector(y), na.rm = TRUE) / pi)
   }
-  
+
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
   }
-  
+
   mu <- logsig <- 0
-  
+
   for(j in 1:p.mu){
     mu <- mu + X.mu[, , j] * beta1[j]
   }
   for(j in 1:p.sig){
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   A     <- matrix(1, L, nt)
-  
+
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha
-  
+
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
-  
+
   # STORAGE:
   keep.beta1   <- matrix(0, iters, p.mu)
   keep.beta2   <- matrix(0, iters, p.sig)
@@ -106,18 +108,18 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   } else {
     keep.y <- NULL
   }
-  
-  theta.mn   <- 0 
-  
+
+  theta.mn   <- 0
+
   # TUNING:
-  
+
   cuts <- exp(c(-1, 0, 1, 2, 5, 10))
   MH.a  <- rep(1, 100)
   att.a <- acc.a <- 0 * MH.a
-  att.beta1 <- acc.beta1 <- MH.beta1 <- rep(0.1, p.mu)
-  att.beta2 <- acc.beta2 <- MH.beta2 <- rep(0.1, p.sig)
+  att.beta1 <- acc.beta1 <- MH.beta1 <- rep(can.mu.sd, p.mu)
+  att.beta2 <- acc.beta2 <- MH.beta2 <- rep(can.sig.sd, p.sig)
   att.xi    <- acc.xi    <- MH.xi    <- 0.1
-  
+
   tic <- proc.time()[3]
   for (iter in 1:iters) {
     ####################################################
@@ -127,30 +129,30 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     l1    <- get.level(A, cuts)
     CANA  <- A * exp(MH.a[l1] * rnorm(nt * L))
     l2    <- get.level(CANA, cuts)
-    q     <- dPS(CANA, alpha, bins) - 
+    q     <- dPS(CANA, alpha, bins) -
              dPS(A, alpha, bins) +
              dlognormal(A, CANA, matrix(MH.a[l2], L, nt)) -
-             dlognormal(CANA, A, matrix(MH.a[l1], L, nt))        
-    
+             dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
+
     for (l in 1:L) {
       canA     <- A
       canA[l, ] <- CANA[l, ]
       cantheta <- (Ba %*% canA)^alpha
       canll    <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
-      
+
       R    <- colSums(canll - curll) + q[l, ]
       keep <- log(runif(nt)) < R
-      
+
       A[l, keep]     <- canA[l, keep]
       theta[, keep]  <- cantheta[, keep]
       curll[, keep]  <- canll[, keep]
     }
-    
+
     ####################################################
     ##############      GEV parameters      ############
     ####################################################
-    
-    # am splitting out beta1 and beta2 to allow for potentially different 
+
+    # am splitting out beta1 and beta2 to allow for potentially different
     # covariates for mu and log(sigma)
     for (j in 1:p.mu) {  # beta1
       att.beta1[j] <- att.beta1[j] + 1
@@ -200,26 +202,26 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       logsig    <- canlogs
       curll     <- canll
     }
-    
+
     # update prior standard deviations: prior IG(a, b)
     if (!beta1.sd.fix) {
       beta1.var <- 1 / rgamma(1, beta1.tau.a + p.mu / 2,
                               beta1.tau.b + sum((beta1 - beta1.mn)^2) / 2)
       beta1.sd  <- sqrt(beta1.var)
     }
-    
+
     if (!beta2.sd.fix) {
       beta2.var <- 1 / rgamma(1, beta2.tau.a + p.sig / 2,
                               beta2.tau.b + sum((beta2 - beta2.mn)^2) / 2)
-      
+
       beta2.sd  <- sqrt(beta2.var)
     }
-    
+
     # xi
     att.xi <- att.xi + 1
     canxi  <- rnorm(1, xi, MH.xi)
     canll  <- loglike(y, theta, mu, logsig, canxi, thresh, alpha)
-    R      <- sum(canll - curll) + 
+    R      <- sum(canll - curll) +
               dnorm(canxi, 0, 0.5, log = TRUE) -
               dnorm(xi, 0, 0.5, log = TRUE)
 
@@ -228,9 +230,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       xi     <- canxi
       curll  <- canll
     }
-    
+
     # TUNING
-    
+
     if (iter < burn / 2) {
       for (j in 1:length(MH.a)) {
         acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
@@ -241,29 +243,29 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           acc.a[j] <- att.a[j] <- 0
         }
       }
-      
-      for (p in 1:p.mu) { if (att.beta1[p] > 50) {
+
+      for (p in 1:p.mu) { if (att.beta1[p] > beta1.attempts) {
         acc.rate <- acc.beta1[p] / att.beta1[p]
         if (acc.rate < 0.3) { MH.beta1[p] <- MH.beta1[p] * 0.9 }
         if (acc.rate > 0.6) { MH.beta1[p] <- MH.beta1[p] * 1.1 }
         acc.beta1[p] <- att.beta1[p] <- 0
       }}
-      
-      for (p in 1:p.sig) { if (att.beta2[p] > 50) {
+
+      for (p in 1:p.sig) { if (att.beta2[p] > beta2.attempts) {
         acc.rate <- acc.beta2[p] / att.beta2[p]
         if (acc.rate < 0.3) { MH.beta2[p] <- MH.beta2[p] * 0.9 }
         if (acc.rate > 0.6) { MH.beta2[p] <- MH.beta2[p] * 1.1 }
         acc.beta2[p] <- att.beta2[p] <- 0
       }}
-      
-      if (att.xi > 50) {
+
+      if (att.xi > xi.attempts) {
         acc.rate <- acc.xi / att.xi
         if (acc.rate < 0.3) { MH.xi <- MH.xi * 0.9 }
         if (acc.rate > 0.6) { MH.xi <- MH.xi * 1.1 }
         acc.xi <- att.xi <- 0
       }
     }
-    
+
     ####################################################
     ##############      Impute missing      ############
     ####################################################
@@ -276,12 +278,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         mu_star  <- mu[miss.t, t] + sigma * (theta[miss.t, t]^xi - 1) / xi
         sig_star <- alpha * sigma * theta[miss.t, t]^xi
         xi_star  <- alpha * xi
-        y.tmp[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star, 
-                                 scale = sig_star, shape = xi_star, 
+        y.tmp[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star,
+                                 scale = sig_star, shape = xi_star,
                                  type = "GEV")
       }
     }
-    
+
     #KEEP TRACK OF STUFF:
     keep.beta1[iter, ]    <- beta1
     keep.beta2[iter, ]    <- beta2
@@ -294,99 +296,100 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     if (iter > burn) {
       theta.mn <- theta.mn + theta / (iters - burn)
     }
-    
-    
+
+
     #DISPLAY CURRENT VALUE:
-    
+
     if (iter %% update == 0) {
       if (iterplot) {
         acc.rate.mu     <- round(acc.beta1 / att.beta1, 3)
         acc.rate.logsig <- round(acc.beta2 / att.beta2, 3)
         acc.rate.xi     <- round(acc.xi / att.xi, 3)
-        
+
         if (iter > burn) {
           start <- burn + 1
         } else {
           start <- max(iter - 2000, 1)
         }
-        
-        if (!exists("this.plot")) {
-          this.plot <- "mu"
-        }
-        
+
+        # if (!exists("this.plot")) {
+        #   this.plot <- "mu"
+        # }
+        this.plot <- "all"
+
         if (this.plot == "mu") {
           par(mfrow = c(3, 4))
           for (plot.idx in 1:12) {
-            plot(keep.beta1[start:iter, plot.idx], 
+            plot(keep.beta1[start:iter, plot.idx],
                  main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
                  xlab = acc.rate.mu[plot.idx], type = "l")
           }
           this.plot <- "sig"
         } else if (this.plot == "sig") {
           for (plot.idx in 1:12) {
-            plot(keep.beta2[start:iter, plot.idx], 
+            plot(keep.beta2[start:iter, plot.idx],
                  main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
                  xlab = acc.rate.logsig[plot.idx], type = "l")
           }
           this.plot <- "all"
         } else {
           par(mfrow = c(3, 3))
-          
-          plot(keep.beta1[start:iter, 1], 
-               main = bquote(paste(mu, ": ", beta[0])), 
+
+          plot(keep.beta1[start:iter, 1],
+               main = bquote(paste(mu, ": ", beta[0])),
                xlab = acc.rate.mu[1], type = "l")
-          
-          plot(keep.beta1[start:iter, 2], 
+
+          plot(keep.beta1[start:iter, 2],
                main = bquote(paste(mu, ": ", beta[t])),
                xlab = acc.rate.mu[2], type = "l")
-          
-          plot(keep.beta.sd[start:iter, 1], 
+
+          plot(keep.beta.sd[start:iter, 1],
                main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
-          
+
           plot(keep.beta2[start:iter, 1],
-               main = bquote(paste(sigma, ": ", beta[0])), 
+               main = bquote(paste(sigma, ": ", beta[0])),
                xlab = acc.rate.logsig[1], type = "l")
-          
-          plot(keep.beta2[start:iter, 2], 
+
+          plot(keep.beta2[start:iter, 2],
                main = bquote(paste(sigma, ": ", beta[t])),
                xlab = acc.rate.logsig[2], type = "l")
-          
-          plot(keep.beta.sd[start:iter, 2], 
+
+          plot(keep.beta.sd[start:iter, 2],
                main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
-          
-          plot(keep.xi[start:iter], main = bquote(xi), 
+
+          plot(keep.xi[start:iter], main = bquote(xi),
                xlab = acc.rate.xi, type = "l")
-          
+
           plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
-          
+
           plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
-          
+
           this.plot <- "mu"
         }
       }
       cat("    Finished fit:", iter, "of", iters, "iters \n")
     }
-    
+
   }#end iter
-  
+
   toc <- proc.time()[3]
-  
+
   if (keep.burn) {
     return.iters <- 1:iters
   } else {
     return.iters <- (burn + 1):iters
   }
-  
+
   if (any(miss)) {
     keep.y <- keep.y[return.iters, , drop = FALSE]
   }
-  
+
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
        xi = keep.xi[return.iters],
        betasd = keep.beta.sd[return.iters, , drop = FALSE],
        theta.mn = theta.mn,
-       A = keep.A[return.iters, , , drop = FALSE], 
+       A = keep.A[return.iters, , , drop = FALSE],
        y.pred = keep.y,
        timing = toc - tic)
 }
@@ -411,57 +414,57 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 #
 ################################################################################
 
-pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL, 
+pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
                            thin = 1, update = NULL) {
   require(extRemes)
   if (is.null(end)) {
     end <- length(mcmcoutput$xi)
   }
-  
+
   if (length(dim(X.pred)) != 3) {
     stop("X.pred must be an array with dimensions npred x nt x p")
   }
-  
+
   npred <- dim(X.pred)[1]
   nt    <- dim(X.pred)[2]
   L     <- ncol(B)
   p     <- dim(X.pred)[3]
-  
+
   # stays the same for all iterations
   Ba    <- B^(1 / alpha)
-  
+
   # make sure we are iterating over the post burnin samples
   niters <- length(start:end)
   beta1  <- matrix(mcmcoutput$beta1[start:end, , drop = F], niters, p)
   beta2  <- matrix(mcmcoutput$beta2[start:end, , drop = F], niters, p)
   xi     <- mcmcoutput$xi[start:end]
   A      <- mcmcoutput$A[start:end, , , drop = F]
-  
+
   # storage for predictions
   y.pred <- array(-99999, dim = c(niters, npred, nt))
   iters <- length(start:end)
   for (iter in 1:iters) {
     xi.i <- xi[iter]
-    
+
     # calculate mu and sigma
     for (t in 1:nt) {
       theta.i <- (Ba %*% A[iter, , t])^alpha
       mu.i  <- X.pred[, t, ] %*% beta1[iter, ]
-      sig.i <- exp(X.pred[, t, ] %*% beta2[iter, ]) 
-      
+      sig.i <- exp(X.pred[, t, ] %*% beta2[iter, ])
+
       mu.star  <- mu.i + sig.i * (theta.i^xi.i - 1) / xi.i
       sig.star <- alpha * sig.i * theta.i^xi.i
       xi.star  <- alpha * xi.i
-      
-      y.pred[iter, , t] <- revd(n = npred, loc = mu.star, scale = sig.star, 
+
+      y.pred[iter, , t] <- revd(n = npred, loc = mu.star, scale = sig.star,
                                 shape = xi.star, type = "GEV")
     }
-    
+
     if (iter %% update == 0) {
       cat("    Finished pred:", iter, "of", iters, "iters \n")
     }
   }
-  
+
   return(y.pred)
 }
 
@@ -471,17 +474,17 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
 #############################################################:
 
 loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
-  
+
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
   sig_star <- alpha * sigma * (theta^xi)
   xi_star  <- alpha * xi
-  
+
   tx       <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
   ll       <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
   ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
   ll       <- ifelse(is.na(ll), -Inf, ll)
-  
+
   return(ll)
 }
 
@@ -530,9 +533,9 @@ if (FALSE) {
   B        <- matrix(rgamma(ns * L, 2, 3), ns, L)
   B        <- sweep(B, 1, rowSums(B), "/")
   X        <- array(rnorm(ns * nt * p), c(ns, nt, p))
-  X[, , 1] <- 1     
+  X[, , 1] <- 1
   y        <- 0.5 * X[, , 2] + 10 * matrix(rnorm(ns * nt), ns, nt)
   thresh   <- matrix(0, ns, nt)
-  
+
   fit    <- ReShMCMC(y = y, X = X, thresh = thresh, B = B, alpha = alpha)
 }

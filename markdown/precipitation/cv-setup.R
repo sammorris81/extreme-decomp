@@ -19,6 +19,7 @@ rm(Yvec, Ymat, s1, s2)
 keep.these <- which(s[, 1] > -90)
 s <- s[keep.these, ]
 Y <- Y[keep.these, ]
+save(Y, s, year, file = "precip_preprocess.RData")
 
 ################################################################################
 #### Preprocess locations and data and setup cross-validation ##################
@@ -57,18 +58,18 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####
-s.scale         <- s
-s.scale.factor  <- min(diff(range(s[, 1])), diff(range(s[, 2])))
-s.min           <- apply(s, 2, min)
-s.scale[, 1]    <- (s[, 1] - s.min[1]) / s.scale.factor
-s.scale[, 2]    <- (s[, 2] - s.min[2]) / s.scale.factor
+s.scale        <- s
+s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min          <- apply(s, 2, min)
+s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
+s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
 
 L <- 5
 alpha <- rep(0, nfolds)
-ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.sp[[fold]]      <- out$est
+  B.ebf[[fold]]     <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
@@ -76,14 +77,14 @@ for (fold in 1:nfolds) {
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.sp, ec.smooth, alpha, file = filename)
+save(B.ebf, ec.smooth, alpha, file = filename)
 
 L <- 10
 alpha <- rep(0, nfolds)
-ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.sp[[fold]]      <- out$est
+  B.ebf[[fold]]     <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
@@ -91,14 +92,14 @@ for (fold in 1:nfolds) {
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.sp, ec.smooth, alpha, file = filename)
+save(B.ebf, ec.smooth, alpha, file = filename)
 
 L <- 15
 alpha <- rep(0, nfolds)
-ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.sp[[fold]]      <- out$est
+  B.ebf[[fold]]     <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
@@ -106,14 +107,14 @@ for (fold in 1:nfolds) {
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.sp, ec.smooth, alpha, file = filename)
+save(B.ebf, ec.smooth, alpha, file = filename)
 
 L <- 20
 alpha <- rep(0, nfolds)
-ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.sp[[fold]]      <- out$est
+  B.ebf[[fold]]     <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
@@ -121,14 +122,14 @@ for (fold in 1:nfolds) {
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.sp, ec.smooth, alpha, file = filename)
+save(B.ebf, ec.smooth, alpha, file = filename)
 
 L <- 25
 alpha <- rep(0, nfolds)
-ec.smooth <- B.sp <- vector(mode = "list", length = nfolds)
+ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
 for (fold in 1:nfolds) {
   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.sp[[fold]]      <- out$est
+  B.ebf[[fold]]     <- out$est
   ec.smooth[[fold]] <- out$EC.smooth
   alpha[fold]       <- out$alpha
 
@@ -136,18 +137,18 @@ for (fold in 1:nfolds) {
 }
 
 filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.sp, ec.smooth, alpha, file = filename)
+save(B.ebf, ec.smooth, alpha, file = filename)
 
 #### plot some of the basis functions ####
 nx <- length(unique(s[, 1]))
 ny <- length(unique(s[, 2]))
 par(mfrow = c(3, 2))
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 1], nx = nx, ny = ny)
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 2], nx = nx, ny = ny)
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 3], nx = nx, ny = ny)
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 4], nx = nx, ny = ny)
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 5], nx = nx, ny = ny)
-quilt.plot(x = s[, 1], y = s[, 2], z = B.sp[[1]][, 6], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 1], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 2], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 3], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 4], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 5], nx = nx, ny = ny)
+quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 6], nx = nx, ny = ny)
 
 #### plot some of the time series ####
 library(colorspace)

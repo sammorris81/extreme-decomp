@@ -5,39 +5,44 @@
 # L      := the number of basis functions to use
 
 #### load in the data ####
-load(file = "precip.RData")
+load(file = "precip_preprocess.RData")
+
+# basis functions are precomputed, so if we change cv settings, we'll
+# need to rerun all of cv-setup.
+basis.file   <- paste("./ebf-", L, ".RData", sep = "")
+results.file <- paste("./cv-results/", process, "-", margin, "-", L, "-", cv,
+                      ".RData", sep = "")
+table.file   <- paste("./cv-tables/", process, "-", margin, "-", L, "-", cv,
+                      ".txt", sep = "")
 
 #### spatial setup ####
 d <- rdist(s)
 diag(d) <- 0
 n <- nrow(s)
 
-# get candidate knot grid for Gaussian kernel functions
-cents.grid <- s
-
 # standardize the locations
-s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
-s.min   <- apply(s, 2, min)
-s[, 1] <- (s[, 1] - s.min[1]) / s.scale
-s[, 2] <- (s[, 2] - s.min[2]) / s.scale
-cents.grid[, 1] <- (cents.grid[, 1] - s.min[1]) / s.scale
-cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
+s.scale        <- s
+s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min          <- apply(s, 2, min)
+s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
+s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
+
+# get candidate knot grid for Gaussian kernel functions
+cents.grid <- s.scale
 
 ################################################################################
 #### Load in cross-validation setup ############################################
 ################################################################################
 load(file = "./cv-extcoef.RData")
+load(file = basis.file)
 
 ################################################################################
 #### Get weight functions for spatial process ##################################
 ################################################################################
 if (process == "ebf") {
-  cat("Start basis function estimation \n")
-  # basis function estimates using only the training data
-  out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
-  B.sp      <- out$est
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
+  B.sp      <- B.ebf[[cv]]
+  ec.smooth <- ec.smooth[[cv]]
+  alpha     <- alphas[cv]
 } else {
   # get the knot locations
   knots <- cover.design(cents.grid, nd = L)$design
@@ -61,7 +66,7 @@ if (margin == "ebf") {
     B.cov <- B.sp
   } else {  # we need to construct the empirical basis functions
     cat("Estimating basis functions for covariates \n")
-    B.cov <- get.factors.EC(ec.hat[[cv]], L = L, s = s)$est
+    B.cov <- B.ebf[[cv]]
   }
 } else if (margin == "gsk") {
   if (process == "ebf") {
@@ -70,7 +75,7 @@ if (margin == "ebf") {
 
     cat("Start estimation of Gaussian kernels for covariates \n")
     # alpha and rho estimates using only the training data
-    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
+    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s.scale, knots = knots)
     B.cov <- getW(rho = out$rho, dw2 = out$dw2)
   } else{
     cat("B.cov = B.sp \n")
@@ -87,13 +92,21 @@ if (margin == "ebf") {
 ####     Using (1, time, B.cov, B.cov * time) where time = (t - nt / 2) / nt
 ################################################################################
 
-## transpose Y because preprocessed forest fire data is Y[t, i]
-Y.all <- Y <- t(Y)
-Y.tst <- Y[cv.idx[[cv]]]  # save the testing data to validate
-Y[cv.idx[[cv]]] <- NA  # remove the testing data
-
 ns <- nrow(Y)
-nt <- ncol(Y)
+nt <- ncol(Y) / 2
+Y.all <- Y
+
+## Y contains both current and future data, so subset on the relevant years
+if (time == "current") {
+  Y <- Y[, 1:nt]
+  Y.tst <- Y[cv.idx[[cv]][, 1:nt]]  # save the testing data to validate
+  Y[cv.idx[[cv]][, 1:nt]] <- NA  # remove the testing data
+} else {
+  Y <- Y[, (nt + 1):(2 * nt)]
+  Y.tst <- Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]]
+  Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]] <- NA
+}
+
 np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 
 ## standardize spatial basis functions
@@ -147,17 +160,25 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <-2000; burn <- 500; update <- 10  # for testing
+iters <- 5000; burn <- 1000; update <- 100  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
+
+beta1.init <- beta2.init <- rep(0, np)
+beta2.init[1] <- log(sqrt(6) * sd(as.vector(Y), na.rm = TRUE) / pi)
+beta1.init <- -0.57722 * beta2.init
+
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
-                # fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
+fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                beta1 = beta1.init, beta2 = beta2.init, xi = 0.001,
+                can.mu.sd = 10, can.sig.sd = 0.001,
+                beta1.attempts = 50, beta2.attempts = 100,
+# fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
-# iters = iters, burn = burn, update = update, iterplot = TRUE)
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # calculate the scores
@@ -175,7 +196,7 @@ names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
 write.table(results, file = table.file)
 
 upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
-upload.pre <- paste(upload.pre, "fire-analysis/cv-tables/", sep = "")
+upload.pre <- paste(upload.pre, "precipitation/cv-tables/", sep = "")
 if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)

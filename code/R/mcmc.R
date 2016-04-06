@@ -315,7 +315,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         # if (!exists("this.plot")) {
         #   this.plot <- "mu"
         # }
-        this.plot <- "all"
+        this.plot <- "sig"
 
         if (this.plot == "mu") {
           par(mfrow = c(3, 4))

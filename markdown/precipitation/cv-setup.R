@@ -63,81 +63,46 @@ s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min          <- apply(s, 2, min)
 s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
 s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
+cents.grid     <- s.scale
 
-L <- 5
-alpha <- rep(0, nfolds)
-ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.ebf[[fold]]     <- out$est
-  ec.smooth[[fold]] <- out$EC.smooth
-  alpha[fold]       <- out$alpha
+knots <- c(5, 10, 15, 20, 25)
 
-  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
+for (L in knots) {
+  # Empirical basis functions
+  alphas <- rep(0, nfolds)
+  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
+  for (fold in 1:nfolds) {
+    out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+    B.ebf[[fold]]     <- out$est
+    ec.smooth[[fold]] <- out$EC.smooth
+    alphas[fold]       <- out$alpha
+
+    cat("Start estimation of Gaussian kernels for covariates \n")
+    # alpha and rho estimates using only the training data
+    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s.scale, knots = knots)
+    B.cov <- getW(rho = out$rho, dw2 = out$dw2)
+
+    cat("Finished fold ", fold, " of ", nfolds, "for ebf. \n", sep = "")
+  }
+
+  filename <- paste("ebf-", L, ".RData", sep = "")
+  save(B.ebf, ec.smooth, alphas, file = filename)
+
+  # Gaussian kernel functions
+  knots <- cover.design(cents.grid, nd = L)$design
+  B.gsk <- vector(mode = "list", length = nfolds)
+  for (fold in 1:nfolds) {
+    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s.scale, knots = knots)
+    B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
+
+    cat("Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
+  }
+
+  filename <- paste("gsk-", L, ".RData", sep = "")
+  save(B.gsk, alphas, file = filename)
+
+  cat("Finished L = ", L, ".\n", sep = "")
 }
-
-filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
-
-L <- 10
-alpha <- rep(0, nfolds)
-ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.ebf[[fold]]     <- out$est
-  ec.smooth[[fold]] <- out$EC.smooth
-  alpha[fold]       <- out$alpha
-
-  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
-}
-
-filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
-
-L <- 15
-alpha <- rep(0, nfolds)
-ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.ebf[[fold]]     <- out$est
-  ec.smooth[[fold]] <- out$EC.smooth
-  alpha[fold]       <- out$alpha
-
-  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
-}
-
-filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
-
-L <- 20
-alpha <- rep(0, nfolds)
-ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.ebf[[fold]]     <- out$est
-  ec.smooth[[fold]] <- out$EC.smooth
-  alpha[fold]       <- out$alpha
-
-  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
-}
-
-filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
-
-L <- 25
-alpha <- rep(0, nfolds)
-ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  B.ebf[[fold]]     <- out$est
-  ec.smooth[[fold]] <- out$EC.smooth
-  alpha[fold]       <- out$alpha
-
-  cat("Finished fold ", fold, " of ", nfolds, ". \n", sep = "")
-}
-
-filename <- paste("ebf-", L, ".RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
 
 #### plot some of the basis functions ####
 nx <- length(unique(s[, 1]))

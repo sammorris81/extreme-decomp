@@ -160,7 +160,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 5000; burn <- 1000; update <- 100  # for testing
+iters <- 10000; burn <- 5000; update <- 100  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -172,7 +172,7 @@ beta1.init <- -0.57722 * beta2.init
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 beta1 = beta1.init, beta2 = beta2.init, xi = 0.001,
-                can.mu.sd = 10, can.sig.sd = 0.001,
+                can.mu.sd = 0.1, can.sig.sd = 0.001,
                 beta1.attempts = 50, beta2.attempts = 100,
 # fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,

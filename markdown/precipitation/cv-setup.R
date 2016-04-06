@@ -69,30 +69,30 @@ knots <- c(5, 10, 15, 20, 25)
 
 for (L in knots) {
   # Empirical basis functions
+  cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
   ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
-    cat("Starting estimation of empirical basis functions \n")
     out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
     B.ebf[[fold]]     <- out$est
     ec.smooth[[fold]] <- out$EC.smooth
     alphas[fold]       <- out$alpha
 
-    cat("Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
+    cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
   }
 
   filename <- paste("ebf-", L, ".RData", sep = "")
   save(B.ebf, ec.smooth, alphas, file = filename)
 
   # Gaussian kernel functions
+  cat("Starting estimation of Gaussian kernels \n")
   knots <- cover.design(cents.grid, nd = L)$design
   B.gsk <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
-    cat("Starting estimation of Gaussian kernels \n")
     out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s.scale, knots = knots)
     B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
 
-    cat("Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
+    cat("  Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
   }
 
   filename <- paste("gsk-", L, ".RData", sep = "")

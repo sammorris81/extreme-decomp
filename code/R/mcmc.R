@@ -80,6 +80,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
+    beta1[1] <- -0.57722 * beta2[1]
   }
 
   mu <- logsig <- 0

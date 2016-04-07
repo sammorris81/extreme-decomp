@@ -65,9 +65,9 @@ s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
 s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
 cents.grid     <- s.scale
 
-knots <- c(5, 10, 15, 20, 25)
+nknots <- c(5, 10, 15, 20, 25)
 
-for (L in knots) {
+for (L in nknots) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
@@ -96,7 +96,7 @@ for (L in knots) {
   }
 
   filename <- paste("gsk-", L, ".RData", sep = "")
-  save(B.gsk, alphas, file = filename)
+  save(B.gsk, alphas, knots, file = filename)
 
   cat("Finished L = ", L, ".\n", sep = "")
 }

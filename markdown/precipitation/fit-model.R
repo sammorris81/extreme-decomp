@@ -10,6 +10,7 @@ load(file = "precip_preprocess.RData")
 # basis functions are precomputed, so if we change cv settings, we'll
 # need to rerun all of cv-setup.
 basis.file   <- paste("./ebf-", L, ".RData", sep = "")
+gsk.file     <- paste("./gsk-", L, ".RData", sep = "")
 results.file <- paste("./cv-results/", process, "-", margin, "-", L, "-", cv,
                       ".RData", sep = "")
 table.file   <- paste("./cv-tables/", process, "-", margin, "-", L, "-", cv,
@@ -35,6 +36,7 @@ cents.grid <- s.scale
 ################################################################################
 load(file = "./cv-extcoef.RData")
 load(file = basis.file)
+load(file = gsk.file)
 
 ################################################################################
 #### Get weight functions for spatial process ##################################
@@ -46,15 +48,8 @@ if (process == "ebf") {
 } else {
   # get the knot locations
   knots <- cover.design(cents.grid, nd = L)$design
-
-  cat("Start estimation of rho and alpha \n")
-  # alpha and rho estimates using only the training data
-  out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-  rho       <- out$rho
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
-  dw2       <- out$dw2
-  B.sp      <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
+  alpha     <- alphas[cv]
+  B.sp      <- B.gsk[[cv]]
 }
 
 ################################################################################
@@ -72,11 +67,7 @@ if (margin == "ebf") {
   if (process == "ebf") {
     # get the knot locations
     knots <- cover.design(cents.grid, nd = L)$design
-
-    cat("Start estimation of Gaussian kernels for covariates \n")
-    # alpha and rho estimates using only the training data
-    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s.scale, knots = knots)
-    B.cov <- getW(rho = out$rho, dw2 = out$dw2)
+    B.cov <- B.gsk[[cv]]
   } else{
     cat("B.cov = B.sp \n")
     B.cov <- B.sp

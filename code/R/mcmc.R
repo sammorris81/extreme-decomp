@@ -335,10 +335,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           start <- max(iter - 2000, 1)
         }
 
-        # if (!exists("this.plot")) {
-        #   this.plot <- "mu"
-        # }
-        this.plot <- "sig"
+        if (!exists("this.plot")) {
+          this.plot <- "mu"
+        }
+        # this.plot <- "sig"
 
         if (this.plot == "mu") {
           par(mfrow = c(3, 4))
@@ -349,6 +349,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           }
           this.plot <- "sig"
         } else if (this.plot == "sig") {
+          par(mfrow = c(3, 4))
           for (plot.idx in 1:12) {
             plot(keep.beta2[start:iter, plot.idx],
                  main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),

@@ -146,37 +146,24 @@ thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
 
 ################################################################################
-#### initial values ############################################################
-################################################################################
-# the default estimate usually puts the intercept at something much larger
-# than 0 thereby making it difficult to get sigma^2_beta1 to be reasonably
-# sized which greatly impacts the ability to get the MCMC to mix.
-# beta1.init <- rep(0, np)
-
-################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
 iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 10000; burn <- 5000; update <- 100  # for testing
+iters <- 10000; burn <- 5000; update <- 500  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
-beta1.init <- beta2.init <- rep(0, np)
-beta2.init[1] <- log(sqrt(6) * sd(as.vector(Y), na.rm = TRUE) / pi)
-beta1.init <- -0.57722 * beta2.init
-
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                beta1 = beta1.init, beta2 = beta2.init, xi = 0.001,
-                can.mu.sd = 0.1, can.sig.sd = 0.001,
-                beta1.attempts = 50, beta2.attempts = 100,
-# fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
+                xi = 0.001, can.mu.sd = 0.1, can.sig.sd = 0.1,
+                beta1.attempts = 50, beta2.attempts = 50,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")

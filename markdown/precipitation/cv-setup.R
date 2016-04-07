@@ -76,7 +76,7 @@ for (L in knots) {
     out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
     B.ebf[[fold]]     <- out$est
     ec.smooth[[fold]] <- out$EC.smooth
-    alphas[fold]       <- out$alpha
+    alphas[fold]      <- out$alpha
 
     cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
   }

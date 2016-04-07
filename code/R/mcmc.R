@@ -11,6 +11,7 @@
 #   thresh  := ns x nt matrix of GPD thresholds
 #   B       := ns x L matrix of PCs
 #   alpha   := PS parameter alpha
+#   A       := initial A terms
 #   beta1   := initial values for the GEV location coefficients
 #   beta2   := initial values for the GEV scale coefficients
 #   xi      := initial value for the GEV shape parameter
@@ -30,7 +31,7 @@
 ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                    beta1 = NULL, beta1.mn = 0, beta1.sd = 10,
                    beta2 = NULL, beta2.mn = 0, beta2.sd = 1,
-                   xi = 0.001,
+                   xi = 0.001, A = NULL,
                    can.mu.sd = 0.1, can.sig.sd = 0.1,
                    beta1.block = FALSE, beta2.block = FALSE,
                    beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
@@ -92,7 +93,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
 
-  A     <- matrix(1, L, nt)
+  if (is.null(A)) {
+    A <- matrix(1, L, nt)
+  } else if (length(A) == 1) {
+    A <- matrix(A, L, nt)
+  } else if (length(A) != (nt * L)) {
+    stop("The length of the initial A must be either 1 or L * nt")
+  }
 
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha

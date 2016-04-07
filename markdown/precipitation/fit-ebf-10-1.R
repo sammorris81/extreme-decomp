@@ -5,7 +5,7 @@ source(file = "./package_load.R", chdir = T)
 process <- "ebf"      # ebf: empirical basis functions, gsk: gaussian kernels
 margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
 time    <- "current"  # current or future
-L       <- 5          # number of knots to use for the basis functions
+L       <- 10         # number of knots to use for the basis functions
 cv      <- 1          # which cross-validation set to use
 
 # fit the model and get predictions

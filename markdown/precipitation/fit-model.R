@@ -175,8 +175,8 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 can.mu.sd = 0.1, can.sig.sd = 0.001,
                 beta1.attempts = 50, beta2.attempts = 100,
 # fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
-                beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")

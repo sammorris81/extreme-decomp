@@ -32,9 +32,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                    beta2 = NULL, beta2.mn = 0, beta2.sd = 1,
                    xi = 0.001,
                    can.mu.sd = 0.1, can.sig.sd = 0.1,
-                   beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
+                   beta1.block = FALSE, beta2.block = FALSE,
                    beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                    beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
+                   beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
@@ -79,6 +80,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
+    beta1[1] <- -0.57722 * beta2[1]
   }
 
   mu <- logsig <- 0
@@ -154,53 +156,74 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
     # am splitting out beta1 and beta2 to allow for potentially different
     # covariates for mu and log(sigma)
-    for (j in 1:p.mu) {  # beta1
-      att.beta1[j] <- att.beta1[j] + 1
-      canb         <- rnorm(1, beta1[j], MH.beta1[j])
-      canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
-      canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-      R            <- sum(canll - curll) +
-                      dnorm(canb, beta1.mn, beta1.sd, log = TRUE) -
-                      dnorm(beta1[j], beta1.mn, beta1.sd, log = TRUE)
+    if (beta1.block) {
+      att.beta1 <- att.beta1 + 1
+      canb      <- rnorm(p.mu, beta1, MH.beta1)
+      canmu     <- 0
+      for (j in 1:p.mu) {
+        canmu   <- mu + X.mu[, , j] * canb[j]
+      }
+      canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      R         <- sum(canll - curll) +
+                   sum(dnorm(canb, 0, beta1.sd, log = TRUE) -
+                       dnorm(beta1, 0, beta1.sd, log = TRUE))
       if (log(runif(1)) < R) {
-        acc.beta1[j] <- acc.beta1[j] + 1
-        beta1[j]        <- canb
-        mu              <- canmu
-        curll           <- canll
+        acc.beta1 <- acc.beta1 + 1
+        beta1     <- canb
+        mu        <- canmu
+        curll     <- canll
+      }
+    } else {
+      for (j in 1:p.mu) {  # beta1
+        att.beta1[j] <- att.beta1[j] + 1
+        canb         <- rnorm(1, beta1[j], MH.beta1[j])
+        canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
+        canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        R            <- sum(canll - curll) +
+          dnorm(canb, beta1.mn, beta1.sd, log = TRUE) -
+          dnorm(beta1[j], beta1.mn, beta1.sd, log = TRUE)
+        if (log(runif(1)) < R) {
+          acc.beta1[j] <- acc.beta1[j] + 1
+          beta1[j]        <- canb
+          mu              <- canmu
+          curll           <- canll
+        }
       }
     }
 
-    # for (j in 1:p.sig) { # beta2
-    #   att.beta2[j] <- att.beta2[j] + 1
-    #   canb       <- rnorm(1, beta2[j], MH.beta2[j])
-    #   canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
-    #   canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-    #   R          <- sum(canll - curll) +
-    #     dnorm(canb, beta2.mn, beta2.sd, log = TRUE) -
-    #     dnorm(beta2[j], beta2.mn, beta2.sd, log = TRUE)
-    #   if (log(runif(1)) < R) {
-    #     acc.beta2[j] <- acc.beta2[j] + 1
-    #     beta2[j]     <- canb
-    #     logsig       <- canlogs
-    #     curll        <- canll
-    #   }
-    # }
-
-    att.beta2 <- att.beta2 + 1
-    canb      <- rnorm(p.sig, beta2, MH.beta2)
-    canlogs   <- 0
-    for (j in 1:p.sig) { # beta2
-      canlogs <- canlogs + X.sig[, , j] * canb[j]
-    }
-    canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-    R          <- sum(canll - curll) +
-                  sum(dnorm(canb, 0, beta2.sd, log = TRUE) -
-                      dnorm(beta2, 0, beta2.sd, log = TRUE))
-    if (log(runif(1)) < R) {
-      acc.beta2 <- acc.beta2 + 1
-      beta2     <- canb
-      logsig    <- canlogs
-      curll     <- canll
+    if (beta2.block) {
+      att.beta2 <- att.beta2 + 1
+      canb      <- rnorm(p.sig, beta2, MH.beta2)
+      canlogs   <- 0
+      for (j in 1:p.sig) { # beta2
+        canlogs <- canlogs + X.sig[, , j] * canb[j]
+      }
+      canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+      R          <- sum(canll - curll) +
+        sum(dnorm(canb, 0, beta2.sd, log = TRUE) -
+              dnorm(beta2, 0, beta2.sd, log = TRUE))
+      if (log(runif(1)) < R) {
+        acc.beta2 <- acc.beta2 + 1
+        beta2     <- canb
+        logsig    <- canlogs
+        curll     <- canll
+      }
+    } else {
+      for (j in 1:p.sig) { # beta2
+        att.beta2[j] <- att.beta2[j] + 1
+        canb       <- rnorm(1, beta2[j], MH.beta2[j])
+        canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
+        canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+        R          <- sum(canll - curll) +
+          dnorm(canb, beta2.mn, beta2.sd, log = TRUE) -
+          dnorm(beta2[j], beta2.mn, beta2.sd, log = TRUE)
+        if (log(runif(1)) < R) {
+          acc.beta2[j] <- acc.beta2[j] + 1
+          beta2[j]     <- canb
+          logsig       <- canlogs
+          curll        <- canll
+        }
+      }
     }
 
     # update prior standard deviations: prior IG(a, b)

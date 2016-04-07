@@ -146,7 +146,7 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 # the default estimate usually puts the intercept at something much larger
 # than 0 thereby making it difficult to get sigma^2_beta1 to be reasonably
 # sized which greatly impacts the ability to get the MCMC to mix.
-# beta1.init <- rep(0, np)
+beta1.init <- rep(0, np)
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -164,6 +164,7 @@ fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
 # fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = TRUE, beta1 = beta1.init,
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
                 # iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")

@@ -345,7 +345,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           for (plot.idx in 1:12) {
             plot(keep.beta1[start:iter, plot.idx],
                  main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
-                 xlab = acc.rate.mu[plot.idx], type = "l")
+                 xlab = acc.rate.mu[plot.idx], type = "l",
+                 ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
           }
           this.plot <- "sig"
         } else if (this.plot == "sig") {
@@ -353,7 +354,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           for (plot.idx in 1:12) {
             plot(keep.beta2[start:iter, plot.idx],
                  main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
-                 xlab = acc.rate.logsig[plot.idx], type = "l")
+                 xlab = acc.rate.logsig[plot.idx], type = "l",
+                 ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
           }
           this.plot <- "all"
         } else {
@@ -361,28 +363,33 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
           plot(keep.beta1[start:iter, 1],
                main = bquote(paste(mu, ": ", beta[0])),
-               xlab = acc.rate.mu[1], type = "l")
+               xlab = acc.rate.mu[1], type = "l",
+               ylab = paste("MH =", round(MH.beta1[1], 3)))
 
           plot(keep.beta1[start:iter, 2],
                main = bquote(paste(mu, ": ", beta[t])),
-               xlab = acc.rate.mu[2], type = "l")
+               xlab = acc.rate.mu[2], type = "l",
+               ylab = paste("MH =", round(MH.beta1[2], 3)))
 
           plot(keep.beta.sd[start:iter, 1],
                main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
 
           plot(keep.beta2[start:iter, 1],
                main = bquote(paste(sigma, ": ", beta[0])),
-               xlab = acc.rate.logsig[1], type = "l")
+               xlab = acc.rate.logsig[1], type = "l",
+               ylab = paste("MH =", round(MH.beta2[1], 3)))
 
           plot(keep.beta2[start:iter, 2],
                main = bquote(paste(sigma, ": ", beta[t])),
-               xlab = acc.rate.logsig[2], type = "l")
+               xlab = acc.rate.logsig[2], type = "l",
+               ylab = paste("MH =", round(MH.beta2[2], 3)))
 
           plot(keep.beta.sd[start:iter, 2],
                main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
 
           plot(keep.xi[start:iter], main = bquote(xi),
-               xlab = acc.rate.xi, type = "l")
+               xlab = acc.rate.xi, type = "l",
+               ylab = paste("MH =", round(MH.xi, 3)))
 
           plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
 

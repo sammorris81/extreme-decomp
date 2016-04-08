@@ -165,6 +165,49 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
+X.mu  <- X
+X.sig <- X[, , 1:(2 + L)]
+beta2.init <- rep(0, dim(X.sig)[3])
+beta2.init[1] <- 3.5
+A.init <- 10
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+
+fit <- ReShMCMC(y = Y, X.mu = X.mu, X.sig = X.sig, thresh = -Inf, B = B.sp,
+                alpha = alpha,
+                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
+                beta1.attempts = 50, beta2.attempts = 50,
+                beta1 = beta1.init, beta2 = beta2.init, A = A.init,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = FALSE,
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+X.mu  <- X[, , 1:(2 + L)]
+X.sig <- X[, , 1:(2 + L)]
+rm(beta1.init, beta2.init)
+A.init <- 10
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+
+fit <- ReShMCMC(y = Y, X.mu = X.mu, X.sig = X.sig, thresh = -Inf, B = B.sp,
+                alpha = alpha,
+                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
+                beta1.attempts = 100, beta2.attempts = 100,
+                # beta1 = beta1.init, beta2 = beta2.init,
+                A = A.init,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = FALSE,
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
 qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs,

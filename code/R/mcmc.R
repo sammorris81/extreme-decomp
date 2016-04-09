@@ -268,30 +268,30 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
         att.a[j] <- att.a[j] + sum(l1 == j)
         if (att.a[j] > 1000) {
-          if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.9 }
-          if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.1 }
+          if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.8 }
+          if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.2 }
           acc.a[j] <- att.a[j] <- 0
         }
       }
 
       for (p in 1:p.mu) { if (att.beta1[p] > beta1.attempts) {
         acc.rate <- acc.beta1[p] / att.beta1[p]
-        if (acc.rate < 0.3) { MH.beta1[p] <- MH.beta1[p] * 0.9 }
-        if (acc.rate > 0.6) { MH.beta1[p] <- MH.beta1[p] * 1.1 }
+        if (acc.rate < 0.3) { MH.beta1[p] <- MH.beta1[p] * 0.8 }
+        if (acc.rate > 0.6) { MH.beta1[p] <- MH.beta1[p] * 1.2 }
         acc.beta1[p] <- att.beta1[p] <- 0
       }}
 
       for (p in 1:p.sig) { if (att.beta2[p] > beta2.attempts) {
         acc.rate <- acc.beta2[p] / att.beta2[p]
-        if (acc.rate < 0.3) { MH.beta2[p] <- MH.beta2[p] * 0.9 }
-        if (acc.rate > 0.6) { MH.beta2[p] <- MH.beta2[p] * 1.1 }
+        if (acc.rate < 0.3) { MH.beta2[p] <- MH.beta2[p] * 0.8 }
+        if (acc.rate > 0.6) { MH.beta2[p] <- MH.beta2[p] * 1.2 }
         acc.beta2[p] <- att.beta2[p] <- 0
       }}
 
       if (att.xi > xi.attempts) {
         acc.rate <- acc.xi / att.xi
-        if (acc.rate < 0.3) { MH.xi <- MH.xi * 0.9 }
-        if (acc.rate > 0.6) { MH.xi <- MH.xi * 1.1 }
+        if (acc.rate < 0.3) { MH.xi <- MH.xi * 0.8 }
+        if (acc.rate > 0.6) { MH.xi <- MH.xi * 1.2 }
         acc.xi <- att.xi <- 0
       }
     }
@@ -348,8 +348,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         # this.plot <- "sig"
 
         if (this.plot == "mu") {
-          par(mfrow = c(3, 4))
-          for (plot.idx in 1:12) {
+          if (L <= 9) {
+            par(mfrow = c(3, 3))
+          } else {
+            par(mfrow = c(3, 4))
+          }
+          for (plot.idx in 1:min(p.mu, 12)) {
             plot(keep.beta1[start:iter, plot.idx],
                  main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
                  xlab = acc.rate.mu[plot.idx], type = "l",
@@ -357,8 +361,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           }
           this.plot <- "sig"
         } else if (this.plot == "sig") {
-          par(mfrow = c(3, 4))
-          for (plot.idx in 1:12) {
+          if (L <= 9) {
+            par(mfrow = c(3, 3))
+          } else {
+            par(mfrow = c(3, 4))
+          }
+          for (plot.idx in 1:min(p.sig, 12)) {
             plot(keep.beta2[start:iter, plot.idx],
                  main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
                  xlab = acc.rate.logsig[plot.idx], type = "l",
@@ -366,7 +374,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           }
           this.plot <- "all"
         } else {
-          par(mfrow = c(3, 3))
+          par(mfrow = c(3, 4))
+
+          plot(keep.beta.sd[start:iter, 1],
+               main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
 
           plot(keep.beta1[start:iter, 1],
                main = bquote(paste(mu, ": ", beta[0])),
@@ -378,8 +389,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                xlab = acc.rate.mu[2], type = "l",
                ylab = paste("MH =", round(MH.beta1[2], 3)))
 
-          plot(keep.beta.sd[start:iter, 1],
-               main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
+          plot(keep.beta1[start:iter, L],
+               main = bquote(paste(mu, ": ", beta[L])),
+               xlab = acc.rate.mu[L], type = "l",
+               ylab = paste("MH =", round(MH.beta1[L], 3)))
+
+          plot(keep.beta.sd[start:iter, 2],
+               main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
 
           plot(keep.beta2[start:iter, 1],
                main = bquote(paste(sigma, ": ", beta[0])),
@@ -391,14 +407,18 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                xlab = acc.rate.logsig[2], type = "l",
                ylab = paste("MH =", round(MH.beta2[2], 3)))
 
-          plot(keep.beta.sd[start:iter, 2],
-               main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
+          plot(keep.beta2[start:iter, L],
+               main = bquote(paste(sigma, ": ", beta[L])),
+               xlab = acc.rate.logsig[L], type = "l",
+               ylab = paste("MH =", round(MH.beta2[L], 3)))
 
           plot(keep.xi[start:iter], main = bquote(xi),
                xlab = acc.rate.xi, type = "l",
                ylab = paste("MH =", round(MH.xi, 3)))
 
           plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
+
+          plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
 
           plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
 

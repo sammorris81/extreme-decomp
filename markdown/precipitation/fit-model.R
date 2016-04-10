@@ -154,6 +154,12 @@ update <- 1000
 
 iters <- 30000; burn <- 25000; update <- 100  # for testing
 A.init <- 100  # consistent with estimates of alpha
+beta1.init <- rep(0, np)
+beta2.init <- rep(0, np)
+# beta1.init[1] <- 100
+# beta2.init[1] <- 3.6
+beta1.init[1] <- 120
+beta2.init[1] <- 2
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -162,7 +168,7 @@ set.seed(6262)  # mcmc
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                # beta1 = beta1.init, beta2 = beta2.init,
+                beta1 = beta1.init, beta2 = beta2.init,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,

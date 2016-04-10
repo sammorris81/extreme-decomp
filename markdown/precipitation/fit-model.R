@@ -99,7 +99,7 @@ if (time == "current") {
 }
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
-np <- 2 + L  # for a single year (int, t, B1...BL)
+np <- 4 + L  # for a single year (int, t, elev, log(elev), B1...BL)
 
 ## standardize spatial basis functions
 for (i in 1:L) {
@@ -119,7 +119,7 @@ X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, B.cov[i, ])
+    X[i, t, 2:np] <- c(time, elev[i], log(elev[i]), B.cov[i, ])
   }
 }
 
@@ -169,8 +169,10 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                 beta1 = beta1.init, beta2 = beta2.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                beta1.sd = 100, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                beta2.sd = 10, beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)

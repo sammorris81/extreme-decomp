@@ -98,7 +98,8 @@ if (time == "current") {
   Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]] <- NA
 }
 
-np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
+# np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
+np <- 4 + L  # for a single year (int, t, elev, log(elev), B1...BL)
 
 ## standardize spatial basis functions
 for (i in 1:L) {
@@ -106,11 +107,19 @@ for (i in 1:L) {
 }
 
 ## create covariate matrix for training
+# X <- array(1, dim = c(ns, nt, np))
+# for (i in 1:ns) {
+#   for (t in 1:nt) {
+#     time <- (t - nt / 2) / nt
+#     X[i, t, 2:np] <- c(time, B.cov[i, ], B.cov[i, ] * time)
+#   }
+# }
+
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, B.cov[i, ], B.cov[i, ] * time)
+    X[i, t, 2:np] <- c(time, elev[i], log(elev[i]), B.cov[i, ])
   }
 }
 
@@ -144,11 +153,13 @@ burn   <- 20000
 update <- 1000
 
 iters <- 30000; burn <- 25000; update <- 100  # for testing
+A.init <- 100  # consistent with estimates of alpha
 beta1.init <- rep(0, np)
 beta2.init <- rep(0, np)
-beta1.init[1] <- 80
-beta2.init[1] <- 3.5
-A.init <- 10
+# beta1.init[1] <- 100
+# beta2.init[1] <- 3.6
+beta1.init[1] <- 120
+beta2.init[1] <- 2
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -156,57 +167,16 @@ set.seed(6262)  # mcmc
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-                beta1.attempts = 50, beta2.attempts = 50,
-                beta1 = beta1.init, beta2 = beta2.init, A = A.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
+                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                beta1 = beta1.init, beta2 = beta2.init,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                beta1.sd = 100, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                beta2.sd = 10, beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
-
-X.mu  <- X
-X.sig <- X[, , 1:(2 + L)]
-beta2.init <- rep(0, dim(X.sig)[3])
-beta2.init[1] <- 3.5
-A.init <- 10
-
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
-
-fit <- ReShMCMC(y = Y, X.mu = X.mu, X.sig = X.sig, thresh = -Inf, B = B.sp,
-                alpha = alpha,
-                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-                beta1.attempts = 50, beta2.attempts = 50,
-                beta1 = beta1.init, beta2 = beta2.init, A = A.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
-cat("Finished fit and predict \n")
-
-X.mu  <- X[, , 1:(2 + L)]
-X.sig <- X[, , 1:(2 + L)]
-rm(beta1.init, beta2.init)
-A.init <- 10
-
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
-
-fit <- ReShMCMC(y = Y, X.mu = X.mu, X.sig = X.sig, thresh = -Inf, B = B.sp,
-                alpha = alpha,
-                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-                beta1.attempts = 100, beta2.attempts = 100,
-                # beta1 = beta1.init, beta2 = beta2.init,
-                A = A.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
-cat("Finished fit and predict \n")
-
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

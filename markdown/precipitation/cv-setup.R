@@ -10,6 +10,15 @@ setMKLthreads(5)
 load(file = "precip.RData")
 Y <- Yvec
 # only keep s and Yvec
+elev.old <- elev
+
+# find the elevations
+elev <- rep(0, nrow(s))
+for (i in 1:nrow(s)) {
+  row <- which(s1 == s[i, 1])
+  col <- which(s2 == s[i, 2])
+  elev[i] <- elev.old[row, col]
+}
 rm(Yvec, Ymat, s1, s2)
 
 ################################################################################
@@ -19,7 +28,8 @@ rm(Yvec, Ymat, s1, s2)
 keep.these <- which(s[, 1] > -90)
 s <- s[keep.these, ]
 Y <- Y[keep.these, ]
-save(Y, s, year, file = "precip_preprocess.RData")
+elev <- elev[keep.these]
+save(Y, s, elev, year, file = "precip_preprocess.RData")
 
 ################################################################################
 #### Preprocess locations and data and setup cross-validation ##################

@@ -526,6 +526,85 @@ loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
   return(ll)
 }
 
+grad_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
+                                alpha) {
+  mu <- 0
+  p.mu <- dim(X.mu)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X.mu[, , j] * beta1[j]
+  }
+
+  sigma    <- exp(logsig)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  grad <- rep(0, p.mu)
+  for (j in 1:p.mu) {
+    this.j <- -(tx_star^(-1 / xi_star - 1)) / sig_star +
+      (y > thresh) * (xi_star + 1) / (sig_star * tx_star)
+    grad[j] <- sum(this.j * X.mu[, , j])
+  }
+  return(grad)
+}
+
+
+loglike_mu <- function(beta1, X.mu, y, theta, logsig, xi, thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X.mu)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X.mu[, , j] * beta1[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  return(sum(ll))
+}
+
+grad_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
+                                 alpha) {
+  logsig <- 0
+  p.sig <- dim(X.sig)[3]
+  for (j in 1:p.sig) {
+    logsig <- logsig + X.sig[, , j] * beta2[j]
+  }
+
+  sigma    <- exp(logsig)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  grad <- rep(0, p.sig)
+  for (j in 1:p.sig) {
+    this.j <- (-tx_star^(-1 / xi_star - 1) *
+                 xi * (y - mu) / (xi_star * sigma * theta^xi) +
+                 (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
+                                   (xi_star * sigma * tx_star * theta^xi)))
+    grad[j] <- sum( this.j * X.sig[, , j])
+  }
+
+  return(grad)
+}
+
+loglike_sig <- function(beta2, X.sig, y, theta, mu, xi, thresh, alpha) {
+  logsig <- 0
+  p.sig <- dim(X.sig)[3]
+  for (j in 1:p.sig) {
+    logsig <- logsig + X.sig[, , j] * beta2[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  return(sum(ll))
+}
+
+
 ###########  PS functions  ############
 
 ld <- function(u, A, alpha){

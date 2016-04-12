@@ -1,3 +1,4 @@
+library(numDeriv)
 set.seed(1234)
 beta1 <- beta2 <- runif(3)
 X.mu <- array(1, dim = c(5, 2, 3))
@@ -24,9 +25,14 @@ for (i in 1:3) {
   mu <- mu + X.mu[, , i] * beta1[i]
 }
 
-grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = Y, theta = theta, logsig = logsig,
-     xi = xi, thresh = -Inf, alpha = alpha)
+grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = Y, theta = theta,
+     logsig = logsig, xi = xi, thresh = -Inf, alpha = alpha)
 grad_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y, theta = theta,
+                    logsig = logsig, xi = xi, thresh = -Inf, alpha = alpha)
+
+hessian(func = loglike_mu, x = beta1, X.mu = X.mu, y = Y, theta = theta,
+        logsig = logsig, xi = xi, thresh = -Inf, alpha = alpha)
+hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y, theta = theta,
                     logsig = logsig, xi = xi, thresh = -Inf, alpha = alpha)
 
 library(microbenchmark)
@@ -34,6 +40,12 @@ microbenchmark(grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = Y, theta = th
                     xi = xi, thresh = -Inf, alpha = alpha),
                grad_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y, theta = theta,
                                    logsig = logsig, xi = xi, thresh = -Inf, alpha = alpha))
+
+microbenchmark(hessian(func = loglike_mu, x = beta1, X.mu = X.mu, y = Y, theta = theta,
+                       logsig = logsig, xi = xi, thresh = Inf, alpha = alpha),
+               hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y, theta = theta,
+                                   logsig = logsig, xi = xi, thresh = Inf, alpha = alpha))
+
 
 sigma <- exp(logsig)
 mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
@@ -60,7 +72,14 @@ grad(func = loglike_sig, x = beta2, X.sig = X.sig, y = Y, theta = theta,
 grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = Y, theta = theta,
                      mu = mu, xi = xi, thresh = -Inf, alpha = alpha)
 
+hessian(func = loglike_sig, x = beta2, X.sig = X.sig, y = Y, theta = theta,
+        mu = mu, xi = xi, thresh = -Inf, alpha = alpha)
+hess_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = Y, theta = theta,
+                     mu = mu, xi = xi, thresh = -Inf, alpha = alpha)
+
 microbenchmark(grad(func = loglike_sig, x = beta2, X.sig = X.sig, y = Y, theta = theta,
                     mu = mu, xi = xi, thresh = -Inf, alpha = alpha),
                grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = Y, theta = theta,
                                     mu = mu, xi = xi, thresh = -Inf, alpha = alpha))
+
+

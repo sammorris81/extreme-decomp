@@ -570,6 +570,33 @@ grad_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
   return(grad)
 }
 
+hess_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
+                                alpha) {
+  mu <- 0
+  p.mu <- dim(X.mu)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X.mu[, , j] * beta1[j]
+  }
+
+  sigma    <- exp(logsig)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  hess <- matrix(0, p.mu, p.mu)
+  for (j in 1:p.mu) {
+    this.j <- -(xi_star + 1) * tx_star^(-1 / xi_star - 2) / sig_star^2 +
+      (y > thresh) * (xi_star + 1) * xi_star / (sig_star^2 * tx_star^2)
+    for (i in j:p.mu) {
+      hess[i, j] <- hess[j, i] <- sum(this.j * X.mu[, , i] * X.mu[, , j])
+    }
+  }
+
+  return(hess)
+}
+
 
 loglike_mu <- function(beta1, X.mu, y, theta, logsig, xi, thresh, alpha) {
   mu <- 0
@@ -605,10 +632,41 @@ grad_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
                  xi * (y - mu) / (xi_star * sigma * theta^xi) +
                  (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
                                    (xi_star * sigma * tx_star * theta^xi)))
-    grad[j] <- sum( this.j * X.sig[, , j])
+    grad[j] <- sum(this.j * X.sig[, , j])
   }
 
   return(grad)
+}
+
+hess_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
+                                 alpha) {
+  logsig <- 0
+  p.sig <- dim(X.sig)[3]
+  for (j in 1:p.sig) {
+    logsig <- logsig + X.sig[, , j] * beta2[j]
+  }
+
+  sigma    <- exp(logsig)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  hess <- matrix(0, p.sig, p.sig)
+  dtx <- -xi * (y - mu) / (theta^xi * sigma)
+  for (i in 1:p.sig) {
+    d12 <- (-1 / xi_star - 1) * tx_star^(-1 / xi_star - 2) * dtx^2
+    d21 <- tx_star^(-1 / xi_star - 1) * (-dtx)
+    this.j <- (d12 + d21) / xi_star
+    this.j <- this.j + (y > thresh) * (xi_star + 1) / alpha * (y - mu) / theta^xi *
+      (-1 / (sigma * tx_star) - dtx / (tx_star^2 * sigma))
+    for (j in i:p.sig) {
+      hess[i, j] <- hess[j, i] <- sum(this.j * X.sig[, , i] * X.sig[, , j])
+    }
+  }
+
+  return(hess)
 }
 
 loglike_sig <- function(beta2, X.sig, y, theta, mu, xi, thresh, alpha) {

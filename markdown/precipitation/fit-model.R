@@ -158,12 +158,15 @@ beta1.init <- rep(0, np)
 beta2.init <- rep(0, np)
 # beta1.init[1] <- 100
 # beta2.init[1] <- 3.6
+# beta1.init[1] <- 65
+# beta2.init[1] <- 4
 beta1.init[1] <- 120
-beta2.init[1] <- 2
+beta2.init[1] <- 2.5
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
+Rprof(filename = "Rprof.out", line.profiling = TRUE)
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
@@ -177,6 +180,27 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
+Rprof(NULL)
+summaryRprof(filename = "Rprof.out", lines = "show")
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+
+# fit the model using the training data
+fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
+                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                beta1 = beta1.init, beta2 = beta2.init,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                beta1.sd = 50, beta1.sd.fix = TRUE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                beta2.sd = 5, beta2.sd.fix = TRUE,
+                beta1.block = FALSE, beta2.block = FALSE,
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

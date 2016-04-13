@@ -152,7 +152,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 30000; burn <- 25000; update <- 100  # for testing
+iters <- 100; burn <- 90; update <- 10  # for testing
 A.init <- 100  # consistent with estimates of alpha
 beta1.init <- rep(0, np)
 beta2.init <- rep(0, np)
@@ -162,6 +162,7 @@ beta2.init <- rep(0, np)
 # beta2.init[1] <- 4
 beta1.init[1] <- 120
 beta2.init[1] <- 2.5
+
 
 
 cat("Start mcmc fit \n")

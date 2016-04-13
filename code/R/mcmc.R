@@ -168,41 +168,67 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     cur.grad <- grad_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
                                     theta = theta, logsig = logsig, xi = xi,
                                     thresh = thresh, alpha = alpha)
-    for (j in 1:p.mu) {
-      att.beta1[j] <- att.beta1[j] + 1
-      cur.mn  <- beta1[j] + 0.5 * MH.beta1[j]^2 * cur.grad[j]
-      # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
-      #                                 theta = theta, logsig = logsig, xi = xi,
-      #                                 thresh = thresh, alpha = alpha)
+    cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
+                                    theta = theta, logsig = logsig, xi = xi,
+                                    thresh = thresh, alpha = alpha)
 
-      canb    <- beta1
-      canb[j] <- rnorm(1, cur.mn, MH.beta1[j])
+    cat(cur.hess)
+    cur.mn  <- beta1 + 0.5 * MH.beta1^2 * cur.grad
+    cur.var <- tryCatch(expr = solve(cur.hess), error = function(e) 0)
+    cur.var <- diag(MH.beta1^2)
+    canb <- cur.mn + t(chol(cur.var)) %*% rnorm(p.mu, 0, 1)
 
-      # print(paste("canb:", canb[j]))
-      canmu <- mu + X.mu[, , j] * (canb[j] - beta1[j])
-      canll <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+    can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+                                    theta = theta, logsig = logsig, xi = xi,
+                                    thresh = thresh, alpha = alpha)
+    can.hess <- hess_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+                                    theta = theta, logsig = logsig, xi = xi,
+                                    thresh = thresh, alpha = alpha)
 
-      # need to adjust the candidate distribution for acc.ratio
-      can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-                                      theta = theta, logsig = logsig, xi = xi,
-                                      thresh = thresh, alpha = alpha)
-      can.mn <- canb[j] + 0.5 * MH.beta1[j]^2 * can.grad[j]
 
-      R <- sum(canll - curll) +
-        dnorm(canb[j], 0, beta1.sd, log = TRUE) -
-        dnorm(beta1[j], 0, beta1.sd, log = TRUE) +
-        dnorm(beta1[j], can.mn, MH.beta1[j], log = TRUE) -
-        dnorm(canb[j], cur.mn, MH.beta1[j], log = TRUE)
 
-      if (!is.na(R)) { if (log(runif(1)) < R) {
-        acc.beta1[j] <- acc.beta1[j] + 1
-        beta1[j]     <- canb[j]
-        mu           <- canmu
-        cur.grad[j]  <- can.grad[j]
-        curll        <- canll
-      }}
+    R <- sum(canll - curll) +
+          dnorm(canb, 0, beta1.sd, log = TRUE) -
+          dnorm(beta1, 0, beta1.sd, log = TRUE) +
+          dnorm(beta1, can.mn, MH.beta1[j], log = TRUE) -
+          dnorm(canb, cur.mn, MH.beta1[j], log = TRUE)
 
-    }
+
+    # for (j in 1:p.mu) {
+    #   att.beta1[j] <- att.beta1[j] + 1
+    #   cur.mn  <- beta1[j] + 0.5 * MH.beta1[j]^2 * cur.grad[j]
+    #   # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
+    #   #                                 theta = theta, logsig = logsig, xi = xi,
+    #   #                                 thresh = thresh, alpha = alpha)
+    #
+    #   canb    <- beta1
+    #   canb[j] <- rnorm(1, cur.mn, MH.beta1[j])
+    #
+    #   # print(paste("canb:", canb[j]))
+    #   canmu <- mu + X.mu[, , j] * (canb[j] - beta1[j])
+    #   canll <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+    #
+    #   # need to adjust the candidate distribution for acc.ratio
+    #   can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+    #                                   theta = theta, logsig = logsig, xi = xi,
+    #                                   thresh = thresh, alpha = alpha)
+    #   can.mn <- canb[j] + 0.5 * MH.beta1[j]^2 * can.grad[j]
+    #
+    #   R <- sum(canll - curll) +
+    #     dnorm(canb[j], 0, beta1.sd, log = TRUE) -
+    #     dnorm(beta1[j], 0, beta1.sd, log = TRUE) +
+    #     dnorm(beta1[j], can.mn, MH.beta1[j], log = TRUE) -
+    #     dnorm(canb[j], cur.mn, MH.beta1[j], log = TRUE)
+    #
+    #   if (!is.na(R)) { if (log(runif(1)) < R) {
+    #     acc.beta1[j] <- acc.beta1[j] + 1
+    #     beta1[j]     <- canb[j]
+    #     mu           <- canmu
+    #     cur.grad[j]  <- can.grad[j]
+    #     curll        <- canll
+    #   }}
+    #
+    # }
     # if (beta1.block) {
     #   att.beta1 <- att.beta1 + 1
     #   canb      <- rnorm(p.mu, beta1, MH.beta1)
@@ -620,8 +646,10 @@ loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
 
   tx       <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
   ll       <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
-  ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
-  ll       <- ifelse(is.na(ll), -Inf, ll)
+  # ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
+  # ll       <- ifelse(is.na(ll), -Inf, ll)
+  ll[is.na(y)] <- 0
+  ll[is.na(ll)] <- -Inf
 
   return(ll)
 }
@@ -641,13 +669,15 @@ grad_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
 
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
 
+  this.grad <- -(tx_star^(-1 / xi_star - 1)) / sig_star +
+    (y > thresh) * (xi_star + 1) / (sig_star * tx_star)
+  this.grad[is.na(y)] <- 0  # for the missing data
+
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {
-    this.j <- -(tx_star^(-1 / xi_star - 1)) / sig_star +
-      (y > thresh) * (xi_star + 1) / (sig_star * tx_star)
-    this.j[is.na(y)] <- 0  # for the missing data
-    grad[j] <- sum(this.j * X.mu[, , j])
+    grad[j] <- sum(this.grad * X.mu[, , j])
   }
+
   return(grad)
 }
 
@@ -665,18 +695,18 @@ hess_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
   xi_star  <- alpha * xi
 
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+  this.hess <- -(xi_star + 1) * tx_star^(-1 / xi_star - 2) / sig_star^2 +
+    (y > thresh) * (xi_star + 1) * xi_star / (sig_star^2 * tx_star^2)
+  this.hess[is.na(y)] <- 0
 
   hess <- matrix(0, p.mu, p.mu)
   for (j in 1:p.mu) {
-    this.j <- -(xi_star + 1) * tx_star^(-1 / xi_star - 2) / sig_star^2 +
-      (y > thresh) * (xi_star + 1) * xi_star / (sig_star^2 * tx_star^2)
-    this.j[is.na(y)] <- 0
     for (i in j:p.mu) {
-      hess[i, j] <- hess[j, i] <- sum(this.j * X.mu[, , i] * X.mu[, , j])
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X.mu[, , i] * X.mu[, , j])
     }
   }
 
-  return(hess)
+  return(-hess)
 }
 
 
@@ -707,15 +737,15 @@ grad_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
   xi_star  <- alpha * xi
 
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+  this.grad <- (-tx_star^(-1 / xi_star - 1) *
+                  xi * (y - mu) / (xi_star * sigma * theta^xi) +
+                  (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
+                                    (xi_star * sigma * tx_star * theta^xi)))
+  this.grad[is.na(y)] <- 0
 
   grad <- rep(0, p.sig)
   for (j in 1:p.sig) {
-    this.j <- (-tx_star^(-1 / xi_star - 1) *
-                 xi * (y - mu) / (xi_star * sigma * theta^xi) +
-                 (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
-                                   (xi_star * sigma * tx_star * theta^xi)))
-    this.j[is.na(y)] <- 0
-    grad[j] <- sum(this.j * X.sig[, , j])
+    grad[j] <- sum(this.grad * X.sig[, , j])
   }
 
   return(grad)
@@ -738,19 +768,19 @@ hess_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
 
   hess <- matrix(0, p.sig, p.sig)
   dtx <- -xi * (y - mu) / (theta^xi * sigma)
+  d12 <- (-1 / xi_star - 1) * tx_star^(-1 / xi_star - 2) * dtx^2
+  d21 <- tx_star^(-1 / xi_star - 1) * (-dtx)
+  this.hess <- (d12 + d21) / xi_star
+  this.hess <- this.j + (y > thresh) * (xi_star + 1) / alpha *
+    (y - mu) / theta^xi * (-1 / (sigma * tx_star) - dtx / (tx_star^2 * sigma))
+  this.hess[is.na(y)] <- 0
   for (i in 1:p.sig) {
-    d12 <- (-1 / xi_star - 1) * tx_star^(-1 / xi_star - 2) * dtx^2
-    d21 <- tx_star^(-1 / xi_star - 1) * (-dtx)
-    this.j <- (d12 + d21) / xi_star
-    this.j <- this.j + (y > thresh) * (xi_star + 1) / alpha * (y - mu) / theta^xi *
-      (-1 / (sigma * tx_star) - dtx / (tx_star^2 * sigma))
-    this.j[is.na(y)] <- 0
     for (j in i:p.sig) {
-      hess[i, j] <- hess[j, i] <- sum(this.j * X.sig[, , i] * X.sig[, , j])
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X.sig[, , i] * X.sig[, , j])
     }
   }
 
-  return(hess)
+  return(-hess)
 }
 
 loglike_sig <- function(beta2, X.sig, y, theta, mu, xi, thresh, alpha) {

@@ -31,3 +31,26 @@ fit0 <- fevd(TMX1, PORTw,
              scale.fun = ~MTMAX + MTMIN,
              type = "GEV", units = "deg C", use.phi = TRUE)
 fit0
+
+ll.ind <- function(beta, X, y) {
+  nt <- dim(X)[2]
+  np <- dim(X)[3]
+
+  beta1 <- beta[1:np]
+  beta2 <- beta[(np + 1):(2 * np)]
+  xi    <- tail(beta, 1)
+  ll <- 0
+
+  for (t in 1:nt) {
+    mu <- X[, t, ] %*% beta1
+    sig <- exp(X[, t, ] %*% beta2)
+    if (any(sig == 0)) {
+      return(Inf)
+    }
+    ll <- ll + sum(
+      dgev(y[, t], loc = mu, scale = sig, shape = xi, log = TRUE),
+      na.rm = TRUE)
+  }
+
+  return(-ll)
+}

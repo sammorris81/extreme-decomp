@@ -99,7 +99,7 @@ if (time == "current") {
 }
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
-np <- 4 + L  # for a single year (int, t, elev, log(elev), B1...BL)
+np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
 
 ## standardize spatial basis functions
 for (i in 1:L) {
@@ -115,15 +115,13 @@ for (i in 1:L) {
 #   }
 # }
 
-X <- array(1, dim = c(ns, nt, np))
+X <- array(0, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, elev[i], log(elev[i]), B.cov[i, ])
+    X[i, t, ] <- c(time, elev[i], log(elev[i]), B.cov[i, ])
   }
 }
-
-X <- X[, , 2:np]
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -162,18 +160,16 @@ beta2.init <- rep(0, np)
 # beta2.init[1] <- 3.6
 # beta1.init[1] <- 65
 # beta2.init[1] <- 4
-beta1.init[1] <- 120
-beta2.init[1] <- 2.5
-
+# beta1.init[1] <- 120
+# beta2.init[1] <- 2.5
 
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
-Rprof(filename = "Rprof.out", line.profiling = TRUE)
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                xi = 0.001, can.mu.sd = 0.05, can.sig.sd = 0.001,
+                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                 beta1 = beta1.init, # beta2 = beta2.init,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
@@ -184,8 +180,7 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
-Rprof(NULL)
-summaryRprof(filename = "Rprof.out", lines = "show")
+
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc

@@ -29,8 +29,8 @@
 ################################################################################
 
 ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
-                   beta1 = NULL, beta1.mn = 0, beta1.sd = 10,
-                   beta2 = NULL, beta2.mn = 0, beta2.sd = 1,
+                   beta1 = NULL, beta1.mu = 0, beta1.sd = 10, mu1.sd = 100,
+                   beta2 = NULL, beta2.mu = 0, beta2.sd = 1, mu2.sd = 10,
                    xi = 0.001, A = NULL,
                    can.mu.sd = 0.1, can.sig.sd = 0.1,
                    beta1.block = FALSE, beta2.block = FALSE,
@@ -164,190 +164,98 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     # am splitting out beta1 and beta2 to allow for potentially different
     # covariates for mu and log(sigma)
 
-    # trying a Langevin block update
-    cur.grad <- grad_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
-                                    theta = theta, logsig = logsig, xi = xi,
-                                    thresh = thresh, alpha = alpha)
-    cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
-                                    theta = theta, logsig = logsig, xi = xi,
-                                    thresh = thresh, alpha = alpha)
-
-    cat(cur.hess)
-    cur.mn  <- beta1 + 0.5 * MH.beta1^2 * cur.grad
-    cur.var <- tryCatch(expr = solve(cur.hess), error = function(e) 0)
-    cur.var <- diag(MH.beta1^2)
-    canb <- cur.mn + t(chol(cur.var)) %*% rnorm(p.mu, 0, 1)
-
-    can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-                                    theta = theta, logsig = logsig, xi = xi,
-                                    thresh = thresh, alpha = alpha)
-    can.hess <- hess_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-                                    theta = theta, logsig = logsig, xi = xi,
-                                    thresh = thresh, alpha = alpha)
-
-
-
-    R <- sum(canll - curll) +
-          dnorm(canb, 0, beta1.sd, log = TRUE) -
-          dnorm(beta1, 0, beta1.sd, log = TRUE) +
-          dnorm(beta1, can.mn, MH.beta1[j], log = TRUE) -
-          dnorm(canb, cur.mn, MH.beta1[j], log = TRUE)
-
-
-    # for (j in 1:p.mu) {
-    #   att.beta1[j] <- att.beta1[j] + 1
-    #   cur.mn  <- beta1[j] + 0.5 * MH.beta1[j]^2 * cur.grad[j]
-    #   # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
-    #   #                                 theta = theta, logsig = logsig, xi = xi,
-    #   #                                 thresh = thresh, alpha = alpha)
-    #
-    #   canb    <- beta1
-    #   canb[j] <- rnorm(1, cur.mn, MH.beta1[j])
-    #
-    #   # print(paste("canb:", canb[j]))
-    #   canmu <- mu + X.mu[, , j] * (canb[j] - beta1[j])
-    #   canll <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-    #
-    #   # need to adjust the candidate distribution for acc.ratio
-    #   can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-    #                                   theta = theta, logsig = logsig, xi = xi,
-    #                                   thresh = thresh, alpha = alpha)
-    #   can.mn <- canb[j] + 0.5 * MH.beta1[j]^2 * can.grad[j]
-    #
-    #   R <- sum(canll - curll) +
-    #     dnorm(canb[j], 0, beta1.sd, log = TRUE) -
-    #     dnorm(beta1[j], 0, beta1.sd, log = TRUE) +
-    #     dnorm(beta1[j], can.mn, MH.beta1[j], log = TRUE) -
-    #     dnorm(canb[j], cur.mn, MH.beta1[j], log = TRUE)
-    #
-    #   if (!is.na(R)) { if (log(runif(1)) < R) {
-    #     acc.beta1[j] <- acc.beta1[j] + 1
-    #     beta1[j]     <- canb[j]
-    #     mu           <- canmu
-    #     cur.grad[j]  <- can.grad[j]
-    #     curll        <- canll
-    #   }}
-    #
-    # }
-    # if (beta1.block) {
-    #   att.beta1 <- att.beta1 + 1
-    #   canb      <- rnorm(p.mu, beta1, MH.beta1)
-    #   canmu     <- 0
-    #   for (j in 1:p.mu) {
-    #     canmu   <- mu + X.mu[, , j] * canb[j]
-    #   }
-    #   canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-    #   R         <- sum(canll - curll) +
-    #                sum(dnorm(canb, 0, beta1.sd, log = TRUE) -
-    #                    dnorm(beta1, 0, beta1.sd, log = TRUE))
-    #   if (log(runif(1)) < R) {
-    #     acc.beta1 <- acc.beta1 + 1
-    #     beta1     <- canb
-    #     mu        <- canmu
-    #     curll     <- canll
-    #   }
-    # } else {
-    #   for (j in 1:p.mu) {  # beta1
-    #     att.beta1[j] <- att.beta1[j] + 1
-    #     canb         <- rnorm(1, beta1[j], MH.beta1[j])
-    #     canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
-    #     canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-    #     R            <- sum(canll - curll) +
-    #       dnorm(canb, beta1.mn, beta1.sd, log = TRUE) -
-    #       dnorm(beta1[j], beta1.mn, beta1.sd, log = TRUE)
-    #     if (log(runif(1)) < R) {
-    #       acc.beta1[j] <- acc.beta1[j] + 1
-    #       beta1[j]        <- canb
-    #       mu              <- canmu
-    #       curll           <- canll
-    #     }
-    #   }
-    # }
-
-    # trying a Langevin block update
-    cur.grad <- grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
-                                     theta = theta, mu = mu, xi = xi,
-                                     thresh = thresh, alpha = alpha)
-    for (j in 1:p.mu) {
-      att.beta2[j] <- att.beta2[j] + 1
-      cur.mn  <- beta2[j] + 0.5 * MH.beta2[j]^2 * cur.grad[j]
-      # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
-      #                                 theta = theta, logsig = logsig, xi = xi,
-      #                                 thresh = thresh, alpha = alpha)
-
-      canb    <- beta2
-      canb[j] <- rnorm(1, cur.mn, MH.beta2[j])
-
-      # print(paste("canb:", canb[j]))
-      canlogs <- logsig + X.sig[, , j] * (canb[j] - beta2[j])
-      canll   <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-
-      # need to adjust the candidate distribution for acc.ratio
-      can.grad <- grad_loglike_betasig(beta2 = canb, X.sig = X.sig, y = y,
-                                       theta = theta, mu = mu, xi = xi,
-                                       thresh = thresh, alpha = alpha)
-      can.mn <- canb[j] + 0.5 * MH.beta2[j]^2 * can.grad[j]
-
-      R <- sum(canll - curll) +
-        dnorm(canb[j], 0, beta2.sd, log = TRUE) -
-        dnorm(beta2[j], 0, beta2.sd, log = TRUE) +
-        dnorm(beta2[j], can.mn, MH.beta2[j], log = TRUE) -
-        dnorm(canb[j], cur.mn, MH.beta2[j], log = TRUE)
-
-      if (!is.na(R)) { if (log(runif(1)) < R) {
-        acc.beta2[j] <- acc.beta2[j] + 1
-        beta2[j]     <- canb[j]
-        logsig       <- canlogs
-        cur.grad[j]  <- can.grad[j]
-        curll        <- canll
-      }}
-
+    # beta1
+    if (beta1.block) {
+      att.beta1 <- att.beta1 + 1
+      canb      <- rnorm(p.mu, beta1, MH.beta1)
+      canmu     <- 0
+      for (j in 1:p.mu) {
+        canmu   <- mu + X.mu[, , j] * canb[j]
+      }
+      canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      R         <- sum(canll - curll) +
+                   sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
+                       dnorm(beta1, beta1.mu, beta1.sd, log = TRUE))
+      if (log(runif(1)) < R) {
+        acc.beta1 <- acc.beta1 + 1
+        beta1     <- canb
+        mu        <- canmu
+        curll     <- canll
+      }
+    } else {
+      for (j in 1:p.mu) {  # beta1
+        att.beta1[j] <- att.beta1[j] + 1
+        canb         <- rnorm(1, beta1[j], MH.beta1[j])
+        canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
+        canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        R            <- sum(canll - curll) +
+          dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
+          dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE)
+        if (log(runif(1)) < R) {
+          acc.beta1[j] <- acc.beta1[j] + 1
+          beta1[j]        <- canb
+          mu              <- canmu
+          curll           <- canll
+        }
+      }
     }
-    # if (beta2.block) {
-    #   att.beta2 <- att.beta2 + 1
-    #   canb      <- rnorm(p.sig, beta2, MH.beta2)
-    #   canlogs   <- 0
-    #   for (j in 1:p.sig) { # beta2
-    #     canlogs <- canlogs + X.sig[, , j] * canb[j]
-    #   }
-    #   canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-    #   R          <- sum(canll - curll) +
-    #     sum(dnorm(canb, 0, beta2.sd, log = TRUE) -
-    #           dnorm(beta2, 0, beta2.sd, log = TRUE))
-    #   if (log(runif(1)) < R) {
-    #     acc.beta2 <- acc.beta2 + 1
-    #     beta2     <- canb
-    #     logsig    <- canlogs
-    #     curll     <- canll
-    #   }
-    # } else {
-    #   for (j in 1:p.sig) { # beta2
-    #     att.beta2[j] <- att.beta2[j] + 1
-    #     canb       <- rnorm(1, beta2[j], MH.beta2[j])
-    #     canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
-    #     canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-    #     R          <- sum(canll - curll) +
-    #       dnorm(canb, beta2.mn, beta2.sd, log = TRUE) -
-    #       dnorm(beta2[j], beta2.mn, beta2.sd, log = TRUE)
-    #     if (log(runif(1)) < R) {
-    #       acc.beta2[j] <- acc.beta2[j] + 1
-    #       beta2[j]     <- canb
-    #       logsig       <- canlogs
-    #       curll        <- canll
-    #     }
-    #   }
-    # }
+
+    # beta2
+    if (beta2.block) {
+      att.beta2 <- att.beta2 + 1
+      canb      <- rnorm(p.sig, beta2, MH.beta2)
+      canlogs   <- 0
+      for (j in 1:p.sig) { # beta2
+        canlogs <- canlogs + X.sig[, , j] * canb[j]
+      }
+      canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+      R          <- sum(canll - curll) +
+        sum(dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
+              dnorm(beta2, beta2.mu, beta2.sd, log = TRUE))
+      if (log(runif(1)) < R) {
+        acc.beta2 <- acc.beta2 + 1
+        beta2     <- canb
+        logsig    <- canlogs
+        curll     <- canll
+      }
+    } else {
+      for (j in 1:p.sig) { # beta2
+        att.beta2[j] <- att.beta2[j] + 1
+        canb       <- rnorm(1, beta2[j], MH.beta2[j])
+        canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
+        canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+        R          <- sum(canll - curll) +
+          dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
+          dnorm(beta2[j], beta2.mu, beta2.sd, log = TRUE)
+        if (log(runif(1)) < R) {
+          acc.beta2[j] <- acc.beta2[j] + 1
+          beta2[j]     <- canb
+          logsig       <- canlogs
+          curll        <- canll
+        }
+      }
+    }
+
+    # update beta1.mu: prior N(0, mu1.sd)
+    mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.var)
+    mu1.post.mn  <- sum(beta1)/beta1.var * mu1.post.var
+    beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
+
+    # update beta2.mu: prior N(0, mu2.sd)
+    mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.var)
+    mu2.post.mn  <- sum(beta2)/beta2.var * mu2.post.var
+    beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
 
     # update prior standard deviations: prior IG(a, b)
     if (!beta1.sd.fix) {
       beta1.var <- 1 / rgamma(1, beta1.tau.a + p.mu / 2,
-                              beta1.tau.b + sum((beta1 - beta1.mn)^2) / 2)
+                              beta1.tau.b + sum((beta1 - beta1.mu)^2) / 2)
       beta1.sd  <- sqrt(beta1.var)
     }
 
     if (!beta2.sd.fix) {
       beta2.var <- 1 / rgamma(1, beta2.tau.a + p.sig / 2,
-                              beta2.tau.b + sum((beta2 - beta2.mn)^2) / 2)
+                              beta2.tau.b + sum((beta2 - beta2.mu)^2) / 2)
 
       beta2.sd  <- sqrt(beta2.var)
     }
@@ -848,3 +756,111 @@ if (FALSE) {
 
   fit    <- ReShMCMC(y = y, X = X, thresh = thresh, B = B, alpha = alpha)
 }
+
+
+
+# # trying a Langevin block update
+# cur.grad <- grad_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
+#                                 theta = theta, logsig = logsig, xi = xi,
+#                                 thresh = thresh, alpha = alpha)
+# cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
+#                                 theta = theta, logsig = logsig, xi = xi,
+#                                 thresh = thresh, alpha = alpha)
+#
+# cat(cur.hess)
+# cur.mn  <- beta1 + 0.5 * MH.beta1^2 * cur.grad
+# cur.var <- tryCatch(expr = solve(cur.hess), error = function(e) 0)
+# cur.var <- diag(MH.beta1^2)
+# canb <- cur.mn + t(chol(cur.var)) %*% rnorm(p.mu, 0, 1)
+#
+# can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+#                                 theta = theta, logsig = logsig, xi = xi,
+#                                 thresh = thresh, alpha = alpha)
+# can.hess <- hess_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+#                                 theta = theta, logsig = logsig, xi = xi,
+#                                 thresh = thresh, alpha = alpha)
+#
+#
+#
+# R <- sum(canll - curll) +
+#       dnorm(canb, 0, beta1.sd, log = TRUE) -
+#       dnorm(beta1, 0, beta1.sd, log = TRUE) +
+#       dnorm(beta1, can.mn, MH.beta1[j], log = TRUE) -
+#       dnorm(canb, cur.mn, MH.beta1[j], log = TRUE)
+
+
+# for (j in 1:p.mu) {
+#   att.beta1[j] <- att.beta1[j] + 1
+#   cur.mn  <- beta1[j] + 0.5 * MH.beta1[j]^2 * cur.grad[j]
+#   # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
+#   #                                 theta = theta, logsig = logsig, xi = xi,
+#   #                                 thresh = thresh, alpha = alpha)
+#
+#   canb    <- beta1
+#   canb[j] <- rnorm(1, cur.mn, MH.beta1[j])
+#
+#   # print(paste("canb:", canb[j]))
+#   canmu <- mu + X.mu[, , j] * (canb[j] - beta1[j])
+#   canll <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+#
+#   # need to adjust the candidate distribution for acc.ratio
+#   can.grad <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
+#                                   theta = theta, logsig = logsig, xi = xi,
+#                                   thresh = thresh, alpha = alpha)
+#   can.mn <- canb[j] + 0.5 * MH.beta1[j]^2 * can.grad[j]
+#
+#   R <- sum(canll - curll) +
+#     dnorm(canb[j], 0, beta1.sd, log = TRUE) -
+#     dnorm(beta1[j], 0, beta1.sd, log = TRUE) +
+#     dnorm(beta1[j], can.mn, MH.beta1[j], log = TRUE) -
+#     dnorm(canb[j], cur.mn, MH.beta1[j], log = TRUE)
+#
+#   if (!is.na(R)) { if (log(runif(1)) < R) {
+#     acc.beta1[j] <- acc.beta1[j] + 1
+#     beta1[j]     <- canb[j]
+#     mu           <- canmu
+#     cur.grad[j]  <- can.grad[j]
+#     curll        <- canll
+#   }}
+#
+# }
+
+# # trying a Langevin block update
+# cur.grad <- grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
+#                                  theta = theta, mu = mu, xi = xi,
+#                                  thresh = thresh, alpha = alpha)
+# for (j in 1:p.mu) {
+#   att.beta2[j] <- att.beta2[j] + 1
+#   cur.mn  <- beta2[j] + 0.5 * MH.beta2[j]^2 * cur.grad[j]
+#   # cur.hess <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = Y,
+#   #                                 theta = theta, logsig = logsig, xi = xi,
+#   #                                 thresh = thresh, alpha = alpha)
+#
+#   canb    <- beta2
+#   canb[j] <- rnorm(1, cur.mn, MH.beta2[j])
+#
+#   # print(paste("canb:", canb[j]))
+#   canlogs <- logsig + X.sig[, , j] * (canb[j] - beta2[j])
+#   canll   <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+#
+#   # need to adjust the candidate distribution for acc.ratio
+#   can.grad <- grad_loglike_betasig(beta2 = canb, X.sig = X.sig, y = y,
+#                                    theta = theta, mu = mu, xi = xi,
+#                                    thresh = thresh, alpha = alpha)
+#   can.mn <- canb[j] + 0.5 * MH.beta2[j]^2 * can.grad[j]
+#
+#   R <- sum(canll - curll) +
+#     dnorm(canb[j], 0, beta2.sd, log = TRUE) -
+#     dnorm(beta2[j], 0, beta2.sd, log = TRUE) +
+#     dnorm(beta2[j], can.mn, MH.beta2[j], log = TRUE) -
+#     dnorm(canb[j], cur.mn, MH.beta2[j], log = TRUE)
+#
+#   if (!is.na(R)) { if (log(runif(1)) < R) {
+#     acc.beta2[j] <- acc.beta2[j] + 1
+#     beta2[j]     <- canb[j]
+#     logsig       <- canlogs
+#     cur.grad[j]  <- can.grad[j]
+#     curll        <- canll
+#   }}
+#
+# }

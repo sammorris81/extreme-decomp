@@ -123,6 +123,8 @@ for (i in 1:ns) {
   }
 }
 
+X <- X[, , 2:np]
+
 ################################################################################
 #### Spatially smooth threshold ################################################
 ################################################################################
@@ -144,57 +146,6 @@ thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 thresh90.tst <- thresh90[cv.idx[[cv]]]
 thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
-
-################################################################################
-#### get the MLE ###############################################################
-################################################################################
-Y.spatex <- t(Y)
-X.spatex <- X[, 1, 3:np]
-X.timeex <- t(t(X[1, , 2]))
-# X.spatex <- Xmat[!is.na(Yvec), ]
-# Yvec <- Yvec[!is.na(Yvec)]
-
-# Yvec <- matrix(Yvec, 1, length(Yvec))
-
-names <- c("elev", "logelev", paste("B", seq(1:L), sep = ""))
-colnames(X.spatex) <- names
-
-# names <- paste("year", 1:nt, sep = "")
-# colnames(X.timeex) <- names
-colnames(X.timeex) <- "year"
-
-
-loc.form   <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 # + B5
-scale.form <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 # + B5
-shape.form <- Yvec ~ 1
-
-# temp.form.loc <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
-#   year7 + year8 + year9 + year10 + year11 + year12 +
-#   year13 + year14 + year15 + year16 + year17 + year18 +
-#   year19 + year20 + year21 + year22 + year23 + year24 +
-#   year25 + year26 + year27 + year28 + year29 + year30 +
-#   year31 + year32
-#
-# temp.form.scale <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
-#   year7 + year8 + year9 + year10 + year11 + year12 +
-#   year13 + year14 + year15 + year16 + year17 + year18 +
-#   year19 + year20 + year21 + year22 + year23 + year24 +
-#   year25 + year26 + year27 + year28 + year29 + year30 +
-#   year31 + year32
-temp.form.loc   <- Y ~ year
-temp.form.scale <- Y ~ year
-# temp.form.shape <- Y ~ 1
-
-fit <- fitspatgev(data = Y.spatex, covariables = X.spatex,
-                  loc.form = loc.form, scale.form = scale.form,
-                  shape.form = shape.form,
-                  temp.cov = X.timeex,
-                  temp.form.loc = temp.form.loc,
-                  temp.form.scale = temp.form.scale)
-                  # temp.form.shape = temp.form.shape)
-
-beta <- rep(0, 2 * np + 1)
-optim(par = beta, fn = ll.ind, X = X, y = Y, hessian = TRUE)
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -277,3 +228,56 @@ if (do.upload) {
 }
 save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
      alpha, fit, cv.idx, results, file = results.file)
+
+
+
+################################################################################
+#### get the MLE ###############################################################
+################################################################################
+Y.spatex <- t(Y)
+X.spatex <- X[, 1, 3:np]
+X.timeex <- t(t(X[1, , 2]))
+# X.spatex <- Xmat[!is.na(Yvec), ]
+# Yvec <- Yvec[!is.na(Yvec)]
+
+# Yvec <- matrix(Yvec, 1, length(Yvec))
+
+names <- c("elev", "logelev", paste("B", seq(1:L), sep = ""))
+colnames(X.spatex) <- names
+
+# names <- paste("year", 1:nt, sep = "")
+# colnames(X.timeex) <- names
+colnames(X.timeex) <- "year"
+
+
+loc.form   <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 + B5 + 0
+scale.form <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 + B5 + 0
+shape.form <- 1
+
+# temp.form.loc <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
+#   year7 + year8 + year9 + year10 + year11 + year12 +
+#   year13 + year14 + year15 + year16 + year17 + year18 +
+#   year19 + year20 + year21 + year22 + year23 + year24 +
+#   year25 + year26 + year27 + year28 + year29 + year30 +
+#   year31 + year32
+#
+# temp.form.scale <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
+#   year7 + year8 + year9 + year10 + year11 + year12 +
+#   year13 + year14 + year15 + year16 + year17 + year18 +
+#   year19 + year20 + year21 + year22 + year23 + year24 +
+#   year25 + year26 + year27 + year28 + year29 + year30 +
+#   year31 + year32
+temp.form.loc   <- Y ~ year
+temp.form.scale <- Y ~ year
+# temp.form.shape <- Y ~ 1
+
+fit <- fitspatgev(data = Y.spatex, covariables = X.spatex,
+                  loc.form = loc.form, scale.form = scale.form,
+                  shape.form = shape.form,
+                  temp.cov = X.timeex,
+                  temp.form.loc = temp.form.loc,
+                  temp.form.scale = temp.form.scale)
+# temp.form.shape = temp.form.shape)
+
+beta <- rep(0, 2 * np + 1)
+optim(par = beta, fn = ll.ind, X = X, y = Y, hessian = TRUE)

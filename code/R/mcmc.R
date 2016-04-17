@@ -144,10 +144,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
              dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
 
     for (l in 1:L) {
-      canA     <- A
+      canA      <- A
       canA[l, ] <- CANA[l, ]
-      cantheta <- (Ba %*% canA)^alpha
-      canll    <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
+      cantheta  <- (Ba %*% canA)^alpha
+      canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
 
       R    <- colSums(canll - curll) + q[l, ]
       keep <- log(runif(nt)) < R
@@ -237,13 +237,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     }
 
     # update beta1.mu: prior N(0, mu1.sd)
-    mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.var)
-    mu1.post.mn  <- sum(beta1)/beta1.var * mu1.post.var
+    mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.sd^2)
+    mu1.post.mn  <- sum(beta1)/beta1.sd^2 * mu1.post.var
     beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
 
     # update beta2.mu: prior N(0, mu2.sd)
-    mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.var)
-    mu2.post.mn  <- sum(beta2)/beta2.var * mu2.post.var
+    mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.sd^2)
+    mu2.post.mn  <- sum(beta2)/beta2.sd^2 * mu2.post.var
     beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
 
     # update prior standard deviations: prior IG(a, b)
@@ -385,8 +385,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                  xlab = acc.rate.logsig[plot.idx], type = "l",
                  ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
           }
-          # this.plot <- "all"
-          this.plot <- "mu"
+          this.plot <- "all"
+          # this.plot <- "mu"
         } else {
           par(mfrow = c(3, 4))
 
@@ -554,10 +554,10 @@ loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
 
   tx       <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
   ll       <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
-  # ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
-  # ll       <- ifelse(is.na(ll), -Inf, ll)
-  ll[is.na(y)] <- 0
-  ll[is.na(ll)] <- -Inf
+  ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
+  ll       <- ifelse(is.na(ll), -Inf, ll)
+  # ll[is.na(y)] <- 0
+  # ll[is.na(ll)] <- -Inf
 
   return(ll)
 }

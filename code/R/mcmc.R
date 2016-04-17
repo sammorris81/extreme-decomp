@@ -100,6 +100,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   } else if (length(A) != (nt * L)) {
     stop("The length of the initial A must be either 1 or L * nt")
   }
+  oldA <- A
 
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha
@@ -132,30 +133,32 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
-    ####################################################
-    ##############      Random effects A    ############
-    ####################################################
-    oldA  <- A
-    l1    <- get.level(A, cuts)
-    CANA  <- A * exp(MH.a[l1] * rnorm(nt * L))
-    l2    <- get.level(CANA, cuts)
-    q     <- dPS(CANA, alpha, bins) -
-             dPS(A, alpha, bins) +
-             dlognormal(A, CANA, matrix(MH.a[l2], L, nt)) -
-             dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
+    if (iter > burn * 0.10) {
+      ####################################################
+      ##############      Random effects A    ############
+      ####################################################
+      oldA  <- A
+      l1    <- get.level(A, cuts)
+      CANA  <- A * exp(MH.a[l1] * rnorm(nt * L))
+      l2    <- get.level(CANA, cuts)
+      q     <- dPS(CANA, alpha, bins) -
+        dPS(A, alpha, bins) +
+        dlognormal(A, CANA, matrix(MH.a[l2], L, nt)) -
+        dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
 
-    for (l in 1:L) {
-      canA      <- A
-      canA[l, ] <- CANA[l, ]
-      cantheta  <- (Ba %*% canA)^alpha
-      canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
+      for (l in 1:L) {
+        canA      <- A
+        canA[l, ] <- CANA[l, ]
+        cantheta  <- (Ba %*% canA)^alpha
+        canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
 
-      R    <- colSums(canll - curll) + q[l, ]
-      keep <- log(runif(nt)) < R
+        R    <- colSums(canll - curll) + q[l, ]
+        keep <- log(runif(nt)) < R
 
-      A[l, keep]     <- canA[l, keep]
-      theta[, keep]  <- cantheta[, keep]
-      curll[, keep]  <- canll[, keep]
+        A[l, keep]     <- canA[l, keep]
+        theta[, keep]  <- cantheta[, keep]
+        curll[, keep]  <- canll[, keep]
+      }
     }
 
     ####################################################
@@ -278,13 +281,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     # TUNING
 
     if (iter < burn / 2) {
-      for (j in 1:length(MH.a)) {
-        acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
-        att.a[j] <- att.a[j] + sum(l1 == j)
-        if (att.a[j] > 1000) {
-          if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.8 }
-          if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.2 }
-          acc.a[j] <- att.a[j] <- 0
+      if (iter > burn * 0.10) {
+        for (j in 1:length(MH.a)) {
+          acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
+          att.a[j] <- att.a[j] + sum(l1 == j)
+          if (att.a[j] > 1000) {
+            if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.8 }
+            if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.2 }
+            acc.a[j] <- att.a[j] <- 0
+          }
         }
       }
 
@@ -333,7 +338,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     keep.beta2[iter, ]    <- beta2
     keep.xi[iter]         <- xi
     keep.A[iter, , ]      <- A
-    keep.beta.mu[iter, ] <- c(beta1.mu, beta1.mu)
+    keep.beta.mu[iter, ] <- c(beta1.mu, beta2.mu)
     keep.beta.sd[iter, ] <- c(beta1.sd, beta2.sd)
     if (any(miss)) {
       keep.y[iter, ]      <- y.tmp[miss]
@@ -414,7 +419,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           this.plot <- "all"
           # this.plot <- "mu"
         } else {
-          par(mfrow = c(3, 4))
+          par(mfrow = c(3, 5))
+
+          plot(keep.beta.mu[start:iter, 1],
+               main = bquote(paste(mu, ": ", mu[beta])), type = "l")
 
           plot(keep.beta.sd[start:iter, 1],
                main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
@@ -434,8 +442,11 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                xlab = acc.rate.mu[L], type = "l",
                ylab = paste("MH =", round(MH.beta1[L], 3)))
 
+          plot(keep.beta.mu[start:iter, 2],
+               main = bquote(paste(sigma, ": ", mu[beta])), type = "l")
+
           plot(keep.beta.sd[start:iter, 2],
-               main = bquote(paste(sigma, ": ", sigma[sigma])), type = "l")
+               main = bquote(paste(sigma, ": ", sigma[beta])), type = "l")
 
           plot(keep.beta2[start:iter, 1],
                main = bquote(paste(sigma, ": ", beta[0])),
@@ -461,6 +472,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
 
           plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+
+          plot(log(keep.A[start:iter, L, nt]),
+               main = "log(A[L, nt])", type = "l")
 
           this.plot <- "mu"
         }

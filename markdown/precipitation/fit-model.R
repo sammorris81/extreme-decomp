@@ -182,7 +182,7 @@ burn   <- 20000
 update <- 1000
 
 iters <- 30000; burn <- 20000; update <- 100  # for testing
-A.init <- 10  # consistent with estimates of alpha
+A.init <- exp(6)  # consistent with estimates of alpha
 beta1.init <- rep(0, np)
 beta2.init <- rep(0, np)
 # beta1.init[1] <- 100
@@ -196,19 +196,19 @@ beta2.init <- rep(0, np)
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
-# fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                beta1 = beta1.init, beta2 = beta2.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 10, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
-cat("Finished fit and predict \n")
+# # fit the model using the training data
+# fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+#                 xi = 0.001, can.mu.sd = 0.5, can.sig.sd = 0.05,
+#                 beta1.attempts = 75, beta2.attempts = 75, A = A.init,
+#                 beta1 = beta1.init, beta2 = beta2.init,
+#                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+#                 beta1.sd = 10, beta1.sd.fix = FALSE,
+#                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+#                 beta2.sd = 1, beta2.sd.fix = FALSE,
+#                 beta1.block = FALSE, beta2.block = FALSE,
+#                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
+#                 iters = iters, burn = burn, update = update, iterplot = TRUE)
+# cat("Finished fit and predict \n")
 
 
 cat("Start mcmc fit \n")
@@ -216,19 +216,32 @@ set.seed(6262)  # mcmc
 
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                xi = 0.001, can.mu.sd = 0.5, can.sig.sd = 0.05,
+                beta1.attempts = 75, beta2.attempts = 75, A = A.init,
                 beta1 = beta1.init, beta2 = beta2.init,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 50, beta1.sd.fix = TRUE,
+                beta1.sd = 10, beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 5, beta2.sd.fix = TRUE,
-                beta1.block = FALSE, beta2.block = FALSE,
+                beta2.sd = 1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = TRUE,
+                mu1.sd = 50, mu2.sd = 5,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
-
+# # fit the model using the training data - Seems like betas are highly correlated
+# fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+#                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
+#                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+#                 beta1 = beta1.init, beta2 = beta2.init,
+#                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+#                 beta1.sd = 50, beta1.sd.fix = TRUE,
+#                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+#                 beta2.sd = 5, beta2.sd.fix = TRUE,
+#                 beta1.block = FALSE, beta2.block = FALSE,
+#                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
+#                 iters = iters, burn = burn, update = update, iterplot = TRUE)
+# cat("Finished fit and predict \n")
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

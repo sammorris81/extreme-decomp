@@ -99,16 +99,17 @@ if (time == "current") {
 }
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
-np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
+# np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
+np <- 2 + L  # for a single year(t, elev, B1, ..., BL)
 
-## standardize spatial basis functions
-for (i in 1:L) {
-  B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
-}
+# ## standardize spatial basis functions
+# for (i in 1:L) {
+#   B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
+# }
 
 ## standardize elevations
 elev.std <- (elev - mean(elev)) / sd(elev)
-logelev.std <- (log(elev) - mean(log(elev))) / sd(log(elev))
+# logelev.std <- (log(elev) - mean(log(elev))) / sd(log(elev))
 
 ## create covariate matrix for training
 # X <- array(1, dim = c(ns, nt, np))
@@ -123,7 +124,7 @@ X <- array(0, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, ] <- c(time, elev.std[i], logelev.std[i], B.cov[i, ])
+    X[i, t, ] <- c(time, elev.std[i], B.cov[i, ])
   }
 }
 

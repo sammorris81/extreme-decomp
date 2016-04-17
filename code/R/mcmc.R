@@ -109,6 +109,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   # STORAGE:
   keep.beta1   <- matrix(0, iters, p.mu)
   keep.beta2   <- matrix(0, iters, p.sig)
+  keep.beta.mu <- matrix(0, iters, 2)  # mean terms for beta priors
   keep.beta.sd <- matrix(0, iters, 2)  # variance terms for beta priors
   keep.xi      <- rep(0, iters)
   keep.A       <- array(0, dim = c(iters, L, nt))
@@ -332,6 +333,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     keep.beta2[iter, ]    <- beta2
     keep.xi[iter]         <- xi
     keep.A[iter, , ]      <- A
+    keep.beta.mu[iter, ] <- c(beta1.mu, beta1.mu)
     keep.beta.sd[iter, ] <- c(beta1.sd, beta2.sd)
     if (any(miss)) {
       keep.y[iter, ]      <- y.tmp[miss]
@@ -363,28 +365,52 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         if (this.plot == "mu") {
           if (L <= 9) {
             par(mfrow = c(3, 3))
+            for (plot.idx in 1:min(p.mu, 7)) {
+              plot(keep.beta1[start:iter, plot.idx],
+                   main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
+                   xlab = acc.rate.mu[plot.idx], type = "l",
+                   ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
+            }
           } else {
             par(mfrow = c(3, 4))
+            for (plot.idx in 1:min(p.mu, 10)) {
+              plot(keep.beta1[start:iter, plot.idx],
+                   main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
+                   xlab = acc.rate.mu[plot.idx], type = "l",
+                   ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
+            }
           }
-          for (plot.idx in 1:min(p.mu, 12)) {
-            plot(keep.beta1[start:iter, plot.idx],
-                 main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
-                 xlab = acc.rate.mu[plot.idx], type = "l",
-                 ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
-          }
+
+          plot(keep.beta.mu[start:iter, 1],
+               main = bquote(paste(mu, ": ", mu[beta])), type = "l")
+
+          plot(keep.beta.sd[start:iter, 1],
+               main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
           this.plot <- "sig"
         } else if (this.plot == "sig") {
           if (L <= 9) {
             par(mfrow = c(3, 3))
+            for (plot.idx in 1:min(p.sig, 7)) {
+              plot(keep.beta2[start:iter, plot.idx],
+                   main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
+                   xlab = acc.rate.logsig[plot.idx], type = "l",
+                   ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
+            }
           } else {
             par(mfrow = c(3, 4))
+            for (plot.idx in 1:min(p.sig, 10)) {
+              plot(keep.beta2[start:iter, plot.idx],
+                   main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
+                   xlab = acc.rate.logsig[plot.idx], type = "l",
+                   ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
+            }
           }
-          for (plot.idx in 1:min(p.sig, 12)) {
-            plot(keep.beta2[start:iter, plot.idx],
-                 main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
-                 xlab = acc.rate.logsig[plot.idx], type = "l",
-                 ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
-          }
+
+          plot(keep.beta.mu[start:iter, 2],
+               main = bquote(paste(sigma, ": ", mu[beta])), type = "l")
+
+          plot(keep.beta.sd[start:iter, 2],
+               main = bquote(paste(sigma, ": ", sigma[beta])), type = "l")
           this.plot <- "all"
           # this.plot <- "mu"
         } else {
@@ -459,6 +485,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
        xi = keep.xi[return.iters],
+       betamu = keep.beta.mu[return.iters, , drop = FALSE],
        betasd = keep.beta.sd[return.iters, , drop = FALSE],
        theta.mn = theta.mn,
        A = keep.A[return.iters, , , drop = FALSE],

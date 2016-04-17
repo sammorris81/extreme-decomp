@@ -106,6 +106,10 @@ for (i in 1:L) {
   B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
 }
 
+## standardize elevations
+elev.std <- (elev - mean(elev)) / sd(elev)
+logelev.std <- (log(elev) - mean(log(elev))) / sd(log(elev))
+
 ## create covariate matrix for training
 # X <- array(1, dim = c(ns, nt, np))
 # for (i in 1:ns) {
@@ -119,9 +123,33 @@ X <- array(0, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, ] <- c(time, elev[i], log(elev[i]), B.cov[i, ])
+    X[i, t, ] <- c(time, elev.std[i], logelev.std[i], B.cov[i, ])
   }
 }
+
+# # Get MLE starting values - doesn't work since no way to remove intercept
+# X.spat <- X[, 1, 2:np]     # ns x np
+# X.time <- t(t(X[1, , 1]))  # nt x np
+# colnames(X.spat) <- c("elev", "logelev", paste("B", 1:L, sep = ""))
+# colnames(X.time) <- "year"
+#
+# loc.form <- loc ~ elev + logelev + B1 + B2 + B3 + B4 #+ B5 + 0
+# scale.form <- scale ~ elev + logelev + B1 + B2 + B3 + B4 #+ B5 + 0
+# shape.form <- shape ~ 1
+#
+# temp.form.loc <- Y ~ time
+# temp.form.scale <- Y ~ time
+#
+# fit <- fitspatgev(data = t(Y), covariables = X.spat, temp.cov = X.time,
+#                   loc.form = loc.form, scale.form = scale.form,
+#                   shape.form = shape.form,
+#                   temp.form.loc = temp.form.loc,
+#                   temp.form.scale = temp.form.scale)
+
+# # Get MLE starting values
+# beta <- rep(0, 2 * (dim(X)[3]) + 1)
+# fit <- optim(par = beta, fn = ll.ind, X = X, y = Y,
+#              control = list(maxit = 10000), hessian = TRUE)
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -152,8 +180,8 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 30000; burn <- 20000; update <- 1000  # for testing
-A.init <- 100  # consistent with estimates of alpha
+iters <- 30000; burn <- 20000; update <- 100  # for testing
+A.init <- 10  # consistent with estimates of alpha
 beta1.init <- rep(0, np)
 beta2.init <- rep(0, np)
 # beta1.init[1] <- 100
@@ -173,9 +201,9 @@ fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                 beta1 = beta1.init, beta2 = beta2.init,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 100, beta1.sd.fix = FALSE,
+                beta1.sd = 10, beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 10, beta2.sd.fix = FALSE,
+                beta2.sd = 1, beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)

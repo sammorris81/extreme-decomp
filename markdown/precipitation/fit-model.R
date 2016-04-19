@@ -100,7 +100,9 @@ if (time == "current") {
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 # np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
-np <- 2 + L  # for a single year(t, elev, B1, ..., BL)
+# np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
+np <- 8  # for a single year (int, t, elev, long, lat, long * lat, long^2, lat^2)
+# np <- 6
 
 # ## standardize spatial basis functions
 # for (i in 1:L) {
@@ -120,37 +122,56 @@ elev.std <- (elev - mean(elev)) / sd(elev)
 #   }
 # }
 
-X <- array(0, dim = c(ns, nt, np))
+# X <- array(0, dim = c(ns, nt, np))
+# for (i in 1:ns) {
+#   for (t in 1:nt) {
+#     time <- (t - nt / 2) / nt
+#     X[i, t, ] <- c(time, elev.std[i], B.cov[i, ])
+#   }
+# }
+
+# want to try using long, lat centered and scaled
+s.shift <- s.scale * 2
+s.shift[, 1] <- s.shift[, 1] - mean(s.shift[, 1])
+s.shift[, 2] <- s.shift[, 2] - mean(s.shift[, 2])
+
+X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, ] <- c(time, elev.std[i], B.cov[i, ])
+    X[i, t, 2:np] <- c(time, elev[i], s.shift[i, 1], s.shift[i, 2],
+                       s.shift[i, 1] * s.shift[i, 2],
+                       s.shift[i, 1]^2, s.shift[i, 2]^2)
   }
 }
 
-# # Get MLE starting values - doesn't work since no way to remove intercept
-# X.spat <- X[, 1, 2:np]     # ns x np
-# X.time <- t(t(X[1, , 1]))  # nt x np
-# colnames(X.spat) <- c("elev", "logelev", paste("B", 1:L, sep = ""))
-# colnames(X.time) <- "year"
-#
-# loc.form <- loc ~ elev + logelev + B1 + B2 + B3 + B4 #+ B5 + 0
-# scale.form <- scale ~ elev + logelev + B1 + B2 + B3 + B4 #+ B5 + 0
-# shape.form <- shape ~ 1
-#
-# temp.form.loc <- Y ~ time
-# temp.form.scale <- Y ~ time
-#
-# fit <- fitspatgev(data = t(Y), covariables = X.spat, temp.cov = X.time,
-#                   loc.form = loc.form, scale.form = scale.form,
-#                   shape.form = shape.form,
-#                   temp.form.loc = temp.form.loc,
-#                   temp.form.scale = temp.form.scale)
+################################################################################
+#### get the MLE ###############################################################
+################################################################################
+Y.spatex <- t(Y)
+X.spatex <- X[, 1, 3:np]
+X.timeex <- t(t(X[1, , 2]))
 
-# # Get MLE starting values
-# beta <- rep(0, 2 * (dim(X)[3]) + 1)
-# fit <- optim(par = beta, fn = ll.ind, X = X, y = Y,
-#              control = list(maxit = 10000), hessian = TRUE)
+names <- c("elev", "long", "lat", "longlat", "long.sq", "lat.sq")
+colnames(X.spatex) <- names
+colnames(X.timeex) <- "year"
+
+loc.form   <- loc ~ elev + long + lat + longlat + long.sq + lat.sq
+scale.form <- scale ~ elev + long + lat + longlat + long.sq + lat.sq
+shape.form <- shape ~ 1
+
+temp.form.loc   <- temp.loc ~ year
+temp.form.scale <- temp.scale ~ year
+
+options(warn = 0)
+library(SpatialExtremes)
+fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
+                      loc.form = loc.form, scale.form = scale.form,
+                      shape.form = shape.form,
+                      temp.cov = X.timeex,
+                      temp.form.loc = temp.form.loc,
+                      temp.form.scale = temp.form.scale)
+options(warn = 2)
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -183,8 +204,8 @@ update <- 1000
 
 iters <- 30000; burn <- 20000; update <- 100  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
-beta1.init <- rep(0, np)
-beta2.init <- rep(0, np)
+# beta1.init <- rep(0, np)
+# beta2.init <- rep(0, np)
 # beta1.init[1] <- 100
 # beta2.init[1] <- 3.6
 # beta1.init[1] <- 65
@@ -192,38 +213,69 @@ beta2.init <- rep(0, np)
 # beta1.init[1] <- 120
 # beta2.init[1] <- 2.5
 
+beta1.init <- rep(0, np)
+beta1.init[1] <- fit.mle$fitted.values[1]
+beta1.init[2] <- tail(fit.mle$fitted.values, 2)[1]
+beta1.init[3:np] <- fit.mle$fitted.values[2:(np - 1)]
 
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
+beta2.init <- rep(0, np)
+beta2.init[1] <- fit.mle$fitted.values[np]
+beta2.init[2] <- tail(fit.mle$fitted.values, 2)[2]
+beta2.init[3:np] <- fit.mle$fitted.values[(np + 1):(2 * np - 2)]
 
-# # fit the model using the training data
-# fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-#                 xi = 0.001, can.mu.sd = 0.5, can.sig.sd = 0.05,
-#                 beta1.attempts = 75, beta2.attempts = 75, A = A.init,
-#                 beta1 = beta1.init, beta2 = beta2.init,
-#                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-#                 beta1.sd = 10, beta1.sd.fix = FALSE,
-#                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-#                 beta2.sd = 1, beta2.sd.fix = FALSE,
-#                 beta1.block = FALSE, beta2.block = FALSE,
-#                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
-#                 iters = iters, burn = burn, update = update, iterplot = TRUE)
-# cat("Finished fit and predict \n")
-
+# xi.init <- 0.001
+xi.init <- fit.mle$fitted.values[2 * np - 1]
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                xi = 0.001, can.mu.sd = 0.5, can.sig.sd = 0.05,
-                beta1.attempts = 75, beta2.attempts = 75, A = A.init,
-                beta1 = beta1.init, beta2 = beta2.init,
+fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                           can.mu.sd = 0.05, can.sig.sd = 0.005,
+                           beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                           beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
+                           beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                           beta1.sd = 10, beta1.sd.fix = FALSE,
+                           beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                           beta2.sd = 1, beta2.sd.fix = FALSE,
+                           beta1.block = FALSE, beta2.block = FALSE,
+                           mu1.sd = 50, mu2.sd = 5,
+                           # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                           iters = iters, burn = burn, update = update,
+                           iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+
+# fit the model using the training data
+fit.rw.block <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                         can.mu.sd = 0.5, can.sig.sd = 0.05,
+                         beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                         beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
+                         beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                         beta1.sd = 10, beta1.sd.fix = FALSE,
+                         beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                         beta2.sd = 1, beta2.sd.fix = FALSE,
+                         beta1.block = FALSE, beta2.block = FALSE,
+                         mu1.sd = 50, mu2.sd = 5,
+                         # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                         iters = iters, burn = burn, update = update,
+                         iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+# fit the model using the training data
+fit2 <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                can.mu.sd = 0.005, can.sig.sd = 0.05,
+                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
                 beta1.sd = 10, beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
                 beta2.sd = 1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = TRUE,
+                beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
@@ -265,56 +317,3 @@ if (do.upload) {
 }
 save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
      alpha, fit, cv.idx, results, file = results.file)
-
-
-
-################################################################################
-#### get the MLE ###############################################################
-################################################################################
-Y.spatex <- t(Y)
-X.spatex <- X[, 1, 3:np]
-X.timeex <- t(t(X[1, , 2]))
-# X.spatex <- Xmat[!is.na(Yvec), ]
-# Yvec <- Yvec[!is.na(Yvec)]
-
-# Yvec <- matrix(Yvec, 1, length(Yvec))
-
-names <- c("elev", "logelev", paste("B", seq(1:L), sep = ""))
-colnames(X.spatex) <- names
-
-# names <- paste("year", 1:nt, sep = "")
-# colnames(X.timeex) <- names
-colnames(X.timeex) <- "year"
-
-
-loc.form   <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 + B5 + 0
-scale.form <- Yvec ~ elev + logelev + B1 + B2 + B3 + B4 + B5 + 0
-shape.form <- 1
-
-# temp.form.loc <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
-#   year7 + year8 + year9 + year10 + year11 + year12 +
-#   year13 + year14 + year15 + year16 + year17 + year18 +
-#   year19 + year20 + year21 + year22 + year23 + year24 +
-#   year25 + year26 + year27 + year28 + year29 + year30 +
-#   year31 + year32
-#
-# temp.form.scale <- Yvec ~ year1 + year2 + year3 + year4 + year5 + year6 +
-#   year7 + year8 + year9 + year10 + year11 + year12 +
-#   year13 + year14 + year15 + year16 + year17 + year18 +
-#   year19 + year20 + year21 + year22 + year23 + year24 +
-#   year25 + year26 + year27 + year28 + year29 + year30 +
-#   year31 + year32
-temp.form.loc   <- Y ~ year
-temp.form.scale <- Y ~ year
-# temp.form.shape <- Y ~ 1
-
-fit <- fitspatgev(data = Y.spatex, covariables = X.spatex,
-                  loc.form = loc.form, scale.form = scale.form,
-                  shape.form = shape.form,
-                  temp.cov = X.timeex,
-                  temp.form.loc = temp.form.loc,
-                  temp.form.scale = temp.form.scale)
-# temp.form.shape = temp.form.shape)
-
-beta <- rep(0, 2 * np + 1)
-optim(par = beta, fn = ll.ind, X = X, y = Y, hessian = TRUE)

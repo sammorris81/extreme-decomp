@@ -105,9 +105,11 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha
+  theta.xi <- theta^xi
 
   # initial values for loglikelihood and gradients
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
+  # curll <- loglike(y, theta.xi, mu, logsig, xi, thresh, alpha)
   beta1.grad.cur <- grad_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
                                         beta.sd = beta1.sd, X.mu = X.mu, y = y,
                                         theta = theta, logsig = logsig, xi = xi,
@@ -177,7 +179,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canA      <- A
         canA[l, ] <- CANA[l, ]
         cantheta  <- (Ba %*% canA)^alpha
+        # cantheta.xi <- cantheta^xi  # theta.xi
         canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
+        # canll     <- loglike(y, cantheta.xi, mu, logsig, xi, thresh, alpha)
 
         R    <- colSums(canll - curll) + q[l, ]
         keep <- log(runif(nt)) < R
@@ -186,6 +190,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         theta[, keep]  <- cantheta[, keep]
         curll[, keep]  <- canll[, keep]
       }
+      # theta.xi <- theta^xi  # theta.xi
     # }
 
     ####################################################
@@ -236,6 +241,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canmu   <- canmu + X.mu[, , j] * canb[j]
       }
       canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
       R         <- sum(canll - curll) +
                    sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
                        dnorm(beta1, beta1.mu, beta1.sd, log = TRUE))
@@ -251,6 +257,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canb         <- rnorm(1, beta1[j], MH.beta1[j])  # simple rw proposal
         canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
         canll        <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        # canll        <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
         R            <- sum(canll - curll) +
           dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
           dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE)
@@ -270,6 +277,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canb[j]  <- rnorm(1, mean.can, MH.beta1[j])
         canmu    <- mu + X.mu[, , j] * (canb[j] - beta1[j])
         canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
         # langevin update ratio
         beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
@@ -306,6 +314,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canmu   <- canmu + X.mu[, , j] * canb[j]
       }
       canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
       # get the adjustments for the ratio of the update
       beta1.grad.can <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
@@ -365,6 +374,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canmu   <- canmu + X.mu[, , j] * canb[j]
       }
       canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
       # langevin update ratio
       beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
@@ -402,6 +412,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canlogs <- canlogs + X.sig[, , j] * canb[j]
       }
       canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+      # canll      <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
       R          <- sum(canll - curll) +
         sum(dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
               dnorm(beta2, beta2.mu, beta2.sd, log = TRUE))
@@ -417,6 +428,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canb       <- rnorm(1, beta2[j], MH.beta2[j])
         canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
         canll      <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+        # canll      <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
         R          <- sum(canll - curll) +
           dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
           dnorm(beta2[j], beta2.mu, beta2.sd, log = TRUE)
@@ -436,6 +448,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canb[j]  <- rnorm(1, mean.can, MH.beta2[j])
         canlogs  <- logsig + X.sig[, , j] * (canb[j] - beta2[j])
         canll    <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+        # canll    <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
         # langevin update ratio
         beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
@@ -474,6 +487,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         canlogs <- canlogs + X.sig[, , p.sig] * canb[j]
       }
       canll <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+      # canll <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
       # langevin update ratio
       beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
@@ -530,15 +544,18 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     # xi
     att.xi <- att.xi + 1
     canxi  <- rnorm(1, xi, MH.xi)
+    # cantheta.xi <- theta^xi  # theta.xi
     canll  <- loglike(y, theta, mu, logsig, canxi, thresh, alpha)
+    # canll  <- loglike(y, cantheta.xi, mu, logsig, canxi, thresh, alpha)
     R      <- sum(canll - curll) +
               dnorm(canxi, 0, 0.5, log = TRUE) -
               dnorm(xi, 0, 0.5, log = TRUE)
 
     if (log(runif(1)) < R) {
-      acc.xi <- acc.xi + 1
-      xi     <- canxi
-      curll  <- canll
+      acc.xi   <- acc.xi + 1
+      xi       <- canxi
+      # theta.xi <- cantheta.xi  # theta.xi
+      curll    <- canll
     }
 
     # TUNING
@@ -851,17 +868,16 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
 
 loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
 
+  theta.xi  <- theta^xi
   sigma    <- exp(logsig)
-  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
-  sig_star <- alpha * sigma * (theta^xi)
+  mu_star  <- mu + sigma * ((theta.xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta.xi)
   xi_star  <- alpha * xi
 
-  tx       <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
-  ll       <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
-  ll       <- ifelse(is.na(y), 0, ll)  # maybe this handles the missing data
-  ll       <- ifelse(is.na(ll), -Inf, ll)
-  # ll[is.na(y)] <- 0
-  # ll[is.na(ll)] <- -Inf
+  tx <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
+  ll <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
+  ll[is.na(y)] <- 0
+  ll[is.na(ll)] <- -Inf
 
   return(ll)
 }
@@ -908,6 +924,8 @@ grad_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
   this.grad <- - (tx^(-1 / (alpha * xi) - 1)) * theta^(1 / alpha) /
     (alpha * sig) + (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
   this.grad[is.na(y)] <- 0  # for the missing data
+
+  this.grad.betamu <<- this.grad
 
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {

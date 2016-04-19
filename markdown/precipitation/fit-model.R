@@ -264,22 +264,26 @@ fit.rw.block <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                          iterplot = TRUE)
 cat("Finished fit and predict \n")
 
+Rprof(file = "Rprof.out", line.profiling = TRUE)
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit2 <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                can.mu.sd = 0.005, can.sig.sd = 0.05,
-                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 10, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = FALSE,
-                mu1.sd = 50, mu2.sd = 5,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
+fit.prof <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
+                         can.mu.sd = 0.5, can.sig.sd = 0.05,
+                         beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                         beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
+                         beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                         beta1.sd = 10, beta1.sd.fix = FALSE,
+                         beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                         beta2.sd = 1, beta2.sd.fix = FALSE,
+                         beta1.block = FALSE, beta2.block = FALSE,
+                         mu1.sd = 50, mu2.sd = 5,
+                         # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                         iters = 200, burn = 100, update = 50,
+                         iterplot = TRUE)
 cat("Finished fit and predict \n")
+Rprof(file = NULL)
+summaryRprof(filename = "Rprof.out", lines = "show")
 
 # # fit the model using the training data - Seems like betas are highly correlated
 # fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,

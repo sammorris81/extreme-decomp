@@ -269,6 +269,13 @@ fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                            iterplot = TRUE)
 cat("Finished fit and predict \n")
 
+mu.post <- array(0, dim = c(10000, ns, nt))
+for (i in 1:10000) {
+  for (t in 1:nt) {
+    mu.post[i, , t] <- X[, t, ] %*% fit.rw.noblock$beta1[i, ]
+  }
+}
+
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 

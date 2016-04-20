@@ -165,8 +165,8 @@ X.spatex <- data.frame(X.spatex)
 library(extRemes)
 options(warn = 0)
 fit.mle <- fevd(Y.spatex, data = X.spatex,
-                location.fun = ~ time + elev + B1 + B2 + B3 + B4 + B5 + 0,
-                scale.fun = ~ time + elev + B1 + B2 + B3 + B4 + B5 + 0,
+                location.fun = loc.fun,
+                scale.fun = scale.fun,
                 use.phi = TRUE)
 beta1.init <- fit.mle$results$par[1:np]
 beta2.init <- fit.mle$results$par[(np + 1):(2 * np)]

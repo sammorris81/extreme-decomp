@@ -32,6 +32,8 @@ fit0 <- fevd(TMX1, PORTw,
              type = "GEV", units = "deg C", use.phi = TRUE)
 fit0
 
+
+
 ll.ind <- function(beta, X, y) {
   nt <- dim(X)[2]
   np <- dim(X)[3]

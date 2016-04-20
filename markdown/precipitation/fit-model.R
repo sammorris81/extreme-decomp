@@ -100,8 +100,8 @@ if (time == "current") {
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 # np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
-# np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
-np <- 8  # for a single year (int, t, elev, long, lat, long * lat, long^2, lat^2)
+np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
+# np <- 8  # for a single year (int, t, elev, long, lat, long * lat, long^2, lat^2)
 # np <- 6
 
 # ## standardize spatial basis functions
@@ -122,56 +122,81 @@ elev.std <- (elev - mean(elev)) / sd(elev)
 #   }
 # }
 
-# X <- array(0, dim = c(ns, nt, np))
-# for (i in 1:ns) {
-#   for (t in 1:nt) {
-#     time <- (t - nt / 2) / nt
-#     X[i, t, ] <- c(time, elev.std[i], B.cov[i, ])
-#   }
-# }
-
-# want to try using long, lat centered and scaled
-s.shift <- s.scale * 2
-s.shift[, 1] <- s.shift[, 1] - mean(s.shift[, 1])
-s.shift[, 2] <- s.shift[, 2] - mean(s.shift[, 2])
-
-X <- array(1, dim = c(ns, nt, np))
+X <- array(0, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, elev[i], s.shift[i, 1], s.shift[i, 2],
-                       s.shift[i, 1] * s.shift[i, 2],
-                       s.shift[i, 1]^2, s.shift[i, 2]^2)
+    X[i, t, ] <- c(time, elev.std[i], B.cov[i, ])
   }
 }
+
+# # want to try using long, lat centered and scaled
+# s.shift <- s.scale * 2
+# s.shift[, 1] <- s.shift[, 1] - mean(s.shift[, 1])
+# s.shift[, 2] <- s.shift[, 2] - mean(s.shift[, 2])
+
+# X <- array(1, dim = c(ns, nt, np))
+# for (i in 1:ns) {
+#   for (t in 1:nt) {
+#     time <- (t - nt / 2) / nt
+#     X[i, t, 2:np] <- c(time, elev[i], s.shift[i, 1], s.shift[i, 2],
+#                        s.shift[i, 1] * s.shift[i, 2],
+#                        s.shift[i, 1]^2, s.shift[i, 2]^2)
+#   }
+# }
 
 ################################################################################
 #### get the MLE ###############################################################
 ################################################################################
-Y.spatex <- t(Y)
-X.spatex <- X[, 1, 3:np]
-X.timeex <- t(t(X[1, , 2]))
 
-names <- c("elev", "long", "lat", "longlat", "long.sq", "lat.sq")
+Y.spatex <- as.vector(Y)
+X.spatex <- X[, 1, ]
+for (t in 2:nt) {
+  X.spatex <- rbind(X.spatex, X[, t, ])
+}
+X.spatex <- X.spatex[!is.na(Y.spatex), ]
+Y.spatex <- Y.spatex[!is.na(Y.spatex)]
+
+names <- c("time", "elev", paste("B", 1:L, sep = ""))
 colnames(X.spatex) <- names
-colnames(X.timeex) <- "year"
 
-loc.form   <- loc ~ elev + long + lat + longlat + long.sq + lat.sq
-scale.form <- scale ~ elev + long + lat + longlat + long.sq + lat.sq
-shape.form <- shape ~ 1
+X.spatex <- data.frame(X.spatex)
 
-temp.form.loc   <- temp.loc ~ year
-temp.form.scale <- temp.scale ~ year
-
+library(extRemes)
 options(warn = 0)
-library(SpatialExtremes)
-fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
-                      loc.form = loc.form, scale.form = scale.form,
-                      shape.form = shape.form,
-                      temp.cov = X.timeex,
-                      temp.form.loc = temp.form.loc,
-                      temp.form.scale = temp.form.scale)
+fit.mle <- fevd(Y.spatex, data = X.spatex,
+                location.fun = ~ time + elev + B1 + B2 + B3 + B4 + B5 + 0,
+                scale.fun = ~ time + elev + B1 + B2 + B3 + B4 + B5 + 0,
+                use.phi = TRUE)
+beta1.init <- fit.mle$results$par[1:np]
+beta2.init <- fit.mle$results$par[(np + 1):(2 * np)]
+xi.init    <- tail(fit.mle$results$par, 1)
 options(warn = 2)
+
+# Y.spatex <- t(Y)
+# X.spatex <- X[, 1, 3:np]
+# X.timeex <- t(t(X[1, , 2]))
+#
+# names <- c("elev", "long", "lat", "longlat", "long.sq", "lat.sq")
+# colnames(X.spatex) <- names
+# colnames(X.timeex) <- "year"
+#
+# loc.form   <- loc ~ elev + long + lat + longlat + long.sq + lat.sq
+# scale.form <- scale ~ elev + long + lat + longlat + long.sq + lat.sq
+# shape.form <- shape ~ 1
+#
+# temp.form.loc   <- temp.loc ~ year
+# temp.form.scale <- temp.scale ~ year
+#
+# options(warn = 0)
+# library(SpatialExtremes)
+# fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
+#                       loc.form = loc.form, scale.form = scale.form,
+#                       shape.form = shape.form,
+#                       temp.cov = X.timeex,
+#                       temp.form.loc = temp.form.loc,
+#                       temp.form.scale = temp.form.scale)
+# options(warn = 2)
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -213,25 +238,25 @@ A.init <- exp(6)  # consistent with estimates of alpha
 # beta1.init[1] <- 120
 # beta2.init[1] <- 2.5
 
-beta1.init <- rep(0, np)
-beta1.init[1] <- fit.mle$fitted.values[1]
-beta1.init[2] <- tail(fit.mle$fitted.values, 2)[1]
-beta1.init[3:np] <- fit.mle$fitted.values[2:(np - 1)]
-
-beta2.init <- rep(0, np)
-beta2.init[1] <- fit.mle$fitted.values[np]
-beta2.init[2] <- tail(fit.mle$fitted.values, 2)[2]
-beta2.init[3:np] <- fit.mle$fitted.values[(np + 1):(2 * np - 2)]
+# beta1.init <- rep(0, np)
+# beta1.init[1] <- fit.mle$fitted.values[1]
+# beta1.init[2] <- tail(fit.mle$fitted.values, 2)[1]
+# beta1.init[3:np] <- fit.mle$fitted.values[2:(np - 1)]
+#
+# beta2.init <- rep(0, np)
+# beta2.init[1] <- fit.mle$fitted.values[np]
+# beta2.init[2] <- tail(fit.mle$fitted.values, 2)[2]
+# beta2.init[3:np] <- fit.mle$fitted.values[(np + 1):(2 * np - 2)]
 
 # xi.init <- 0.001
-xi.init <- fit.mle$fitted.values[2 * np - 1]
+# xi.init <- fit.mle$fitted.values[2 * np - 1]
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
 # fit the model using the training data
 fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                           can.mu.sd = 0.05, can.sig.sd = 0.005,
+                           can.mu.sd = 0.05, can.sig.sd = 0.0005,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                            beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
                            beta1.tau.a = 0.1, beta1.tau.b = 0.1,

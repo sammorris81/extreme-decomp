@@ -163,34 +163,34 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   tic <- proc.time()[3]
   for (iter in 1:iters) {
     # if (iter > burn * 0.10) {
-      ####################################################
-      ##############      Random effects A    ############
-      ####################################################
-      oldA  <- A
-      l1    <- get.level(A, cuts)
-      CANA  <- A * exp(MH.a[l1] * rnorm(nt * L))
-      l2    <- get.level(CANA, cuts)
-      q     <- dPS(CANA, alpha, bins) -
-        dPS(A, alpha, bins) +
-        dlognormal(A, CANA, matrix(MH.a[l2], L, nt)) -
-        dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
+    ####################################################
+    ##############      Random effects A    ############
+    ####################################################
+    oldA  <- A
+    l1    <- get.level(A, cuts)
+    CANA  <- A * exp(MH.a[l1] * rnorm(nt * L))
+    l2    <- get.level(CANA, cuts)
+    q     <- dPS(CANA, alpha, bins) -
+      dPS(A, alpha, bins) +
+      dlognormal(A, CANA, matrix(MH.a[l2], L, nt)) -
+      dlognormal(CANA, A, matrix(MH.a[l1], L, nt))
 
-      for (l in 1:L) {
-        canA      <- A
-        canA[l, ] <- CANA[l, ]
-        cantheta  <- (Ba %*% canA)^alpha
-        # cantheta.xi <- cantheta^xi  # theta.xi
-        canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
-        # canll     <- loglike(y, cantheta.xi, mu, logsig, xi, thresh, alpha)
+    for (l in 1:L) {
+      canA      <- A
+      canA[l, ] <- CANA[l, ]
+      cantheta  <- (Ba %*% canA)^alpha
+      # cantheta.xi <- cantheta^xi  # theta.xi
+      canll     <- loglike(y, cantheta, mu, logsig, xi, thresh, alpha)
+      # canll     <- loglike(y, cantheta.xi, mu, logsig, xi, thresh, alpha)
 
-        R    <- colSums(canll - curll) + q[l, ]
-        keep <- log(runif(nt)) < R
+      R    <- colSums(canll - curll) + q[l, ]
+      keep <- log(runif(nt)) < R
 
-        A[l, keep]     <- canA[l, keep]
-        theta[, keep]  <- cantheta[, keep]
-        curll[, keep]  <- canll[, keep]
-      }
-      # theta.xi <- theta^xi  # theta.xi
+      A[l, keep]     <- canA[l, keep]
+      theta[, keep]  <- cantheta[, keep]
+      curll[, keep]  <- canll[, keep]
+    }
+    # theta.xi <- theta^xi  # theta.xi
     # }
 
     ####################################################
@@ -208,30 +208,30 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
     # beta1
 
-      # print(beta1.grad)
-      # print(grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = y,
-      #            theta = theta, logsig = logsig, xi = xi, thresh = thresh,
-      #            alpha = alpha))
-      # if (iter == 20) {
-      #   print(sum(loglike(y = y, theta = theta, mu = mu, logsig = logsig,
-      #                     xi = xi, thresh = thresh, alpha = alpha)))
-      #   print(beta1)
-      #   print(mean(mu))
-      #   print(loglike_mu(beta1 = beta1, X.mu = X.mu, y = y, theta = theta,
-      #                    logsig = logsig, xi = xi, thresh = thresh,
-      #                    alpha = alpha))
-      #   stop()
-      # }
+    # print(beta1.grad)
+    # print(grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = y,
+    #            theta = theta, logsig = logsig, xi = xi, thresh = thresh,
+    #            alpha = alpha))
+    # if (iter == 20) {
+    #   print(sum(loglike(y = y, theta = theta, mu = mu, logsig = logsig,
+    #                     xi = xi, thresh = thresh, alpha = alpha)))
+    #   print(beta1)
+    #   print(mean(mu))
+    #   print(loglike_mu(beta1 = beta1, X.mu = X.mu, y = y, theta = theta,
+    #                    logsig = logsig, xi = xi, thresh = thresh,
+    #                    alpha = alpha))
+    #   stop()
+    # }
 
-      #
-      # beta2.grad <- grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
-      #                                    theta = theta, mu = mu, xi = xi,
-      #                                    thresh = thresh, alpha = alpha)
-      # print(beta2.grad)
-      # print(grad(func = loglike_sig, x = beta2, X.sig = X.sig, y = y,
-      #            theta = theta, mu = mu, xi = xi, thresh = thresh, alpha = alpha))
-      # print(loglike_sig(beta2, X.sig, y, theta, mu, xi, thresh, alpha))
-      # stop()
+    #
+    # beta2.grad <- grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
+    #                                    theta = theta, mu = mu, xi = xi,
+    #                                    thresh = thresh, alpha = alpha)
+    # print(beta2.grad)
+    # print(grad(func = loglike_sig, x = beta2, X.sig = X.sig, y = y,
+    #            theta = theta, mu = mu, xi = xi, thresh = thresh, alpha = alpha))
+    # print(loglike_sig(beta2, X.sig, y, theta, mu, xi, thresh, alpha))
+    # stop()
 
     if (beta1.block) {
       att.beta1 <- att.beta1 + 1
@@ -243,8 +243,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
       # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
       R         <- sum(canll - curll) +
-                   sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
-                       dnorm(beta1, beta1.mu, beta1.sd, log = TRUE))
+        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
+              dnorm(beta1, beta1.mu, beta1.sd, log = TRUE))
       if (log(runif(1)) < R) {
         acc.beta1 <- acc.beta1 + 1
         beta1     <- canb
@@ -268,7 +268,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll           <- canll
         }
       }
-    } else if (TRUE) {
+    } else if (iter < 2000) {
       # print(mean(mu))
       for (j in 1:p.mu) {  # beta1
         att.beta1[j] <- att.beta1[j] + 1
@@ -289,10 +289,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         mean.cur <- canb[j] + 0.5 * MH.beta1[j]^2 * beta1.grad.can[j]
 
         R <- sum(canll - curll) +
-             dnorm(canb[j], beta1.mu, beta1.sd, log = TRUE) -
-             dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE) +
-             dnorm(beta1[j], mean.cur, MH.beta1[j], log = TRUE) -
-             dnorm(canb[j], mean.can, MH.beta1[j], log = TRUE)
+          dnorm(canb[j], beta1.mu, beta1.sd, log = TRUE) -
+          dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE) +
+          dnorm(beta1[j], mean.cur, MH.beta1[j], log = TRUE) -
+          dnorm(canb[j], mean.can, MH.beta1[j], log = TRUE)
         if (!is.nan(R)) { if (log(runif(1)) < R) {
           # print(paste("updating beta", j, "to", canb[j]))
           acc.beta1[j]   <- acc.beta1[j] + 1
@@ -338,33 +338,34 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       prop.can <- 0.5 * log(det(-beta1.hess.cur)) -
         0.5 * t(canb - mean.cur) %*% (-beta1.hess.cur) %*% (canb - mean.cur)
 
-        R <- sum(canll - curll) +
-          sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
-          sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
-          prop.cur - prop.can
+      R <- sum(canll - curll) +
+        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
+        sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+        prop.cur - prop.can
 
-        # if (is.nan(R)) {
-        #   print(prop.cur)
-        #   print(prop.can)
-        #   print(beta1.hess.can)
-        #   print(beta1.hess.cur)
-        #   print(canb)
-        #   print(mean.cur)
-        # }
-        if (!is.nan(R)) { if (log(runif(1)) < R) {
-          # print(paste("updating beta", j, "to", canb[j]))
-          acc.beta1   <- acc.beta1 + 1
-          beta1       <- canb
-          beta1.grad.cur <- beta1.grad.can
-          beta1.hess.cur <- beta1.hess.can
-          mu             <- canmu
-          curll          <- canll
-        } }
-        # print(paste("iter", iter, mean(mu)))
+      # if (is.nan(R)) {
+      #   print(prop.cur)
+      #   print(prop.can)
+      #   print(beta1.hess.can)
+      #   print(beta1.hess.cur)
+      #   print(canb)
+      #   print(mean.cur)
+      # }
+      if (!is.nan(R)) { if (log(runif(1)) < R) {
+        # print(paste("updating beta", j, "to", canb[j]))
+        acc.beta1   <- acc.beta1 + 1
+        beta1       <- canb
+        beta1.grad.cur <- beta1.grad.can
+        beta1.hess.cur <- beta1.hess.can
+        mu             <- canmu
+        curll          <- canll
+      } }
+      # print(paste("iter", iter, mean(mu)))
     } else {  # block update with gradient
       if (iter == 1) {
         print("block gradient update")
       }
+      MH.beta1 <- rep(mean(MH.beta1), p.mu)
       att.beta1 <- att.beta1 + 1
       canb      <- beta1
       mean.can  <- beta1 + 0.5 * MH.beta1^2 * beta1.grad.cur
@@ -387,10 +388,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
       R <- sum(canll - curll) +
         sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
-            dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+              dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
         sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
-            dnorm(canb, mean.can, MH.beta1, log = TRUE))
-      print(R)
+              dnorm(canb, mean.can, MH.beta1, log = TRUE))
+      # print(R)
       if (!is.nan(R)) { if (log(runif(1)) < R) {
         # print(paste("updating beta", j, "to", canb[j]))
         acc.beta1   <- acc.beta1 + 1
@@ -439,9 +440,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll        <- canll
         }
       }
-    } else if (TRUE) {
+    } else if (iter < 2000) {
       # print(mean(mu))
-      for (j in 1:p.mu) {  # beta1
+      for (j in 1:p.sig) {  # beta1
         att.beta2[j] <- att.beta2[j] + 1
         canb     <- beta2
         mean.can <- beta2[j] + 0.5 * MH.beta2[j]^2 * beta2.grad.cur[j]
@@ -479,12 +480,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       if (iter == 1) {
         print("block gradient update")
       }
+      MH.beta2 <- rep(mean(MH.beta2), p.sig)
       att.beta2 <- att.beta2 + 1
       mean.can <- beta2 + 0.5 * MH.beta2^2 * beta2.grad.cur
       canb     <- rnorm(p.sig, mean.can, MH.beta2)
       canlogs <- 0
       for (j in 1:p.sig) {
-        canlogs <- canlogs + X.sig[, , p.sig] * canb[j]
+        canlogs <- canlogs + X.sig[, , j] * canb[j]
       }
       canll <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
       # canll <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
@@ -501,10 +503,17 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
       R <- sum(canll - curll) +
         sum(dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
-            dnorm(beta2, beta2.mu, beta2.sd, log = TRUE)) +
+              dnorm(beta2, beta2.mu, beta2.sd, log = TRUE)) +
         sum(dnorm(beta2, mean.cur, MH.beta2, log = TRUE) -
-            dnorm(canb, mean.can, MH.beta2, log = TRUE))
-      print(R)
+              dnorm(canb, mean.can, MH.beta2, log = TRUE))
+      # print(R)
+      # print(sum(canll))
+      # print(sum(curll))
+      # print(as.numeric(canb))
+      # print(as.numeric(mean.can))
+      # print(as.numeric(beta2))
+      # print(as.numeric(mean.cur))
+      # stop()
       if (!is.nan(R)) { if (log(runif(1)) < R) {
         # print(paste("updating beta", j, "to", canb[j]))
         acc.beta2      <- acc.beta2 + 1
@@ -516,16 +525,16 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     }
 
     # update beta1.mu: prior N(0, mu1.sd)
-    # mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.sd^2)
-    # mu1.post.mn  <- sum(beta1)/beta1.sd^2 * mu1.post.var
-    # beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
-      beta1.mu <- 0
+    mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.sd^2)
+    mu1.post.mn  <- sum(beta1)/beta1.sd^2 * mu1.post.var
+    beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
+    # beta1.mu <- 0
 
     # update beta2.mu: prior N(0, mu2.sd)
-    # mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.sd^2)
-    # mu2.post.mn  <- sum(beta2)/beta2.sd^2 * mu2.post.var
-    # beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
-      beta2.mu <- 0
+    mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.sd^2)
+    mu2.post.mn  <- sum(beta2)/beta2.sd^2 * mu2.post.var
+    beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
+    # beta2.mu <- 0
 
     # update prior standard deviations: prior IG(a, b)
     if (!beta1.sd.fix) {
@@ -548,8 +557,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     canll  <- loglike(y, theta, mu, logsig, canxi, thresh, alpha)
     # canll  <- loglike(y, cantheta.xi, mu, logsig, canxi, thresh, alpha)
     R      <- sum(canll - curll) +
-              dnorm(canxi, 0, 0.5, log = TRUE) -
-              dnorm(xi, 0, 0.5, log = TRUE)
+      dnorm(canxi, 0, 0.5, log = TRUE) -
+      dnorm(xi, 0, 0.5, log = TRUE)
 
     if (log(runif(1)) < R) {
       acc.xi   <- acc.xi + 1
@@ -562,15 +571,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
     if (iter < burn / 2) {
       # if (iter > burn * 0.10) {
-        for (j in 1:length(MH.a)) {
-          acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
-          att.a[j] <- att.a[j] + sum(l1 == j)
-          if (att.a[j] > 1000) {
-            if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.8 }
-            if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.2 }
-            acc.a[j] <- att.a[j] <- 0
-          }
+      for (j in 1:length(MH.a)) {
+        acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
+        att.a[j] <- att.a[j] + sum(l1 == j)
+        if (att.a[j] > 1000) {
+          if (acc.a[j] / att.a[j] < 0.3) { MH.a[j] <- MH.a[j] * 0.8 }
+          if (acc.a[j] / att.a[j] > 0.6) { MH.a[j] <- MH.a[j] * 1.2 }
+          acc.a[j] <- att.a[j] <- 0
         }
+      }
       # }
 
       for (p in 1:p.mu) { if (att.beta1[p] > beta1.attempts) {
@@ -1115,7 +1124,7 @@ ld <- function(u, A, alpha){
   c <- (sin(alpha * psi) / sin(psi))^(1 / (1 - alpha))
   c <- c * sin((1 - alpha) * psi) / sin(alpha * psi)
   logd <- log(alpha) - log(1 - alpha) - (1 / (1 - alpha)) * log(A) +
-          log(c) - c * (1/A^(alpha / (1 - alpha)))
+    log(c) - c * (1/A^(alpha / (1 - alpha)))
   exp(logd)
 }
 

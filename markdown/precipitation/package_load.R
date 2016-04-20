@@ -19,3 +19,5 @@ if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
 } else {
   do.upload <- FALSE
 }
+
+options(warn = 2)

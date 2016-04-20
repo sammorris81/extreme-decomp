@@ -6,6 +6,8 @@ library(ggplot2)
 # library(gridExtra)  # not available on hpc
 # library(rapport)    # not available on hpc
 library(Rcpp)
+library(mvtnorm)
+library(extRemes)
 source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
 source(file = "../../code/R/PCAX.R", chdir = TRUE)

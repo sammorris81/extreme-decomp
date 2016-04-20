@@ -120,6 +120,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                                          y = y, theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
 
+  # covariance for spatial terms
+  XTX.inv.1 <- XTX.inv.2 <- matrix(0, np, np)
+  XTX.inv.1[1, 1] <- XTX.inv.2[1, 1] <- 1
+  XTX.inv.1[2:np, 2:np] <- solve(t(X.mu[, 1, 2:np]) %*% X.mu[, 1, 2:np])
+  XTX.inv.2[2:np, 2:np] <- solve(t(X.sig[, 1, 2:np]) %*% X.sig[, 1, 2:np])
+
   # beta1.hess.cur <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
   #                                       theta = theta, logsig = logsig,
   #                                       xi = xi, thresh = thresh, alpha = alpha)
@@ -268,7 +274,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll           <- canll
         }
       }
-    } else if (iter < 2000) {
+    } else if (TRUE) {
       # print(mean(mu))
       for (j in 1:p.mu) {  # beta1
         att.beta1[j] <- att.beta1[j] + 1
@@ -361,7 +367,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         curll          <- canll
       } }
       # print(paste("iter", iter, mean(mu)))
-    } else {  # block update with gradient
+    } else if (FALSE) {  # block update with gradient
       if (iter == 1) {
         print("block gradient update")
       }
@@ -369,7 +375,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       att.beta1 <- att.beta1 + 1
       canb      <- beta1
       mean.can  <- beta1 + 0.5 * MH.beta1^2 * beta1.grad.cur
-      canb      <- rnorm(p.mu, mean.can, MH.beta1)
+      canb      <- mean.can + t(chol(XTX.inv.1)) %*% rnorm(p.mu)
       canmu <- 0
       for (j in 1:p.mu) {
         canmu   <- canmu + X.mu[, , j] * canb[j]
@@ -392,6 +398,55 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
               dnorm(canb, mean.can, MH.beta1, log = TRUE))
       # print(R)
+      if (!is.nan(R)) { if (log(runif(1)) < R) {
+        # print(paste("updating beta", j, "to", canb[j]))
+        acc.beta1   <- acc.beta1 + 1
+        beta1       <- canb
+        beta1.grad.cur <- beta1.grad.can
+        mu             <- canmu
+        curll          <- canll
+      } }
+      # print(paste("iter", iter, mean(mu)))
+    } else {  # doing a block update with time independent of spatial bases
+      if (iter == 1) {
+        print("block gradient update")
+      }
+      MH.beta1 <- rep(mean(MH.beta1), p.mu)
+      att.beta1 <- att.beta1 + 1
+      canb      <- beta1
+      mean.can  <- beta1 + 0.5 * MH.beta1[1]^2 * XTX.inv.1 %*% beta1.grad.cur
+      beta1.cov <- MH.beta1[1]^2 * XTX.inv.1
+      canb      <- as.vector(rmvnorm(1, mean.can, beta1.cov))
+      canmu <- 0
+      for (j in 1:p.mu) {
+        canmu   <- canmu + X.mu[, , j] * canb[j]
+      }
+      canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+      # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
+
+      # langevin update ratio
+      beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+                                            beta.sd = beta1.sd, X.mu = X.mu,
+                                            y = y, theta = theta,
+                                            logsig = logsig, xi = xi,
+                                            thresh = thresh, alpha = alpha)
+
+
+      mean.cur <- canb + 0.5 * MH.beta1[1]^2 * XTX.inv.1 %*% beta1.grad.can
+
+
+      R <- sum(canll - curll) +
+        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
+              dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+        # sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
+        #       dnorm(canb, mean.can, MH.beta1, log = TRUE))
+        dmvnorm(beta1, mean.cur, beta1.cov, log = TRUE) -
+        dmvnorm(canb, mean.can, beta1.cov, log = TRUE)
+
+      # print(R)
+      # print(canb)
+      # print(dmvnorm(beta1, mean.cur, beta1.cov, log = TRUE))
+      # print(dmvnorm(canb, mean.cur, beta1.cov, log = TRUE))
       if (!is.nan(R)) { if (log(runif(1)) < R) {
         # print(paste("updating beta", j, "to", canb[j]))
         acc.beta1   <- acc.beta1 + 1
@@ -440,7 +495,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll        <- canll
         }
       }
-    } else if (iter < 2000) {
+    } else if (TRUE) {
       # print(mean(mu))
       for (j in 1:p.sig) {  # beta1
         att.beta2[j] <- att.beta2[j] + 1

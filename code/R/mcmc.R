@@ -190,11 +190,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       # canll     <- loglike(y, cantheta.xi, mu, logsig, xi, thresh, alpha)
 
       R    <- colSums(canll - curll) + q[l, ]
-      keep <- log(runif(nt)) < R
+      if (all(!is.na(R))) {
+        keep <- log(runif(nt)) < R
 
-      A[l, keep]     <- canA[l, keep]
-      theta[, keep]  <- cantheta[, keep]
-      curll[, keep]  <- canll[, keep]
+        A[l, keep]     <- canA[l, keep]
+        theta[, keep]  <- cantheta[, keep]
+        curll[, keep]  <- canll[, keep]
+      }
     }
     # theta.xi <- theta^xi  # theta.xi
     # }

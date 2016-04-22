@@ -177,6 +177,26 @@ beta2.init[2] <- -0.1
 xi.init       <- -1
 options(warn = 2)
 
+# mus <- logsigs <- rep(0, ns)
+# xi <- 0
+# for (i in 1:ns) {
+#   fit.lmoment <- fevd(Y[i, !is.na(Y[i, ])], method = "Lmoments")
+#   mus[i] <- fit.lmoment$results[1]
+#   logsigs[i] <- log(fit.lmoment$results[2])
+#   xi <- xi + fit.lmoment$results[3] / ns
+# }
+#
+# fit.mu.lm <- lm(mus ~ X[, 1, 2:np] - 1)
+# fit.logsig.lm <- lm(logsigs ~ X[, 1, 2:np] - 1)
+#
+# beta1.init <- c(5, coef(fit.mu.lm))
+# beta2.init <- c(-3, coef(fit.logsig.lm))
+# xi.init    <- -0.001
+#
+# names <- c("time", "elev", paste("B", 1:L, sep = ""))
+# names(beta1.init) <- names
+# names(beta2.init) <- names
+
 # Y.spatex <- t(Y)
 # X.spatex <- X[, 1, 3:np]
 # X.timeex <- t(t(X[1, , 2]))
@@ -260,7 +280,7 @@ set.seed(6262)  # mcmc
 
 # fit the model using the training data
 fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                           can.mu.sd = 0.005, can.sig.sd = 0.0005,
+                           can.mu.sd = 0.1, can.sig.sd = 0.01,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                            beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
                            beta1.tau.a = 0.1, beta1.tau.b = 0.1,

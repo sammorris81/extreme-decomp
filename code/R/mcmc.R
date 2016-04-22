@@ -94,6 +94,17 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
 
+  # adjust xi until it is valid for all y, mu, and sig
+  if (xi < 0) {
+    while (any(y - mu > -exp(logsig) / xi, na.rm = TRUE)) {
+      xi <- xi * 0.8
+    }
+  } else if (xi > 0) {
+    while (any(y - mu < -exp(logsig) / xi, na.rm = TRUE)) {
+      xi <- xi * 0.8
+    }
+  }
+
   if (is.null(A)) {
     A <- matrix(1, L, nt)
   } else if (length(A) == 1) {
@@ -284,31 +295,37 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         mean.can <- beta1[j] + 0.5 * MH.beta1[j]^2 * beta1.grad.cur[j]
         canb[j]  <- rnorm(1, mean.can, MH.beta1[j])
         canmu    <- mu + X.mu[, , j] * (canb[j] - beta1[j])
-        canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-        # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
+        if (xi < 0 & any(y - canmu > -exp(logsig) / xi, na.rm = TRUE)) {
+          R <- -Inf
+        } else if (xi > 0 & any(y - canmu < -exp(logsig) / xi, na.rm = TRUE)) {
+          R <- -Inf
+        } else {
+          canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+          # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
-        # langevin update ratio
-        beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
-                                              beta.sd = beta1.sd, X.mu = X.mu,
-                                              y = y, theta = theta,
-                                              logsig = logsig, xi = xi,
-                                              thresh = thresh, alpha = alpha)
+          # langevin update ratio
+          beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+                                                beta.sd = beta1.sd, X.mu = X.mu,
+                                                y = y, theta = theta,
+                                                logsig = logsig, xi = xi,
+                                                thresh = thresh, alpha = alpha)
 
-        mean.cur <- canb[j] + 0.5 * MH.beta1[j]^2 * beta1.grad.can[j]
+          mean.cur <- canb[j] + 0.5 * MH.beta1[j]^2 * beta1.grad.can[j]
 
-        R <- sum(canll - curll) +
-          dnorm(canb[j], beta1.mu, beta1.sd, log = TRUE) -
-          dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE) +
-          dnorm(beta1[j], mean.cur, MH.beta1[j], log = TRUE) -
-          dnorm(canb[j], mean.can, MH.beta1[j], log = TRUE)
-        if (!is.nan(R)) { if (log(runif(1)) < R) {
-          # print(paste("updating beta", j, "to", canb[j]))
-          acc.beta1[j]   <- acc.beta1[j] + 1
-          beta1[j]       <- canb[j]
-          beta1.grad.cur <- beta1.grad.can
-          mu             <- canmu
-          curll          <- canll
-        } }
+          R <- sum(canll - curll) +
+            dnorm(canb[j], beta1.mu, beta1.sd, log = TRUE) -
+            dnorm(beta1[j], beta1.mu, beta1.sd, log = TRUE) +
+            dnorm(beta1[j], mean.cur, MH.beta1[j], log = TRUE) -
+            dnorm(canb[j], mean.can, MH.beta1[j], log = TRUE)
+          if (!is.nan(R)) { if (log(runif(1)) < R) {
+            # print(paste("updating beta", j, "to", canb[j]))
+            acc.beta1[j]   <- acc.beta1[j] + 1
+            beta1[j]       <- canb[j]
+            beta1.grad.cur <- beta1.grad.can
+            mu             <- canmu
+            curll          <- canll
+          } }
+        }
         # print(paste("iter", iter, mean(mu)))
       }
     } else if (FALSE) {  # block update with normal approximation
@@ -382,32 +399,39 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       for (j in 1:p.mu) {
         canmu   <- canmu + X.mu[, , j] * canb[j]
       }
-      canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-      # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
-      # langevin update ratio
-      beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
-                                            beta.sd = beta1.sd, X.mu = X.mu,
-                                            y = y, theta = theta,
-                                            logsig = logsig, xi = xi,
-                                            thresh = thresh, alpha = alpha)
+      if (xi < 0 & any(y - canmu > -exp(logsig) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else if (xi > 0 & any(y - canmu < -exp(logsig) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else {
+        canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
-      mean.cur <- canb + 0.5 * MH.beta1^2 * beta1.grad.can
+        # langevin update ratio
+        beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+                                              beta.sd = beta1.sd, X.mu = X.mu,
+                                              y = y, theta = theta,
+                                              logsig = logsig, xi = xi,
+                                              thresh = thresh, alpha = alpha)
 
-      R <- sum(canll - curll) +
-        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
-              dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
-        sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
-              dnorm(canb, mean.can, MH.beta1, log = TRUE))
-      # print(R)
-      if (!is.nan(R)) { if (log(runif(1)) < R) {
-        # print(paste("updating beta", j, "to", canb[j]))
-        acc.beta1   <- acc.beta1 + 1
-        beta1       <- canb
-        beta1.grad.cur <- beta1.grad.can
-        mu             <- canmu
-        curll          <- canll
-      } }
+        mean.cur <- canb + 0.5 * MH.beta1^2 * beta1.grad.can
+
+        R <- sum(canll - curll) +
+          sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
+                dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+          sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
+                dnorm(canb, mean.can, MH.beta1, log = TRUE))
+        # print(R)
+        if (!is.nan(R)) { if (log(runif(1)) < R) {
+          # print(paste("updating beta", j, "to", canb[j]))
+          acc.beta1   <- acc.beta1 + 1
+          beta1       <- canb
+          beta1.grad.cur <- beta1.grad.can
+          mu             <- canmu
+          curll          <- canll
+        } }
+      }
       # print(paste("iter", iter, mean(mu)))
     } else {  # doing a block update with time independent of spatial bases
       if (iter == 1) {
@@ -505,32 +529,41 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         mean.can <- beta2[j] + 0.5 * MH.beta2[j]^2 * beta2.grad.cur[j]
         canb[j]  <- rnorm(1, mean.can, MH.beta2[j])
         canlogs  <- logsig + X.sig[, , j] * (canb[j] - beta2[j])
-        canll    <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-        # canll    <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
-        # langevin update ratio
-        beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
-                                               beta.sd = beta2.sd,
-                                               X.sig = X.sig, y = y,
-                                               theta = theta, mu = mu,
-                                               xi = xi, thresh = thresh,
-                                               alpha = alpha)
+        # if we're outside of the parameter space, automatically reject
+        if (xi < 0 & any(y - mu > -exp(canlogs) / xi, na.rm = TRUE)) {
+          R <- -Inf
+        } else if (xi > 0 & any(y - mu < -exp(canlogs) / xi, na.rm = TRUE)) {
+          R <- -Inf
+        } else {
+          canll    <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+          # canll    <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
-        mean.cur <- canb[j] + 0.5 * MH.beta2[j]^2 * beta2.grad.can[j]
+          # langevin update ratio
+          beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
+                                                 beta.sd = beta2.sd,
+                                                 X.sig = X.sig, y = y,
+                                                 theta = theta, mu = mu,
+                                                 xi = xi, thresh = thresh,
+                                                 alpha = alpha)
 
-        R <- sum(canll - curll) +
-          dnorm(canb[j], beta2.mu, beta2.sd, log = TRUE) -
-          dnorm(beta2[j], beta2.mu, beta2.sd, log = TRUE) +
-          dnorm(beta2[j], mean.cur, MH.beta2[j], log = TRUE) -
-          dnorm(canb[j], mean.can, MH.beta2[j], log = TRUE)
-        if (!is.nan(R)) { if (log(runif(1)) < R) {
-          # print(paste("updating beta", j, "to", canb[j]))
-          acc.beta2[j]   <- acc.beta2[j] + 1
-          beta2[j]       <- canb[j]
-          beta2.grad.cur <- beta2.grad.can
-          logsig         <- canlogs
-          curll          <- canll
-        } }
+          mean.cur <- canb[j] + 0.5 * MH.beta2[j]^2 * beta2.grad.can[j]
+
+          R <- sum(canll - curll) +
+            dnorm(canb[j], beta2.mu, beta2.sd, log = TRUE) -
+            dnorm(beta2[j], beta2.mu, beta2.sd, log = TRUE) +
+            dnorm(beta2[j], mean.cur, MH.beta2[j], log = TRUE) -
+            dnorm(canb[j], mean.can, MH.beta2[j], log = TRUE)
+          if (!is.nan(R)) { if (log(runif(1)) < R) {
+            # print(paste("updating beta", j, "to", canb[j]))
+            acc.beta2[j]   <- acc.beta2[j] + 1
+            beta2[j]       <- canb[j]
+            beta2.grad.cur <- beta2.grad.can
+            logsig         <- canlogs
+            curll          <- canll
+          } }
+        }
+
         # print(paste("iter", iter, mean(mu)))
       }
     } else {
@@ -545,40 +578,46 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       for (j in 1:p.sig) {
         canlogs <- canlogs + X.sig[, , j] * canb[j]
       }
-      canll <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
-      # canll <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
+      if (xi < 0 & any(y - mu > -exp(canlogs) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else if (xi > 0 & any(y - mu < -exp(canlogs) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else {
+        canll <- loglike(y, theta, mu, canlogs, xi, thresh, alpha)
+        # canll <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
-      # langevin update ratio
-      beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
-                                             beta.sd = beta2.sd,
-                                             X.sig = X.sig, y = y,
-                                             theta = theta, mu = mu,
-                                             xi = xi, thresh = thresh,
-                                             alpha = alpha)
+        # langevin update ratio
+        beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
+                                               beta.sd = beta2.sd,
+                                               X.sig = X.sig, y = y,
+                                               theta = theta, mu = mu,
+                                               xi = xi, thresh = thresh,
+                                               alpha = alpha)
 
-      mean.cur <- canb + 0.5 * MH.beta2^2 * beta2.grad.can
+        mean.cur <- canb + 0.5 * MH.beta2^2 * beta2.grad.can
 
-      R <- sum(canll - curll) +
-        sum(dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
-              dnorm(beta2, beta2.mu, beta2.sd, log = TRUE)) +
-        sum(dnorm(beta2, mean.cur, MH.beta2, log = TRUE) -
-              dnorm(canb, mean.can, MH.beta2, log = TRUE))
-      # print(R)
-      # print(sum(canll))
-      # print(sum(curll))
-      # print(as.numeric(canb))
-      # print(as.numeric(mean.can))
-      # print(as.numeric(beta2))
-      # print(as.numeric(mean.cur))
-      # stop()
-      if (!is.nan(R)) { if (log(runif(1)) < R) {
-        # print(paste("updating beta", j, "to", canb[j]))
-        acc.beta2      <- acc.beta2 + 1
-        beta2          <- canb
-        beta2.grad.cur <- beta2.grad.can
-        logsig         <- canlogs
-        curll          <- canll
-      } }
+        R <- sum(canll - curll) +
+          sum(dnorm(canb, beta2.mu, beta2.sd, log = TRUE) -
+                dnorm(beta2, beta2.mu, beta2.sd, log = TRUE)) +
+          sum(dnorm(beta2, mean.cur, MH.beta2, log = TRUE) -
+                dnorm(canb, mean.can, MH.beta2, log = TRUE))
+        # print(R)
+        # print(sum(canll))
+        # print(sum(curll))
+        # print(as.numeric(canb))
+        # print(as.numeric(mean.can))
+        # print(as.numeric(beta2))
+        # print(as.numeric(mean.cur))
+        # stop()
+        if (!is.nan(R)) { if (log(runif(1)) < R) {
+          # print(paste("updating beta", j, "to", canb[j]))
+          acc.beta2      <- acc.beta2 + 1
+          beta2          <- canb
+          beta2.grad.cur <- beta2.grad.can
+          logsig         <- canlogs
+          curll          <- canll
+        } }
+      }
     }
 
     # update beta1.mu: prior N(0, mu1.sd)
@@ -610,12 +649,18 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     # xi
     att.xi <- att.xi + 1
     canxi  <- rnorm(1, xi, MH.xi)
-    # cantheta.xi <- theta^xi  # theta.xi
-    canll  <- loglike(y, theta, mu, logsig, canxi, thresh, alpha)
-    # canll  <- loglike(y, cantheta.xi, mu, logsig, canxi, thresh, alpha)
-    R      <- sum(canll - curll) +
-      dnorm(canxi, 0, 0.5, log = TRUE) -
-      dnorm(xi, 0, 0.5, log = TRUE)
+    if (canxi < 0 & any(y - mu > -exp(logsig) / canxi, na.rm = TRUE)) {
+      R <- -Inf
+    } else if (canxi > 0 & any(y - mu < -exp(logsig) / canxi, na.rm = TRUE)) {
+      R <- -Inf
+    } else {
+      # cantheta.xi <- theta^xi  # theta.xi
+      canll  <- loglike(y, theta, mu, logsig, canxi, thresh, alpha)
+      # canll  <- loglike(y, cantheta.xi, mu, logsig, canxi, thresh, alpha)
+      R      <- sum(canll - curll) +
+        dnorm(canxi, 0, 0.5, log = TRUE) -
+        dnorm(xi, 0, 0.5, log = TRUE)
+    }
 
     if (log(runif(1)) < R) {
       acc.xi   <- acc.xi + 1
@@ -990,8 +1035,6 @@ grad_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
   this.grad <- - (tx^(-1 / (alpha * xi) - 1)) * theta^(1 / alpha) /
     (alpha * sig) + (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
   this.grad[is.na(y)] <- 0  # for the missing data
-
-  this.grad.betamu <<- this.grad
 
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {

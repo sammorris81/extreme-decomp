@@ -168,11 +168,11 @@ fit.mle <- fevd(Y.spatex, data = X.spatex,
                 scale.fun = scale.fun,
                 use.phi = TRUE)
 beta1.init <- fit.mle$results$par[1:np]
-# beta1.init[1] <- 5
-# beta1.init[2] <- -3
+beta1.init[1] <- 5
+beta1.init[2] <- -3
 beta2.init <- fit.mle$results$par[(np + 1):(2 * np)]
-# beta2.init[1] <- 0
-# beta2.init[2] <- -0.1
+beta2.init[1] <- 0
+beta2.init[2] <- -0.1
 xi.init    <- tail(fit.mle$results$par, 1)
 # xi.init       <- -1
 options(warn = 2)

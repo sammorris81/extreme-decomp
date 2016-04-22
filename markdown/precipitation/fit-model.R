@@ -294,10 +294,31 @@ fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                            iterplot = TRUE)
 cat("Finished fit and predict \n")
 
+par(mfrow = c(3, 5))
+for (i in 1:np) {
+  plot(fit.rw.noblock$beta1[, i], type = "l",
+       main = bquote(paste(mu, ": ", beta[.(i)])))
+}
+for (i in 1:np) {
+  plot(fit.rw.noblock$beta2[, i], type = "l",
+       main = bquote(paste("log(", sigma, "): ", beta[.(i)])))
+}
+plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
+
 mu.post <- array(0, dim = c(10000, ns, nt))
 for (i in 1:10000) {
   for (t in 1:nt) {
     mu.post[i, , t] <- X[, t, ] %*% fit.rw.noblock$beta1[i, ]
+  }
+}
+
+par(mfrow = c(5, 10))
+sites <- sample(ns, 5, replace = FALSE)
+days  <- sample(nt, 10, replace = FALSE)
+
+for (i in sites) {
+  for (t in days) {
+    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
   }
 }
 

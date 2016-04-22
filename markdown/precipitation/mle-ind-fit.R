@@ -46,12 +46,13 @@ ll.ind <- function(beta, X, y) {
   for (t in 1:nt) {
     mu <- X[, t, ] %*% beta1
     sig <- exp(X[, t, ] %*% beta2)
-    if (any(sig == 0)) {
-      return(Inf)
-    }
+    # if (any(sig[!is.na(y[, t])] == 0)) {
+    #   return(Inf)
+    # }
     ll <- ll + sum(
       dgev(y[, t], loc = mu, scale = sig, shape = xi, log = TRUE),
       na.rm = TRUE)
+    print(ll)
   }
 
   return(-ll)

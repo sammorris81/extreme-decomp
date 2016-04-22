@@ -274,7 +274,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll           <- canll
         }
       }
-    } else if (TRUE) {
+    } else if (iter < 2000) {
       # print(mean(mu))
       for (j in 1:p.mu) {  # beta1
         att.beta1[j] <- att.beta1[j] + 1
@@ -367,15 +367,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         curll          <- canll
       } }
       # print(paste("iter", iter, mean(mu)))
-    } else if (FALSE) {  # block update with gradient
+    } else if (TRUE) {  # block update with gradient
       if (iter == 1) {
         print("block gradient update")
       }
-      MH.beta1 <- rep(mean(MH.beta1), p.mu)
+      # MH.beta1 <- rep(mean(MH.beta1), p.mu)
       att.beta1 <- att.beta1 + 1
       canb      <- beta1
       mean.can  <- beta1 + 0.5 * MH.beta1^2 * beta1.grad.cur
-      canb      <- mean.can + t(chol(XTX.inv.1)) %*% rnorm(p.mu)
+      canb      <- rnorm(p.mu, mean.can, MH.beta1)
       canmu <- 0
       for (j in 1:p.mu) {
         canmu   <- canmu + X.mu[, , j] * canb[j]
@@ -495,7 +495,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll        <- canll
         }
       }
-    } else if (TRUE) {
+    } else if (iter < 2000) {
       # print(mean(mu))
       for (j in 1:p.sig) {  # beta1
         att.beta2[j] <- att.beta2[j] + 1
@@ -535,7 +535,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       if (iter == 1) {
         print("block gradient update")
       }
-      MH.beta2 <- rep(mean(MH.beta2), p.sig)
+      # MH.beta2 <- rep(mean(MH.beta2), p.sig)
       att.beta2 <- att.beta2 + 1
       mean.can <- beta2 + 0.5 * MH.beta2^2 * beta2.grad.cur
       canb     <- rnorm(p.sig, mean.can, MH.beta2)

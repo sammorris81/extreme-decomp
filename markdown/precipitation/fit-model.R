@@ -280,7 +280,7 @@ set.seed(6262)  # mcmc
 
 # fit the model using the training data
 fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                           can.mu.sd = 0.1, can.sig.sd = 0.01,
+                           can.mu.sd = 0.1, can.sig.sd = 0.005,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                            beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
                            beta1.tau.a = 0.1, beta1.tau.b = 0.1,

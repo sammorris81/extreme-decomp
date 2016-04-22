@@ -168,13 +168,13 @@ fit.mle <- fevd(Y.spatex, data = X.spatex,
                 scale.fun = scale.fun,
                 use.phi = TRUE)
 beta1.init <- fit.mle$results$par[1:np]
-beta1.init[1] <- 5
-beta1.init[2] <- -3
+# beta1.init[1] <- 5
+# beta1.init[2] <- -3
 beta2.init <- fit.mle$results$par[(np + 1):(2 * np)]
-beta2.init[1] <- 0
-beta2.init[2] <- -0.1
-# xi.init    <- tail(fit.mle$results$par, 1)
-xi.init       <- -1
+# beta2.init[1] <- 0
+# beta2.init[2] <- -0.1
+xi.init    <- tail(fit.mle$results$par, 1)
+# xi.init       <- -1
 options(warn = 2)
 
 # mus <- logsigs <- rep(0, ns)
@@ -280,7 +280,7 @@ set.seed(6262)  # mcmc
 
 # fit the model using the training data
 fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                           can.mu.sd = 0.1, can.sig.sd = 0.005,
+                           can.mu.sd = 0.01, can.sig.sd = 0.005,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
                            beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
                            beta1.tau.a = 0.1, beta1.tau.b = 0.1,

@@ -168,31 +168,37 @@ fit.mle <- fevd(Y.spatex, data = X.spatex,
                 scale.fun = scale.fun,
                 use.phi = TRUE)
 beta1.init <- fit.mle$results$par[1:np]
-beta1.init[1] <- 5
-beta1.init[2] <- -3
+# beta1.init[1] <- 5
+# beta1.init[2] <- -3
 beta2.init <- fit.mle$results$par[(np + 1):(2 * np)]
-beta2.init[1] <- 0
-beta2.init[2] <- -0.1
-xi.init    <- tail(fit.mle$results$par, 1)
+# beta2.init[1] <- 0
+# beta2.init[2] <- -0.1
+# xi.init    <- tail(fit.mle$results$par, 1)
 # xi.init       <- -1
 options(warn = 2)
+#
+# mu.st <- logsig.st <- matrix(0, ns, nt)
+# for (i in 1:np) {
+#   mu.st <- mu.st + X[, , i] * beta1.init[i]
+#   logsig.st <- logsig.st + X[, , i] * beta2.init[i]
+#  }
+#
+mus <- logsigs <- rep(0, ns)
+xi <- 0
+for (i in 1:ns) {
+  fit.lmoment <- fevd(Y[i, !is.na(Y[i, ])], method = "Lmoments")
+  mus[i] <- fit.lmoment$results[1]
+  logsigs[i] <- log(fit.lmoment$results[2])
+  xi <- xi + fit.lmoment$results[3] / ns
+}
 
-# mus <- logsigs <- rep(0, ns)
-# xi <- 0
-# for (i in 1:ns) {
-#   fit.lmoment <- fevd(Y[i, !is.na(Y[i, ])], method = "Lmoments")
-#   mus[i] <- fit.lmoment$results[1]
-#   logsigs[i] <- log(fit.lmoment$results[2])
-#   xi <- xi + fit.lmoment$results[3] / ns
-# }
-#
-# fit.mu.lm <- lm(mus ~ X[, 1, 2:np] - 1)
-# fit.logsig.lm <- lm(logsigs ~ X[, 1, 2:np] - 1)
-#
-# beta1.init <- c(5, coef(fit.mu.lm))
-# beta2.init <- c(-3, coef(fit.logsig.lm))
-# xi.init    <- -0.001
-#
+fit.mu.lm <- lm(mus ~ X[, 1, 2:np] - 1)
+fit.logsig.lm <- lm(logsigs ~ X[, 1, 2:np] - 1)
+
+beta1.init <- c(0, coef(fit.mu.lm))
+beta2.init <- c(0, coef(fit.logsig.lm))
+xi.init    <- -0.001
+
 # names <- c("time", "elev", paste("B", 1:L, sep = ""))
 # names(beta1.init) <- names
 # names(beta2.init) <- names
@@ -221,6 +227,35 @@ options(warn = 2)
 #                       temp.form.loc = temp.form.loc,
 #                       temp.form.scale = temp.form.scale)
 # options(warn = 2)
+
+# Y.spatex <- as.vector(Y)
+# X.spatex <- X[, 1, ]
+# for (t in 2:nt) {
+#   X.spatex <- rbind(X.spatex, X[, t, ])
+# }
+# X.spatex <- X.spatex[!is.na(Y.spatex), ]
+# Y.spatex <- Y.spatex[!is.na(Y.spatex)]
+#
+# beta.init <- rep(0, np * 2)
+# library(evd)
+# fit1 <- optim(par = beta.init, fn = ll.ind, X = X.spatex, y = Y.spatex, xi = 0,
+#       control = list(maxit = 50000))
+# beta.init <- c(fit1$par, 0)
+# fit1 <- optim(par = beta.init, fn = ll.ind.xi, X = X.spatex, y = Y.spatex,
+#               control = list(maxit = 50000))
+# beta.init <- c(fit1$par)
+# beta1.init <- fit1$par[1:np]
+# beta2.init <- fit1$par[(np + 1):(2 * np)]
+# xi.init <- tail(fit1$par, 1)
+
+# options(warn = 0)
+# fit.lmoment <- fevd(Y[!is.na(Y)], method = "Lmoments")
+# options(warn = 2)
+#
+# beta1.init <- beta2.init <- rep(0, np)
+# beta1.init[1] <- fit.lmoment$results[1]
+# beta2.init[1] <- fit.lmoment$results[2]
+# xi.init <- fit.lmoment$results[3]
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -282,7 +317,7 @@ set.seed(6262)  # mcmc
 fit.rw.noblock <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
                            can.mu.sd = 0.001, can.sig.sd = 0.005,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                           beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
+                           beta1 = beta1.init, beta2 = beta2.init, xi = 0,
                            beta1.tau.a = 0.1, beta1.tau.b = 0.1,
                            beta1.sd = 10, beta1.sd.fix = FALSE,
                            beta2.tau.a = 0.1, beta2.tau.b = 0.1,

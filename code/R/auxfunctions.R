@@ -47,17 +47,17 @@ h1 <- function(logs, u, alpha, log = TRUE){
 ########           GEV FUNCTIONS           ###########
 ######################################################
 
-loglike <- function(y, mu, logsig, xi, theta, alpha) {
-  missing <- is.na(y)
-  theta <- theta^alpha
-  mu.star <- mu + exp(logsig) * (theta^xi - 1) / xi
-  sig.star <- alpha * exp(logsig) * (theta^xi)
-  xi.star <- alpha * xi
-  ttt <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
-  lll <- -log(sig.star) + (xi.star + 1) * log(ttt) - ttt
-  lll[missing] <- 0
-  return(lll)
-}
+# loglike <- function(y, mu, logsig, xi, theta, alpha) {
+#   missing <- is.na(y)
+#   theta <- theta^alpha
+#   mu.star <- mu + exp(logsig) * (theta^xi - 1) / xi
+#   sig.star <- alpha * exp(logsig) * (theta^xi)
+#   xi.star <- alpha * xi
+#   ttt <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+#   lll <- -log(sig.star) + (xi.star + 1) * log(ttt) - ttt
+#   lll[missing] <- 0
+#   return(lll)
+# }
 
 logd <- function(theta, v){
   sum(log(theta) - theta * v)
@@ -93,6 +93,51 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
   }
 
   return(y)
+}
+
+
+ll.ind <- function(beta, X, y, xi = -0.1) {
+  # nt <- dim(X)[2]
+  # np <- dim(X)[3]
+
+  np <- dim(X)[2]
+  beta1 <- beta[1:np]
+  beta2 <- beta[(np + 1):(2 * np)]
+  ll <- 0
+
+  mu <- X %*% beta1
+  sig <- exp(X %*% beta2)
+  # if (any(sig[!is.na(y[, t])] == 0)) {
+  #   return(Inf)
+  # }
+  ll <- sum(
+    dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
+    na.rm = TRUE)
+
+  return(-ll)
+}
+
+ll.ind.xi <- function(beta, X, y) {
+  # nt <- dim(X)[2]
+  # np <- dim(X)[3]
+
+  np <- dim(X)[2]
+  beta1 <- beta[1:np]
+  beta2 <- beta[(np + 1):(2 * np)]
+  xi <- tail(beta, 1)
+  ll <- 0
+
+  mu <- X %*% beta1
+  sig <- exp(X %*% beta2)
+  if (any(sig[!is.na(y)] == 0)) {
+    return(Inf)
+  }
+  # print(sig)
+  ll <- sum(
+    dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
+    na.rm = TRUE)
+
+  return(-ll)
 }
 
 

@@ -131,19 +131,21 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                                          y = y, theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
 
-  # covariance for spatial terms
-  XTX.inv.1 <- XTX.inv.2 <- matrix(0, np, np)
-  XTX.inv.1[1, 1] <- XTX.inv.2[1, 1] <- 1
-  XTX.inv.1[2:np, 2:np] <- solve(t(X.mu[, 1, 2:np]) %*% X.mu[, 1, 2:np])
-  XTX.inv.2[2:np, 2:np] <- solve(t(X.sig[, 1, 2:np]) %*% X.sig[, 1, 2:np])
+  # # covariance for spatial terms
+  # XTX.inv.1 <- XTX.inv.2 <- matrix(0, np, np)
+  # XTX.inv.1[1, 1] <- XTX.inv.2[1, 1] <- 1
+  # XTX.inv.1[2:np, 2:np] <- solve(t(X.mu[, 1, 2:np]) %*% X.mu[, 1, 2:np])
+  # XTX.inv.2[2:np, 2:np] <- solve(t(X.sig[, 1, 2:np]) %*% X.sig[, 1, 2:np])
 
-  # beta1.hess.cur <- hess_loglike_betamu(beta1 = beta1, X.mu = X.mu, y = y,
-  #                                       theta = theta, logsig = logsig,
-  #                                       xi = xi, thresh = thresh, alpha = alpha)
-  #
-  # beta2.hess.cur <- hess_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
-  #                                        theta = theta, mu = mu, xi = xi,
-  #                                        thresh = thresh, alpha = alpha)
+  beta1.hess.cur <- hess_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
+                                        beta.sd = beta1.sd, X.mu = X.mu, y = y,
+                                        theta = theta, logsig = logsig,
+                                        xi = xi, thresh = thresh, alpha = alpha)
+
+  beta2.hess.cur <- hess_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
+                                         beta.sd = beta2.sd, X.sig = X.sig, y = y,
+                                         theta = theta, mu = mu, xi = xi,
+                                         thresh = thresh, alpha = alpha)
 
   # print(beta1.hess.cur)
   # print(hessian(func = loglike_mu, x = beta1, X.mu = X.mu, y = y, theta = theta,
@@ -338,44 +340,65 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
       for (j in 1:p.mu) {
         canmu   <- canmu + X.mu[, , j] * canb[j]
       }
-      canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-      # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
+      if (xi < 0 & any(y - canmu > -exp(logsig) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else if (xi > 0 & any(y - canmu < -exp(logsig) / xi, na.rm = TRUE)) {
+        R <- -Inf
+      } else {
+        canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+        # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
 
-      # get the adjustments for the ratio of the update
-      beta1.grad.can <- grad_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-                                            theta = theta, logsig = logsig,
-                                            xi = xi, thresh = thresh,
-                                            alpha = alpha)
-      beta1.hess.can <- hess_loglike_betamu(beta1 = canb, X.mu = X.mu, y = y,
-                                            theta = theta, logsig = logsig,
-                                            xi = xi, thresh = thresh,
-                                            alpha = alpha)
+        # get the adjustments for the ratio of the update
+        beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+                                              beta.sd = beta1.sd, X.mu = X.mu,
+                                              y = y, theta = theta,
+                                              logsig = logsig, xi = xi,
+                                              thresh = thresh, alpha = alpha)
+        beta1.hess.can <- hess_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+                                              beta.sd = beta1.sd, X.mu = X.mu,
+                                              y = y, theta = theta,
+                                              logsig = logsig, xi = xi,
+                                              thresh = thresh, alpha = alpha)
 
-      # if (iter == 10) {
-      #   stop()
-      # }
+        # if (iter == 10) {
+        #   stop()
+        # }
 
-      VVV.can <- solve(-beta1.hess.can)
-      mean.can <- canb + VVV.can %*% beta1.grad.can
+        VVV.can <- solve(-beta1.hess.can)
+        mean.can <- canb + VVV.can %*% beta1.grad.can
 
-      prop.cur <- 0.5 * log(det(-beta1.hess.can)) -
-        0.5 * t(beta1 - mean.can) %*% (-beta1.hess.can) %*% (beta1 - mean.can)
-      prop.can <- 0.5 * log(det(-beta1.hess.cur)) -
-        0.5 * t(canb - mean.cur) %*% (-beta1.hess.cur) %*% (canb - mean.cur)
+        prop.cur <- 0.5 * log(det(-beta1.hess.can)) -
+          0.5 * t(beta1 - mean.can) %*% (-beta1.hess.can) %*% (beta1 - mean.can)
+        prop.can <- 0.5 * log(det(-beta1.hess.cur)) -
+          0.5 * t(canb - mean.cur) %*% (-beta1.hess.cur) %*% (canb - mean.cur)
 
-      R <- sum(canll - curll) +
-        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
-        sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
-        prop.cur - prop.can
+        R <- sum(canll - curll) +
+          sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
+          sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+          prop.cur - prop.can
 
-      # if (is.nan(R)) {
-      #   print(prop.cur)
-      #   print(prop.can)
-      #   print(beta1.hess.can)
-      #   print(beta1.hess.cur)
-      #   print(canb)
-      #   print(mean.cur)
-      # }
+        # if (is.nan(R)) {
+        #   canb <<- canb
+        #   beta1.mu <<- beta1.mu
+        #   beta1.sd <<- beta1.sd
+        #   X.mu <<- X.mu
+        #   y <<- y
+        #   theta <<- theta
+        #   logsig <<- logsig
+        #   xi <<- xi
+        #   thresh <<- thresh
+        #   alpha <<- alpha
+        #   print(prop.cur)
+        #   print(prop.can)
+        #   print(beta1.hess.can)
+        #   print(beta1.hess.cur)
+        #   print(beta1.grad.can)
+        #   print(beta1.grad.cur)
+        #   print(canb)
+        #   print(mean.cur)
+        #   stop()
+        # }
+      }
       if (!is.nan(R)) { if (log(runif(1)) < R) {
         # print(paste("updating beta", j, "to", canb[j]))
         acc.beta1   <- acc.beta1 + 1
@@ -662,12 +685,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         dnorm(xi, 0, 0.5, log = TRUE)
     }
 
-    if (log(runif(1)) < R) {
+    if (!is.na(R)) { if (log(runif(1)) < R) {
       acc.xi   <- acc.xi + 1
       xi       <- canxi
       # theta.xi <- cantheta.xi  # theta.xi
       curll    <- canll
-    }
+    }}
 
     # TUNING
 
@@ -1033,15 +1056,44 @@ grad_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
   tx  <- (1 + xi * (y - mu) / sig)
 
   this.grad <- - (tx^(-1 / (alpha * xi) - 1)) * theta^(1 / alpha) /
-    (alpha * sig) + (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
+    (alpha * sig) +
+    (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
   this.grad[is.na(y)] <- 0  # for the missing data
 
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {
-    grad[j] <- sum(this.grad * X.mu[, , j]) - (beta1[j] - beta.mu) / beta.sd
+    grad[j] <- sum(this.grad * X.mu[, , j]) - (beta1[j] - beta.mu) / beta.sd^2
   }
 
   return(grad)
+}
+
+hess_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
+                                xi, thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X.mu)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X.mu[, , j] * beta1[j]
+  }
+
+  sigma <- exp(logsig)
+  tx <- (1 + xi * (y - mu) / sigma)
+
+  this.hess <- - (tx^(-1 / (alpha * xi) - 2) * (alpha * xi + 1) *
+    theta^(1 / alpha)) / (alpha^2 * sigma^2) +
+    (y > thresh) * (alpha * xi + 1) * xi / (alpha * tx^2 * sigma^2)
+  this.hess[is.na(y)] <- 0  # for missing data
+
+  hess <- matrix(0, p.mu, p.mu)
+  for (j in 1:p.mu) {
+    for (i in j:p.mu) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X.mu[, , i] * X.mu[, , j])
+    }
+  }
+
+  hess <- hess - diag(1 / beta.sd^2, p.mu)  # account for prior
+
+  return(hess)
 }
 
 hess_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
@@ -1064,8 +1116,8 @@ hess_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
   this.hess[is.na(y)] <- 0
 
   hess <- matrix(0, p.mu, p.mu)
-  for (j in 1:p.mu) {
-    for (i in j:p.mu) {
+  for (i in 1:p.mu) {
+    for (j in i:p.mu) {
       hess[i, j] <- hess[j, i] <- sum(this.hess * X.mu[, , i] * X.mu[, , j])
     }
   }
@@ -1141,20 +1193,51 @@ grad_logpost_betasig <- function(beta2, beta.mu, beta.sd, X.sig, y, theta, mu,
   sigma <- exp(logsig)
   res <- y - mu
 
-  tx <- (1 + xi * (res) / sigma)
+  tx <- (1 + xi * res / sigma)
 
-  this.grad <- - theta^(1 / alpha) * (res) * tx^(-1 / (alpha * xi) - 1) /
+  this.grad <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) /
     (alpha * sigma) +
-    (y > thresh) * ((alpha * xi + 1) * (res) / (alpha * tx * sigma) - 1)
+    (y > thresh) * ((alpha * xi + 1) * res / (alpha * tx * sigma) - 1)
 
   this.grad[is.na(y)] <- 0
 
   grad <- rep(0, p.sig)
   for (j in 1:p.sig) {
-    grad[j] <- sum(this.grad * X.sig[, , j]) - (beta2[j] - beta.mu) / beta.sd
+    grad[j] <- sum(this.grad * X.sig[, , j]) - (beta2[j] - beta.mu) / beta.sd^2
   }
 
   return(grad)
+}
+
+hess_logpost_betasig <- function(beta2, beta.mu, beta.sd, X.sig, y, theta, mu,
+                                 xi, thresh, alpha) {
+  logsig <- 0
+  p.sig <- dim(X.sig)[3]
+  for (j in 1:p.sig) {
+    logsig <- logsig + X.sig[, , j] * beta2[j]
+  }
+
+  sigma <- exp(logsig)
+  res <- y - mu
+
+  tx <- (1 + xi * res / sigma)
+
+  this.hess <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) * (
+    (alpha * xi + 1) * xi * res / (alpha * xi * tx * sigma) - 1
+  ) / (alpha * sigma) -
+    (y > thresh) * (alpha * xi + 1) * res * sigma /
+    (alpha * (sigma + xi * res)^2)
+
+  hess <- matrix(0, p.sig, p.sig)
+  for (i in 1:p.sig) {
+    for (j in i:p.sig) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X.sig[, , i] * X.sig[, , j])
+    }
+  }
+
+  hess <- hess - diag(1 / beta.sd^2, p.sig)  # account for prior
+
+  return(hess)
 }
 
 hess_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,

@@ -34,26 +34,46 @@ fit0
 
 
 
-ll.ind <- function(beta, X, y) {
-  nt <- dim(X)[2]
-  np <- dim(X)[3]
+ll.ind <- function(beta, X, y, xi = -0.1) {
+  # nt <- dim(X)[2]
+  # np <- dim(X)[3]
 
+  np <- dim(X)[2]
   beta1 <- beta[1:np]
   beta2 <- beta[(np + 1):(2 * np)]
-  xi    <- tail(beta, 1)
   ll <- 0
 
-  for (t in 1:nt) {
-    mu <- X[, t, ] %*% beta1
-    sig <- exp(X[, t, ] %*% beta2)
-    # if (any(sig[!is.na(y[, t])] == 0)) {
-    #   return(Inf)
-    # }
-    ll <- ll + sum(
-      dgev(y[, t], loc = mu, scale = sig, shape = xi, log = TRUE),
-      na.rm = TRUE)
-    print(ll)
+  mu <- X %*% beta1
+  sig <- exp(X %*% beta2)
+  # if (any(sig[!is.na(y[, t])] == 0)) {
+  #   return(Inf)
+  # }
+  ll <- sum(
+    dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
+    na.rm = TRUE)
+
+  return(-ll)
+}
+
+ll.ind.xi <- function(beta, X, y) {
+  # nt <- dim(X)[2]
+  # np <- dim(X)[3]
+
+  np <- dim(X)[2]
+  beta1 <- beta[1:np]
+  beta2 <- beta[(np + 1):(2 * np)]
+  xi <- tail(beta, 1)
+  ll <- 0
+
+  mu <- X %*% beta1
+  sig <- exp(X %*% beta2)
+  if (any(sig[!is.na(y)] == 0)) {
+     return(Inf)
   }
+  # print(sig)
+  ll <- sum(
+    dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
+    na.rm = TRUE)
 
   return(-ll)
 }

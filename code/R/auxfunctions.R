@@ -201,7 +201,38 @@ make.kern <- function(d2, logrho) {
   return(w)
 }
 
+add.basis.X <- function(X, B) {
+  ns <- dim(X)[1]
+  nt <- dim(X)[2]
+  np <- dim(X)[3]
+  nB <- dim(B)[2]
 
+  # create a new X array that will be big enough to hold the basis functions
+  newX <- array(0, dim = c(ns, nt, np + nB))
+
+  # copy over old X information
+  newX[, , 1:np] <- X
+  for (t in 1:nt) {
+    newX[, t, (np + 1):(np + nB)] <- B
+  }
+
+  return(newX)
+}
+
+rep.basis.X <- function(X, newB) {
+  ns <- dim(X)[1]
+  nt <- dim(X)[2]
+  np <- dim(X)[3]
+  nB <- dim(newB)[2]
+  start <- np - nB + 1
+  end   <- np
+
+  for (t in 1:nt) {
+    X[, t, start:end] <- newB
+  }
+
+  return(X)
+}
 
 ######################################################
 ########            OTHER FUNCTIONS        ###########

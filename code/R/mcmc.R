@@ -28,7 +28,7 @@
 #
 ################################################################################
 
-ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
+ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
                    beta1 = NULL, beta1.mu = 0, beta1.sd = 10, mu1.sd = 100,
                    beta2 = NULL, beta2.mu = 0, beta2.sd = 1, mu2.sd = 10,
                    xi = 0.001, A = NULL,
@@ -37,10 +37,11 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                    beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                    beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                    beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
-                   # s, knots, bw.init = NULL,
+                   bw.init = NULL, bw.random = TRUE,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
+  require(fields)
   # BOOKKEEPING
 
   ns   <- nrow(y)
@@ -54,6 +55,26 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     X.sig <- X
   }
 
+  # initialize distance matrix from site to knot
+  dw2 <- rdist(s, knots)^2
+  dw2[dw2 < 1e-4] <- 0
+
+  if (bw.random) {
+    # initialize basis functions
+    if (is.null(bw.init)) {
+      bw <- quantile(dw2, 0.2)
+    } else {
+      bw <- bw.init
+    }
+
+    bw.min <- quantile(dw2, 0.05)
+    bw.max <- quantile(dw2, 0.95)
+
+    B.X <- makeW(dw2 = dw2, rho = bw)
+    X.mu <- add.basis.X(X = X.mu, B = B.X)
+    X.sig <- add.basis.X(X = X.sig, B = B.X)
+  }
+
   p.mu    <- dim(X.mu)[3]
   p.sig   <- dim(X.sig)[3]
 
@@ -65,14 +86,6 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   if (any(miss)) {
     missing.times <- which(colSums(miss) > 0)
   }
-
-  # dPS approximation:
-
-  npts      <- 50
-  Ubeta     <- qbeta(seq(0, 1, length = npts + 1), 0.5, 0.5)
-  MidPoints <- (Ubeta[-1] + Ubeta[-(npts + 1)]) / 2
-  BinWidth  <- Ubeta[-1] - Ubeta[-(npts + 1)]
-  bins      <- list(npts = npts, MidPoints = MidPoints, BinWidth = BinWidth)
 
   # INITIAL VALUES:
   if (is.null(beta2)) {
@@ -105,6 +118,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     }
   }
 
+  # dPS approximation:
+  npts      <- 50
+  Ubeta     <- qbeta(seq(0, 1, length = npts + 1), 0.5, 0.5)
+  MidPoints <- (Ubeta[-1] + Ubeta[-(npts + 1)]) / 2
+  BinWidth  <- Ubeta[-1] - Ubeta[-(npts + 1)]
+  bins      <- list(npts = npts, MidPoints = MidPoints, BinWidth = BinWidth)
+
   if (is.null(A)) {
     A <- matrix(1, L, nt)
   } else if (length(A) == 1) {
@@ -120,7 +140,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   # initial values for loglikelihood and gradients
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
-  # curll <- loglike(y, theta.xi, mu, logsig, xi, thresh, alpha)
+
   beta1.grad.cur <- grad_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
                                         beta.sd = beta1.sd, X.mu = X.mu, y = y,
                                         theta = theta, logsig = logsig, xi = xi,
@@ -130,12 +150,6 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                                          beta.sd = beta2.sd, X.sig = X.sig,
                                          y = y, theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
-
-  # # covariance for spatial terms
-  # XTX.inv.1 <- XTX.inv.2 <- matrix(0, np, np)
-  # XTX.inv.1[1, 1] <- XTX.inv.2[1, 1] <- 1
-  # XTX.inv.1[2:np, 2:np] <- solve(t(X.mu[, 1, 2:np]) %*% X.mu[, 1, 2:np])
-  # XTX.inv.2[2:np, 2:np] <- solve(t(X.sig[, 1, 2:np]) %*% X.sig[, 1, 2:np])
 
   beta1.hess.cur <- hess_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
                                         beta.sd = beta1.sd, X.mu = X.mu, y = y,
@@ -147,18 +161,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                                          theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
 
-  # print(beta1.hess.cur)
-  # print(hessian(func = loglike_mu, x = beta1, X.mu = X.mu, y = y, theta = theta,
-  #               logsig = logsig, xi = xi, thresh = thresh,
-  #               alpha = alpha))
-
   # STORAGE:
   keep.beta1   <- matrix(0, iters, p.mu)
   keep.beta2   <- matrix(0, iters, p.sig)
   keep.beta.mu <- matrix(0, iters, 2)  # mean terms for beta priors
   keep.beta.sd <- matrix(0, iters, 2)  # variance terms for beta priors
   keep.xi      <- rep(0, iters)
-  keep.rho     <- rep(0, iters)  # bandwidth term
+  keep.bw      <- rep(0, iters)  # bandwidth term
   keep.A       <- array(0, dim = c(iters, L, nt))
   if (any(miss)) {
     keep.y <- matrix(0, iters, sum(miss))  # only record the missing data
@@ -173,15 +182,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
   cuts <- exp(c(-1, 0, 1, 2, 5, 10))
   MH.a  <- rep(1, 100)
   att.a <- acc.a <- 0 * MH.a
-  att.beta1 <- acc.beta1 <- rep(0, p.mu)
-  MH.beta1 <- rep(can.mu.sd, p.sig)
-  att.beta2 <- acc.beta2 <- rep(0, p.sig)
-  MH.beta2 <- rep(can.sig.sd, p.sig)
+  att.beta1 <- acc.beta1 <- MH.beta1 <- rep(can.mu.sd, p.mu)
+  att.beta2 <- acc.beta2 <- MH.beta2 <- rep(can.sig.sd, p.sig)
   att.xi    <- acc.xi    <- MH.xi    <- 0.1
+  att.bw    <- acc.bw    <- MH.bw    <- 0.1
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
-    # if (iter > burn * 0.10) {
     ####################################################
     ##############      Random effects A    ############
     ####################################################
@@ -215,46 +222,48 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     # }
 
     ####################################################
-    ##########      bandwidth for marginal      ########
+    ##########      bandwidth for kernels      #########
     ####################################################
-    # rho.star <- transform$logit(rho, )
+    if (bw.random) {
+      bw.star <- transform$logit(bw, lower = bw.min, upper = bw.max)
+      canbw.star <- rnorm(1, bw.star, MH.bw)
+      canbw <- transform$inv.logit(canbw.star, lower = bw.min, upper = bw.max)
+
+      canB <- makeW(dw2 = dw2, rho = bw)
+      canX.mu <- rep.basis.X(X = X.mu, newB = canB)
+      canX.sig <- rep.basis.X(X = X.sig, newB = canB)
+      canmu <- 0
+      for (j in 1:p.mu) {
+        canmu <- canmu + canX.mu[, , j] * beta1[j]
+      }
+      canlogs <- 0
+      for (j in 1:p.sig) {
+        canlogs <- canlogs + canX.sig[, , j] * beta2[j]
+      }
+
+      canll <- loglike(y, theta, canmu, canlogs, xi, thresh, alpha)
+      R <- sum(canll - curll) +
+        dnorm(canbw, log = TRUE) - dnorm(bw, log = TRUE)
+
+      if (!is.na(R)) { if (log(runif(1)) < R) {
+        acc.bw <- acc.bw + 1
+        curll <- canll
+        X.mu <- canX.mu
+        X.sig <- canX.sig
+        mu <- canmu
+        logsig <- canlogs
+        bw <- canbw
+      }}
+    }
 
 
     ####################################################
     ##############      GEV parameters      ############
     ####################################################
-
     # am splitting out beta1 and beta2 to allow for potentially different
     # covariates for mu and log(sigma)
-
     # beta1
-
-    # print(beta1.grad)
-    # print(grad(func = loglike_mu, x = beta1, X.mu = X.mu, y = y,
-    #            theta = theta, logsig = logsig, xi = xi, thresh = thresh,
-    #            alpha = alpha))
-    # if (iter == 20) {
-    #   print(sum(loglike(y = y, theta = theta, mu = mu, logsig = logsig,
-    #                     xi = xi, thresh = thresh, alpha = alpha)))
-    #   print(beta1)
-    #   print(mean(mu))
-    #   print(loglike_mu(beta1 = beta1, X.mu = X.mu, y = y, theta = theta,
-    #                    logsig = logsig, xi = xi, thresh = thresh,
-    #                    alpha = alpha))
-    #   stop()
-    # }
-
-    #
-    # beta2.grad <- grad_loglike_betasig(beta2 = beta2, X.sig = X.sig, y = y,
-    #                                    theta = theta, mu = mu, xi = xi,
-    #                                    thresh = thresh, alpha = alpha)
-    # print(beta2.grad)
-    # print(grad(func = loglike_sig, x = beta2, X.sig = X.sig, y = y,
-    #            theta = theta, mu = mu, xi = xi, thresh = thresh, alpha = alpha))
-    # print(loglike_sig(beta2, X.sig, y, theta, mu, xi, thresh, alpha))
-    # stop()
-
-    if (beta1.block) {
+    if (FALSE) {  # random walk proposal block
       att.beta1 <- att.beta1 + 1
       canb      <- rnorm(p.mu, beta1, MH.beta1)
       canmu     <- 0
@@ -272,8 +281,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         mu        <- canmu
         curll     <- canll
       }
-    } else if (FALSE) {  # random walk proposal
-      for (j in 1:p.mu) {  # beta1
+    } else if (FALSE) {  # sequential random walk proposal
+      for (j in 1:p.mu) {
         att.beta1[j] <- att.beta1[j] + 1
         canb         <- rnorm(1, beta1[j], MH.beta1[j])  # simple rw proposal
         canmu        <- mu + X.mu[, , j] * (canb - beta1[j])
@@ -289,9 +298,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll           <- canll
         }
       }
-    } else if (iter < 2000) {
-      # print(mean(mu))
-      for (j in 1:p.mu) {  # beta1
+    } else if (iter < 2000) {  # sequential Langevin update
+      for (j in 1:p.mu) {
         att.beta1[j] <- att.beta1[j] + 1
         canb     <- beta1
         mean.can <- beta1[j] + 0.5 * MH.beta1[j]^2 * beta1.grad.cur[j]
@@ -320,7 +328,6 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
             dnorm(beta1[j], mean.cur, MH.beta1[j], log = TRUE) -
             dnorm(canb[j], mean.can, MH.beta1[j], log = TRUE)
           if (!is.nan(R)) { if (log(runif(1)) < R) {
-            # print(paste("updating beta", j, "to", canb[j]))
             acc.beta1[j]   <- acc.beta1[j] + 1
             beta1[j]       <- canb[j]
             beta1.grad.cur <- beta1.grad.can
@@ -328,88 +335,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
             curll          <- canll
           } }
         }
-        # print(paste("iter", iter, mean(mu)))
       }
-    } else if (FALSE) {  # block update with normal approximation
-      att.beta1 <- att.beta1 + 1
-      VVV.cur <- solve(-beta1.hess.cur)
-      mean.cur <- beta1 + VVV.cur %*% beta1.grad.cur
-
-      canb  <- mean.cur + t(chol(VVV.cur)) %*% rnorm(p.mu)
-      canmu <- 0
-      for (j in 1:p.mu) {
-        canmu   <- canmu + X.mu[, , j] * canb[j]
-      }
-      if (xi < 0 & any(y - canmu > -exp(logsig) / xi, na.rm = TRUE)) {
-        R <- -Inf
-      } else if (xi > 0 & any(y - canmu < -exp(logsig) / xi, na.rm = TRUE)) {
-        R <- -Inf
-      } else {
-        canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-        # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
-
-        # get the adjustments for the ratio of the update
-        beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
-                                              beta.sd = beta1.sd, X.mu = X.mu,
-                                              y = y, theta = theta,
-                                              logsig = logsig, xi = xi,
-                                              thresh = thresh, alpha = alpha)
-        beta1.hess.can <- hess_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
-                                              beta.sd = beta1.sd, X.mu = X.mu,
-                                              y = y, theta = theta,
-                                              logsig = logsig, xi = xi,
-                                              thresh = thresh, alpha = alpha)
-
-        # if (iter == 10) {
-        #   stop()
-        # }
-
-        VVV.can <- solve(-beta1.hess.can)
-        mean.can <- canb + VVV.can %*% beta1.grad.can
-
-        prop.cur <- 0.5 * log(det(-beta1.hess.can)) -
-          0.5 * t(beta1 - mean.can) %*% (-beta1.hess.can) %*% (beta1 - mean.can)
-        prop.can <- 0.5 * log(det(-beta1.hess.cur)) -
-          0.5 * t(canb - mean.cur) %*% (-beta1.hess.cur) %*% (canb - mean.cur)
-
-        R <- sum(canll - curll) +
-          sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
-          sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
-          prop.cur - prop.can
-
-        # if (is.nan(R)) {
-        #   canb <<- canb
-        #   beta1.mu <<- beta1.mu
-        #   beta1.sd <<- beta1.sd
-        #   X.mu <<- X.mu
-        #   y <<- y
-        #   theta <<- theta
-        #   logsig <<- logsig
-        #   xi <<- xi
-        #   thresh <<- thresh
-        #   alpha <<- alpha
-        #   print(prop.cur)
-        #   print(prop.can)
-        #   print(beta1.hess.can)
-        #   print(beta1.hess.cur)
-        #   print(beta1.grad.can)
-        #   print(beta1.grad.cur)
-        #   print(canb)
-        #   print(mean.cur)
-        #   stop()
-        # }
-      }
-      if (!is.nan(R)) { if (log(runif(1)) < R) {
-        # print(paste("updating beta", j, "to", canb[j]))
-        acc.beta1   <- acc.beta1 + 1
-        beta1       <- canb
-        beta1.grad.cur <- beta1.grad.can
-        beta1.hess.cur <- beta1.hess.can
-        mu             <- canmu
-        curll          <- canll
-      } }
-      # print(paste("iter", iter, mean(mu)))
-    } else if (TRUE) {  # block update with gradient
+    } else {  # block Langevin update
       if (iter == 1) {
         print("block gradient update")
       }
@@ -445,9 +372,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
                 dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
           sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
                 dnorm(canb, mean.can, MH.beta1, log = TRUE))
-        # print(R)
+
         if (!is.nan(R)) { if (log(runif(1)) < R) {
-          # print(paste("updating beta", j, "to", canb[j]))
           acc.beta1   <- acc.beta1 + 1
           beta1       <- canb
           beta1.grad.cur <- beta1.grad.can
@@ -455,61 +381,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll          <- canll
         } }
       }
-      # print(paste("iter", iter, mean(mu)))
-    } else {  # doing a block update with time independent of spatial bases
-      if (iter == 1) {
-        print("block gradient update")
-      }
-      MH.beta1 <- rep(mean(MH.beta1), p.mu)
-      att.beta1 <- att.beta1 + 1
-      canb      <- beta1
-      mean.can  <- beta1 + 0.5 * MH.beta1[1]^2 * XTX.inv.1 %*% beta1.grad.cur
-      beta1.cov <- MH.beta1[1]^2 * XTX.inv.1
-      canb      <- as.vector(rmvnorm(1, mean.can, beta1.cov))
-      canmu <- 0
-      for (j in 1:p.mu) {
-        canmu   <- canmu + X.mu[, , j] * canb[j]
-      }
-      canll     <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
-      # canll     <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
-
-      # langevin update ratio
-      beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
-                                            beta.sd = beta1.sd, X.mu = X.mu,
-                                            y = y, theta = theta,
-                                            logsig = logsig, xi = xi,
-                                            thresh = thresh, alpha = alpha)
-
-
-      mean.cur <- canb + 0.5 * MH.beta1[1]^2 * XTX.inv.1 %*% beta1.grad.can
-
-
-      R <- sum(canll - curll) +
-        sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE) -
-              dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
-        # sum(dnorm(beta1, mean.cur, MH.beta1, log = TRUE) -
-        #       dnorm(canb, mean.can, MH.beta1, log = TRUE))
-        dmvnorm(beta1, mean.cur, beta1.cov, log = TRUE) -
-        dmvnorm(canb, mean.can, beta1.cov, log = TRUE)
-
-      # print(R)
-      # print(canb)
-      # print(dmvnorm(beta1, mean.cur, beta1.cov, log = TRUE))
-      # print(dmvnorm(canb, mean.cur, beta1.cov, log = TRUE))
-      if (!is.nan(R)) { if (log(runif(1)) < R) {
-        # print(paste("updating beta", j, "to", canb[j]))
-        acc.beta1   <- acc.beta1 + 1
-        beta1       <- canb
-        beta1.grad.cur <- beta1.grad.can
-        mu             <- canmu
-        curll          <- canll
-      } }
-      # print(paste("iter", iter, mean(mu)))
     }
 
-
     # beta2
-    if (beta2.block) {
+    if (FALSE) {  # random walk proposal block
       att.beta2 <- att.beta2 + 1
       canb      <- rnorm(p.sig, beta2, MH.beta2)
       canlogs   <- 0
@@ -527,8 +402,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         logsig    <- canlogs
         curll     <- canll
       }
-    } else if (FALSE) {  # random walk
-      for (j in 1:p.sig) { # beta2
+    } else if (FALSE) {  # sequential random walk proposal
+      for (j in 1:p.sig) {
         att.beta2[j] <- att.beta2[j] + 1
         canb       <- rnorm(1, beta2[j], MH.beta2[j])
         canlogs    <- logsig + X.sig[, , j] * (canb - beta2[j])
@@ -544,9 +419,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           curll        <- canll
         }
       }
-    } else if (iter < 2000) {
-      # print(mean(mu))
-      for (j in 1:p.sig) {  # beta1
+    } else if (iter < 2000) {  # sequential Langevin update
+      for (j in 1:p.sig) {
         att.beta2[j] <- att.beta2[j] + 1
         canb     <- beta2
         mean.can <- beta2[j] + 0.5 * MH.beta2[j]^2 * beta2.grad.cur[j]
@@ -563,7 +437,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           # canll    <- loglike(y, theta.xi, mu, canlogs, xi, thresh, alpha)
 
           # langevin update ratio
-          beta2.grad.can <- grad_logpost_betasig(beta2 = canb, beta.mu = beta2.mu,
+          beta2.grad.can <- grad_logpost_betasig(beta2 = canb,
+                                                 beta.mu = beta2.mu,
                                                  beta.sd = beta2.sd,
                                                  X.sig = X.sig, y = y,
                                                  theta = theta, mu = mu,
@@ -589,7 +464,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
         # print(paste("iter", iter, mean(mu)))
       }
-    } else {
+    } else {  # block Langevin update
       if (iter == 1) {
         print("block gradient update")
       }
@@ -748,14 +623,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
     }
 
     #KEEP TRACK OF STUFF:
-    keep.beta1[iter, ]    <- beta1
-    keep.beta2[iter, ]    <- beta2
-    keep.xi[iter]         <- xi
-    keep.A[iter, , ]      <- A
+    keep.bw[iter]        <- bw
+    keep.beta1[iter, ]   <- beta1
+    keep.beta2[iter, ]   <- beta2
+    keep.xi[iter]        <- xi
+    keep.A[iter, , ]     <- A
     keep.beta.mu[iter, ] <- c(beta1.mu, beta2.mu)
     keep.beta.sd[iter, ] <- c(beta1.sd, beta2.sd)
     if (any(miss)) {
-      keep.y[iter, ]      <- y.tmp[miss]
+      keep.y[iter, ]     <- y.tmp[miss]
     }
     if (iter > burn) {
       theta.mn <- theta.mn + theta / (iters - burn)
@@ -769,6 +645,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         acc.rate.mu     <- round(acc.beta1 / att.beta1, 3)
         acc.rate.logsig <- round(acc.beta2 / att.beta2, 3)
         acc.rate.xi     <- round(acc.xi / att.xi, 3)
+        acc.rate.bw     <- round(acc.bw / att.bw, 3)
 
         if (iter > burn) {
           start <- burn + 1
@@ -777,7 +654,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         }
 
         if (!exists("this.plot")) {
-          this.plot <- "mu"
+          this.plot <- "all"
         }
         # this.plot <- "sig"
 
@@ -835,51 +712,37 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
         } else {
           par(mfrow = c(3, 5))
 
-          plot(keep.beta.mu[start:iter, 1],
-               main = bquote(paste(mu, ": ", mu[beta])), type = "l")
+          for (i in 1:4) {
+            plot(keep.beta1[start:iter, i],
+                 main = bquote(paste(mu, ": ", beta[i])),
+                 xlab = acc.rate.mu[i], type = "l",
+                 ylab = paste("MH =", round(MH.beta1[i], 3)))
+          }
 
-          plot(keep.beta.sd[start:iter, 1],
-               main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
+          # plot(keep.beta1[start:iter, p.mu],
+          #      main = bquote(paste(mu, ": ", beta[.(p.mu)])),
+          #      xlab = acc.rate.mu[p.mu], type = "l",
+          #      ylab = paste("MH =", round(MH.beta1[p.mu], 3)))
 
-          plot(keep.beta1[start:iter, 1],
-               main = bquote(paste(mu, ": ", beta[0])),
-               xlab = acc.rate.mu[1], type = "l",
-               ylab = paste("MH =", round(MH.beta1[1], 3)))
+          plot(keep.xi[start:iter], main = bquote(xi),
+               xlab = acc.rate.xi, type = "l",
+               ylab = paste("MH =", round(MH.xi, 3)))
 
-          plot(keep.beta1[start:iter, 2],
-               main = bquote(paste(mu, ": ", beta[t])),
-               xlab = acc.rate.mu[2], type = "l",
-               ylab = paste("MH =", round(MH.beta1[2], 3)))
-
-          plot(keep.beta1[start:iter, p.mu],
-               main = bquote(paste(mu, ": ", beta[.(p.mu)])),
-               xlab = acc.rate.mu[p.mu], type = "l",
-               ylab = paste("MH =", round(MH.beta1[p.mu], 3)))
-
-          plot(keep.beta.mu[start:iter, 2],
-               main = bquote(paste(sigma, ": ", mu[beta])), type = "l")
-
-          plot(keep.beta.sd[start:iter, 2],
-               main = bquote(paste(sigma, ": ", sigma[beta])), type = "l")
-
-          plot(keep.beta2[start:iter, 1],
-               main = bquote(paste(sigma, ": ", beta[0])),
-               xlab = acc.rate.logsig[1], type = "l",
-               ylab = paste("MH =", round(MH.beta2[1], 3)))
-
-          plot(keep.beta2[start:iter, 2],
-               main = bquote(paste(sigma, ": ", beta[t])),
-               xlab = acc.rate.logsig[2], type = "l",
-               ylab = paste("MH =", round(MH.beta2[2], 3)))
+          for (i in 1:4) {
+            plot(keep.beta2[start:iter, i],
+                 main = bquote(paste(sigma, ": ", beta[i])),
+                 xlab = acc.rate.logsig[i], type = "l",
+                 ylab = paste("MH =", round(MH.beta2[i], 3)))
+          }
 
           plot(keep.beta2[start:iter, p.sig],
                main = bquote(paste(sigma, ": ", beta[.(p.sig)])),
                xlab = acc.rate.logsig[p.sig], type = "l",
                ylab = paste("MH =", round(MH.beta2[p.sig], 3)))
 
-          plot(keep.xi[start:iter], main = bquote(xi),
-               xlab = acc.rate.xi, type = "l",
-               ylab = paste("MH =", round(MH.xi, 3)))
+          plot(keep.bw[start:iter], main = "kernel bandwidth",
+               xlab = acc.rate.bw, type = "l",
+               ylab = paste("MH =", round(MH.bw, 3)))
 
           plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
 
@@ -890,7 +753,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
           plot(log(keep.A[start:iter, L, nt]),
                main = "log(A[L, nt])", type = "l")
 
-          this.plot <- "mu"
+          # this.plot <- "mu"
         }
       }
       cat("    Finished fit:", iter, "of", iters, "iters \n")
@@ -912,6 +775,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, thresh, B, alpha,
 
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
+       bw = keep.bw[return.iters],
        xi = keep.xi[return.iters],
        betamu = keep.beta.mu[return.iters, , drop = FALSE],
        betasd = keep.beta.sd[return.iters, , drop = FALSE],
@@ -1458,4 +1322,59 @@ if (FALSE) {
 #     curll        <- canll
 #   }}
 #
+# }
+
+
+#
+# else if (FALSE) {  # block update with normal approximation
+#   att.beta1 <- att.beta1 + 1
+#   VVV.cur <- solve(-beta1.hess.cur)
+#   mean.cur <- beta1 + VVV.cur %*% beta1.grad.cur
+#
+#   canb  <- mean.cur + t(chol(VVV.cur)) %*% rnorm(p.mu)
+#   canmu <- 0
+#   for (j in 1:p.mu) {
+#     canmu   <- canmu + X.mu[, , j] * canb[j]
+#   }
+#   if (xi < 0 & any(y - canmu > -exp(logsig) / xi, na.rm = TRUE)) {
+#     R <- -Inf
+#   } else if (xi > 0 & any(y - canmu < -exp(logsig) / xi, na.rm = TRUE)) {
+#     R <- -Inf
+#   } else {
+#     canll    <- loglike(y, theta, canmu, logsig, xi, thresh, alpha)
+#     # canll    <- loglike(y, theta.xi, canmu, logsig, xi, thresh, alpha)
+#
+#     # get the adjustments for the ratio of the update
+#     beta1.grad.can <- grad_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+#                                           beta.sd = beta1.sd, X.mu = X.mu,
+#                                           y = y, theta = theta,
+#                                           logsig = logsig, xi = xi,
+#                                           thresh = thresh, alpha = alpha)
+#     beta1.hess.can <- hess_logpost_betamu(beta1 = canb, beta.mu = beta1.mu,
+#                                           beta.sd = beta1.sd, X.mu = X.mu,
+#                                           y = y, theta = theta,
+#                                           logsig = logsig, xi = xi,
+#                                           thresh = thresh, alpha = alpha)
+#
+#     VVV.can <- solve(-beta1.hess.can)
+#     mean.can <- canb + VVV.can %*% beta1.grad.can
+#
+#     prop.cur <- 0.5 * log(det(-beta1.hess.can)) -
+#       0.5 * t(beta1 - mean.can) %*% (-beta1.hess.can) %*% (beta1 - mean.can)
+#     prop.can <- 0.5 * log(det(-beta1.hess.cur)) -
+#       0.5 * t(canb - mean.cur) %*% (-beta1.hess.cur) %*% (canb - mean.cur)
+#
+#     R <- sum(canll - curll) +
+#       sum(dnorm(canb, beta1.mu, beta1.sd, log = TRUE)) -
+#       sum(dnorm(beta1, beta1.mu, beta1.sd, log = TRUE)) +
+#       prop.cur - prop.can
+#   }
+#   if (!is.nan(R)) { if (log(runif(1)) < R) {
+#     acc.beta1   <- acc.beta1 + 1
+#     beta1       <- canb
+#     beta1.grad.cur <- beta1.grad.can
+#     beta1.hess.cur <- beta1.hess.can
+#     mu             <- canmu
+#     curll          <- canll
+#   } }
 # }

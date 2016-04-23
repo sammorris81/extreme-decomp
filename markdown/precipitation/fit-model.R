@@ -318,7 +318,7 @@ fit.rw.noblock <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                            iterplot = TRUE)
 cat("Finished fit and predict \n")
 
-par(mfrow = c(3, 5))
+par(mfrow = c(7, 5))
 for (i in 1:np) {
   plot(fit.rw.noblock$beta1[, i], type = "l",
        main = bquote(paste(mu, ": ", beta[.(i)])))
@@ -329,10 +329,19 @@ for (i in 1:np) {
 }
 plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
 
-mu.post <- array(0, dim = c(10000, ns, nt))
+mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
+dw2 <- rdist(s.scale, knots)^2
+dw2[dw2 < 1e-4] <- 0
 for (i in 1:10000) {
+  # update X matrix
+  B.i <- makeW(dw2 = dw2, rho = fit.rw.noblock$bw[i])
+  X.mu <- X.sig <- add.basis.X(X = X, B.i)
   for (t in 1:nt) {
-    mu.post[i, , t] <- X[, t, ] %*% fit.rw.noblock$beta1[i, ]
+    mu.post[i, , t] <- X.mu[, t, ] %*% fit.rw.noblock$beta1[i, ]
+    sig.post[i, , t] <- X.sig[, t, ] %*% fit.rw.noblock$beta2[i, ]
+  }
+  if (i %% 500 == 0) {
+    print(paste(i, "finished"))
   }
 }
 

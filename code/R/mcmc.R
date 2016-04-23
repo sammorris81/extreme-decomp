@@ -230,7 +230,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
       canbw.star <- rnorm(1, bw.star, MH.bw)
       canbw <- transform$inv.logit(canbw.star, lower = bw.min, upper = bw.max)
 
-      canB <- makeW(dw2 = dw2, rho = bw)
+      canB <- makeW(dw2 = dw2, rho = canbw)
       canX.mu <- rep.basis.X(X = X.mu, newB = canB)
       canX.sig <- rep.basis.X(X = X.sig, newB = canB)
       canmu <- 0
@@ -244,7 +244,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
 
       canll <- loglike(y, theta, canmu, canlogs, xi, thresh, alpha)
       R <- sum(canll - curll) +
-        dnorm(canbw.star, log = TRUE) - dnorm(bw.star, log = TRUE)
+        dnorm(canbw.star, 0, 3, log = TRUE) - dnorm(bw.star, 0, 3, log = TRUE)
 
       if (!is.na(R)) { if (log(runif(1)) < R) {
         acc.bw <- acc.bw + 1

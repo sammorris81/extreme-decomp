@@ -37,7 +37,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
                    beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                    beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                    beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
-                   bw.init = NULL, bw.random = TRUE,
+                   bw.init = NULL, bw.random = TRUE, bw.attempts = 50,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
@@ -62,7 +62,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   if (bw.random) {
     # initialize basis functions
     if (is.null(bw.init)) {
-      bw <- quantile(dw2, 0.2)
+      bw <- quantile(dw2, 0.5)
     } else {
       bw <- bw.init
     }
@@ -185,7 +185,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   att.beta1 <- acc.beta1 <- MH.beta1 <- rep(can.mu.sd, p.mu)
   att.beta2 <- acc.beta2 <- MH.beta2 <- rep(can.sig.sd, p.sig)
   att.xi    <- acc.xi    <- MH.xi    <- 0.1
-  att.bw    <- acc.bw    <- MH.bw    <- 0.1
+  att.bw    <- acc.bw    <- MH.bw    <- 0.001
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
@@ -225,6 +225,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     ##########      bandwidth for kernels      #########
     ####################################################
     if (bw.random) {
+      att.bw <- att.bw + 1
       bw.star <- transform$logit(bw, lower = bw.min, upper = bw.max)
       canbw.star <- rnorm(1, bw.star, MH.bw)
       canbw <- transform$inv.logit(canbw.star, lower = bw.min, upper = bw.max)
@@ -243,7 +244,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
 
       canll <- loglike(y, theta, canmu, canlogs, xi, thresh, alpha)
       R <- sum(canll - curll) +
-        dnorm(canbw, log = TRUE) - dnorm(bw, log = TRUE)
+        dnorm(canbw.star, log = TRUE) - dnorm(bw.star, log = TRUE)
 
       if (!is.na(R)) { if (log(runif(1)) < R) {
         acc.bw <- acc.bw + 1
@@ -519,15 +520,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     }
 
     # update beta1.mu: prior N(0, mu1.sd)
-    mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.sd^2)
-    mu1.post.mn  <- sum(beta1)/beta1.sd^2 * mu1.post.var
-    beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
+    # mu1.post.var <- 1 / (1 / mu1.sd^2 + p.mu / beta1.sd^2)
+    # mu1.post.mn  <- sum(beta1)/beta1.sd^2 * mu1.post.var
+    # beta1.mu <- rnorm(1, mu1.post.mn, sqrt(mu1.post.var))
     # beta1.mu <- 0
 
     # update beta2.mu: prior N(0, mu2.sd)
-    mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.sd^2)
-    mu2.post.mn  <- sum(beta2)/beta2.sd^2 * mu2.post.var
-    beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
+    # mu2.post.var <- 1 / (1 / mu2.sd^2 + p.sig / beta2.sd^2)
+    # mu2.post.mn  <- sum(beta2)/beta2.sd^2 * mu2.post.var
+    # beta2.mu <- rnorm(1, mu2.post.mn, sqrt(mu2.post.var))
     # beta2.mu <- 0
 
     # update prior standard deviations: prior IG(a, b)
@@ -601,6 +602,13 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
         if (acc.rate < 0.3) { MH.xi <- MH.xi * 0.8 }
         if (acc.rate > 0.6) { MH.xi <- MH.xi * 1.2 }
         acc.xi <- att.xi <- 0
+      }
+
+      if (att.bw > bw.attempts) {
+        acc.rate <- acc.bw / att.bw
+        if (acc.rate < 0.3) { MH.bw <- MH.bw * 0.8 }
+        if (acc.rate > 0.6) { MH.bw <- MH.bw * 1.2 }
+        acc.bw <- att.bw <- 0
       }
     }
 
@@ -714,7 +722,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
 
           for (i in 1:4) {
             plot(keep.beta1[start:iter, i],
-                 main = bquote(paste(mu, ": ", beta[i])),
+                 main = bquote(paste(mu, ": ", beta[.(i)])),
                  xlab = acc.rate.mu[i], type = "l",
                  ylab = paste("MH =", round(MH.beta1[i], 3)))
           }
@@ -730,15 +738,15 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
 
           for (i in 1:4) {
             plot(keep.beta2[start:iter, i],
-                 main = bquote(paste(sigma, ": ", beta[i])),
+                 main = bquote(paste(sigma, ": ", beta[.(i)])),
                  xlab = acc.rate.logsig[i], type = "l",
                  ylab = paste("MH =", round(MH.beta2[i], 3)))
           }
 
-          plot(keep.beta2[start:iter, p.sig],
-               main = bquote(paste(sigma, ": ", beta[.(p.sig)])),
-               xlab = acc.rate.logsig[p.sig], type = "l",
-               ylab = paste("MH =", round(MH.beta2[p.sig], 3)))
+          # plot(keep.beta2[start:iter, p.sig],
+          #      main = bquote(paste(sigma, ": ", beta[.(p.sig)])),
+          #      xlab = acc.rate.logsig[p.sig], type = "l",
+          #      ylab = paste("MH =", round(MH.beta2[p.sig], 3)))
 
           plot(keep.bw[start:iter], main = "kernel bandwidth",
                xlab = acc.rate.bw, type = "l",
@@ -749,6 +757,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
           plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
 
           plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+
+          plot(log(keep.A[start:iter, L, 2]), main = "log(A[L, 2])", type = "l")
 
           plot(log(keep.A[start:iter, L, nt]),
                main = "log(A[L, nt])", type = "l")

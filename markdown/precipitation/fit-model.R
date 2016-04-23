@@ -302,7 +302,7 @@ cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
 # fit the model using the training data
-fit.rw.noblock <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
+fit.rw.noblock <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                            thresh = -Inf, B = B.sp, alpha = alpha,
                            can.mu.sd = 0.001, can.sig.sd = 0.005,
                            beta1.attempts = 50, beta2.attempts = 50, A = A.init,
@@ -312,7 +312,7 @@ fit.rw.noblock <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                            beta2.tau.a = 0.1, beta2.tau.b = 0.1,
                            beta2.sd = 1, beta2.sd.fix = FALSE,
                            beta1.block = FALSE, beta2.block = FALSE,
-                           mu1.sd = 50, mu2.sd = 5,
+                           mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
                            # iters = iters, burn = burn, update = update, iterplot = FALSE)
                            iters = iters, burn = burn, update = update,
                            iterplot = TRUE)

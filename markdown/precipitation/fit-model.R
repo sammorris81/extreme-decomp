@@ -48,8 +48,8 @@ if (process == "ebf") {
 } else {
   # get the knot locations
   knots <- cover.design(cents.grid, nd = L)$design
-  alpha     <- alphas[cv]
-  B.sp      <- B.gsk[[cv]]
+  alpha <- alphas[cv]
+  B.sp  <- B.gsk[[cv]]
 }
 
 ################################################################################
@@ -98,9 +98,178 @@ if (time == "current") {
   Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]] <- NA
 }
 
+## standardize elevations
+elev.std <- (elev - mean(elev)) / sd(elev)
+
+X <- array(1, dim = c(ns, nt, 3))
+for (i in 1:ns) {
+  for (t in 1:nt) {
+    time <- (t - nt / 2) / nt
+    X[i, t, 2:3] <- c(time, elev.std[i])
+  }
+}
+
+################################################################################
+#### get the MLE ###############################################################
+################################################################################
+
+# we are using an intercept, std. elev, and time to get starting values
+# this seems to be a good place to start, and then we can initialize all the
+# basis function coefficients to be 0.
+
+# only fitting intercept, std.elev, and time
+Y.spatex <- t(Y)
+X.spatex <- matrix(X[, 1, 3], ns, 1)
+X.timeex <- t(t(X[1, , 2]))
+
+colnames(X.spatex) <- "elev"
+colnames(X.timeex) <- "year"
+
+loc.form   <- ~ elev
+scale.form <- ~ elev
+shape.form <- shape ~ 1
+
+temp.form.loc   <- temp.loc ~ year
+temp.form.scale <- temp.scale ~ year
+
+options(warn = 0)
+library(SpatialExtremes)
+fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
+                      loc.form = loc.form, scale.form = scale.form,
+                      shape.form = shape.form,
+                      temp.cov = X.timeex,
+                      temp.form.loc = temp.form.loc,
+                      temp.form.scale = temp.form.scale)
+options(warn = 2)
+
+beta1.init <- c(fit.mle$fitted.values[1], fit.mle$fitted.values[6],
+                fit.mle$fitted.values[2])
+beta1.init <- c(beta1.init, rep(0, L))
+beta2.init <- c(fit.mle$fitted.values[3], fit.mle$fitted.values[7],
+                fit.mle$fitted.values[4])
+beta2.init <- c(beta2.init, rep(0, L))
+xi.init <- fit.mle$fitted.values[5]
+
+################################################################################
+#### Spatially smooth threshold ################################################
+################################################################################
+thresh90 <- thresh95 <- thresh99 <- rep(0, ns)
+neighbors <- 5
+d <- rdist(s)
+diag(d) <- 0
+
+# take the 5 closest neighbors when finding the threshold
+for (i in 1:ns) {
+  these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
+  thresh90[i] <- quantile(Y[these, ], probs = 0.90, na.rm = TRUE)
+  thresh95[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+  thresh99[i] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
+}
+thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
+thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
+thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
+thresh90.tst <- thresh90[cv.idx[[cv]]]
+thresh95.tst <- thresh95[cv.idx[[cv]]]
+thresh99.tst <- thresh99[cv.idx[[cv]]]
+
+################################################################################
+#### run the MCMC ##############################################################
+################################################################################
+iters  <- 30000
+burn   <- 20000
+update <- 1000
+
+iters <- 30000; burn <- 20000; update <- 100  # for testing
+A.init <- exp(6)  # consistent with estimates of alpha
+
+cat("Start mcmc fit \n")
+set.seed(6262)  # mcmc
+
+# fit the model using the training data
+fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
+                thresh = -Inf, B = B.sp, alpha = alpha,
+                can.mu.sd = 0.001, can.sig.sd = 0.005,
+                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                beta1 = beta1.init, beta2 = beta2.init, xi = 0,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                beta1.sd = 10, beta1.sd.fix = FALSE,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                beta2.sd = 1, beta2.sd.fix = FALSE,
+                beta1.block = FALSE, beta2.block = FALSE,
+                mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
+cat("Finished fit and predict \n")
+
+par(mfrow = c(7, 5))
+for (i in 1:np) {
+  plot(fit$beta1[, i], type = "l",
+       main = bquote(paste(mu, ": ", beta[.(i)])))
+}
+for (i in 1:np) {
+  plot(fit$beta2[, i], type = "l",
+       main = bquote(paste("log(", sigma, "): ", beta[.(i)])))
+}
+plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
+
+mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
+dw2 <- rdist(s.scale, knots)^2
+dw2[dw2 < 1e-4] <- 0
+for (i in 1:10000) {
+  # update X matrix
+  B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
+  X.mu <- X.sig <- add.basis.X(X = X, B.i)
+  for (t in 1:nt) {
+    mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
+    sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
+  }
+  if (i %% 500 == 0) {
+    print(paste(i, "finished"))
+  }
+}
+
+par(mfrow = c(5, 7))
+sites <- sample(ns, 5, replace = FALSE)
+days  <- sample(nt, 7, replace = FALSE)
+
+for (i in sites) {
+  for (t in days) {
+    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
+  }
+}
+
+for (i in sites) {
+  for (t in days) {
+    plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
+  }
+}
+
+# calculate the scores
+probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
+qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs,
+                         validate = Y.tst)
+bs.results95 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+                           thresh = thresh95.tst)
+bs.results99 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+                           thresh = thresh99.tst)
+results <- c(qs.results, bs.results95, bs.results99, fit$timing)
+results <- c(results, Sys.info()["nodename"])
+names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
+
+write.table(results, file = table.file)
+
+upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
+upload.pre <- paste(upload.pre, "precipitation/cv-tables/", sep = "")
+if (do.upload) {
+  upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
+  system(upload.cmd)
+}
+save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
+     alpha, fit, cv.idx, results, file = results.file)
+
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 # np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept
-np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
+# np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
 # np <- 8  # for a single year (int, t, elev, long, lat, long * lat, long^2, lat^2)
 # np <- 6
 
@@ -109,8 +278,6 @@ np <- 2 + L  # for a single year (t, elev, B1, ..., BL)
 #   B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
 # }
 
-## standardize elevations
-elev.std <- (elev - mean(elev)) / sd(elev)
 # logelev.std <- (log(elev) - mean(log(elev))) / sd(log(elev))
 
 ## create covariate matrix for training
@@ -121,15 +288,6 @@ elev.std <- (elev - mean(elev)) / sd(elev)
 #     X[i, t, 2:np] <- c(time, B.cov[i, ], B.cov[i, ] * time)
 #   }
 # }
-
-X <- array(1, dim = c(ns, nt, 3))
-for (i in 1:ns) {
-  for (t in 1:nt) {
-    time <- (t - nt / 2) / nt
-    X[i, t, 2:3] <- c(time, elev.std[i])
-  }
-}
-
 
 # # want to try using long, lat centered and scaled
 # s.shift <- s.scale * 2
@@ -204,39 +362,6 @@ for (i in 1:ns) {
 # names(beta1.init) <- names
 # names(beta2.init) <- names
 
-# only fitting intercept, elev, and time
-Y.spatex <- t(Y)
-X.spatex <- matrix(X[, 1, 3], ns, 1)
-X.timeex <- t(t(X[1, , 2]))
-
-colnames(X.spatex) <- "elev"
-colnames(X.timeex) <- "year"
-
-loc.form   <- ~ elev # + long + lat + longlat + long.sq + lat.sq
-scale.form <- ~ elev #+ long + lat + longlat + long.sq + lat.sq
-shape.form <- shape ~ 1
-
-temp.form.loc   <- temp.loc ~ year
-temp.form.scale <- temp.scale ~ year
-
-options(warn = 0)
-library(SpatialExtremes)
-fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
-                      loc.form = loc.form, scale.form = scale.form,
-                      shape.form = shape.form,
-                      temp.cov = X.timeex,
-                      temp.form.loc = temp.form.loc,
-                      temp.form.scale = temp.form.scale)
-options(warn = 2)
-
-beta1.init <- c(fit.mle$fitted.values[1], fit.mle$fitted.values[6],
-                fit.mle$fitted.values[2])
-beta1.init <- c(beta1.init, rep(0, L))
-beta2.init <- c(fit.mle$fitted.values[3], fit.mle$fitted.values[7],
-                fit.mle$fitted.values[4])
-beta2.init <- c(beta2.init, rep(0, L))
-xi.init <- fit.mle$fitted.values[5]
-
 # Y.spatex <- as.vector(Y)
 # X.spatex <- X[, 1, ]
 # for (t in 2:nt) {
@@ -266,168 +391,4 @@ xi.init <- fit.mle$fitted.values[5]
 # beta2.init[1] <- fit.lmoment$results[2]
 # xi.init <- fit.lmoment$results[3]
 
-################################################################################
-#### Spatially smooth threshold ################################################
-################################################################################
-thresh90 <- thresh95 <- thresh99 <- rep(0, ns)
-neighbors <- 5
-d <- rdist(s)
-diag(d) <- 0
 
-# take the 5 closest neighbors when finding the threshold
-for (i in 1:ns) {
-  these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
-  thresh90[i] <- quantile(Y[these, ], probs = 0.90, na.rm = TRUE)
-  thresh95[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
-  thresh99[i] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
-}
-thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
-thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
-thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
-thresh90.tst <- thresh90[cv.idx[[cv]]]
-thresh95.tst <- thresh95[cv.idx[[cv]]]
-thresh99.tst <- thresh99[cv.idx[[cv]]]
-
-################################################################################
-#### run the MCMC ##############################################################
-################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 1000
-
-iters <- 30000; burn <- 20000; update <- 100  # for testing
-A.init <- exp(6)  # consistent with estimates of alpha
-
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
-
-# fit the model using the training data
-fit.rw.noblock <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
-                           thresh = -Inf, B = B.sp, alpha = alpha,
-                           can.mu.sd = 0.001, can.sig.sd = 0.005,
-                           beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                           beta1 = beta1.init, beta2 = beta2.init, xi = 0,
-                           beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                           beta1.sd = 10, beta1.sd.fix = FALSE,
-                           beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                           beta2.sd = 1, beta2.sd.fix = FALSE,
-                           beta1.block = FALSE, beta2.block = FALSE,
-                           mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
-                           # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                           iters = iters, burn = burn, update = update,
-                           iterplot = TRUE)
-cat("Finished fit and predict \n")
-
-par(mfrow = c(7, 5))
-for (i in 1:np) {
-  plot(fit.rw.noblock$beta1[, i], type = "l",
-       main = bquote(paste(mu, ": ", beta[.(i)])))
-}
-for (i in 1:np) {
-  plot(fit.rw.noblock$beta2[, i], type = "l",
-       main = bquote(paste("log(", sigma, "): ", beta[.(i)])))
-}
-plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
-
-mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
-dw2 <- rdist(s.scale, knots)^2
-dw2[dw2 < 1e-4] <- 0
-for (i in 1:10000) {
-  # update X matrix
-  B.i <- makeW(dw2 = dw2, rho = fit.rw.noblock$bw[i])
-  X.mu <- X.sig <- add.basis.X(X = X, B.i)
-  for (t in 1:nt) {
-    mu.post[i, , t] <- X.mu[, t, ] %*% fit.rw.noblock$beta1[i, ]
-    sig.post[i, , t] <- X.sig[, t, ] %*% fit.rw.noblock$beta2[i, ]
-  }
-  if (i %% 500 == 0) {
-    print(paste(i, "finished"))
-  }
-}
-
-par(mfrow = c(5, 10))
-sites <- sample(ns, 5, replace = FALSE)
-days  <- sample(nt, 10, replace = FALSE)
-
-for (i in sites) {
-  for (t in days) {
-    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
-  }
-}
-
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
-
-# fit the model using the training data
-fit.rw.block <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                         can.mu.sd = 0.5, can.sig.sd = 0.05,
-                         beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                         beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
-                         beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                         beta1.sd = 10, beta1.sd.fix = FALSE,
-                         beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                         beta2.sd = 1, beta2.sd.fix = FALSE,
-                         beta1.block = FALSE, beta2.block = FALSE,
-                         mu1.sd = 50, mu2.sd = 5,
-                         # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                         iters = iters, burn = burn, update = update,
-                         iterplot = TRUE)
-cat("Finished fit and predict \n")
-
-Rprof(file = "Rprof.out", line.profiling = TRUE)
-cat("Start mcmc fit \n")
-set.seed(6262)  # mcmc
-# fit the model using the training data
-fit.prof <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-                         can.mu.sd = 0.5, can.sig.sd = 0.05,
-                         beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                         beta1 = beta1.init, beta2 = beta2.init, xi = xi.init,
-                         beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                         beta1.sd = 10, beta1.sd.fix = FALSE,
-                         beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                         beta2.sd = 1, beta2.sd.fix = FALSE,
-                         beta1.block = FALSE, beta2.block = FALSE,
-                         mu1.sd = 50, mu2.sd = 5,
-                         # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                         iters = 200, burn = 100, update = 50,
-                         iterplot = TRUE)
-cat("Finished fit and predict \n")
-Rprof(file = NULL)
-summaryRprof(filename = "Rprof.out", lines = "show")
-
-# # fit the model using the training data - Seems like betas are highly correlated
-# fit <- ReShMCMC(y = Y, X = X, thresh = -Inf, B = B.sp, alpha = alpha,
-#                 xi = 0.001, can.mu.sd = 1, can.sig.sd = 0.1,
-#                 beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-#                 beta1 = beta1.init, beta2 = beta2.init,
-#                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-#                 beta1.sd = 50, beta1.sd.fix = TRUE,
-#                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-#                 beta2.sd = 5, beta2.sd.fix = TRUE,
-#                 beta1.block = FALSE, beta2.block = FALSE,
-#                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
-#                 iters = iters, burn = burn, update = update, iterplot = TRUE)
-# cat("Finished fit and predict \n")
-
-# calculate the scores
-probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
-qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs,
-                         validate = Y.tst)
-bs.results95 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
-                           thresh = thresh95.tst)
-bs.results99 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
-                           thresh = thresh99.tst)
-results <- c(qs.results, bs.results95, bs.results99, fit$timing)
-results <- c(results, Sys.info()["nodename"])
-names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
-
-write.table(results, file = table.file)
-
-upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
-upload.pre <- paste(upload.pre, "precipitation/cv-tables/", sep = "")
-if (do.upload) {
-  upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
-  system(upload.cmd)
-}
-save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
-     alpha, fit, cv.idx, results, file = results.file)

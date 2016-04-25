@@ -3,6 +3,7 @@
 # margin := how to construct marginal basis functions
 # cv     := which cross-validation testing set to use
 # L      := the number of basis functions to use
+options(warn = 2)
 
 #### load in the data ####
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
@@ -24,7 +25,7 @@ cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
 
 # standardize the locations
 s <- cents
-s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min   <- apply(s, 2, min)
 s[, 1] <- (s[, 1] - s.min[1]) / s.scale
 s[, 2] <- (s[, 2] - s.min[2]) / s.scale
@@ -76,10 +77,10 @@ if (margin == "ebf") {
     # get the knot locations
     knots <- cover.design(cents.grid, nd = L)$design
 
-    cat("Start estimation of Gaussian kernels for covariates \n")
-    # alpha and rho estimates using only the training data
-    out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-    B.cov <- getW(rho = out$rho, dw2 = out$dw2)
+    # cat("Start estimation of Gaussian kernels for covariates \n")
+    # # alpha and rho estimates using only the training data
+    # out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
+    # B.cov <- getW(rho = out$rho, dw2 = out$dw2)
   } else{
     cat("B.cov = B.sp \n")
     B.cov <- B.sp
@@ -102,19 +103,19 @@ Y[cv.idx[[cv]]] <- NA  # remove the testing data
 
 ns <- nrow(Y)
 nt <- ncol(Y)
-np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
+np <- 2 # + L * 2  # for a single year (int, t)
 
 ## standardize spatial basis functions
-for (i in 1:L) {
-  B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
-}
+# for (i in 1:L) {
+#   B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
+# }
 
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, B.cov[i, ], B.cov[i, ] * time)
+    X[i, t, 2:np] <- time
   }
 }
 
@@ -146,7 +147,7 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 # the default estimate usually puts the intercept at something much larger
 # than 0 thereby making it difficult to get sigma^2_beta1 to be reasonably
 # sized which greatly impacts the ability to get the MCMC to mix.
-beta1.init <- rep(0, np)
+beta1.init <- 0
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -160,14 +161,47 @@ update <- 1000
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
-# fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
+# s is scaled locations
+fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
+                thresh = thresh95, B = B.sp, alpha = alpha,
+                # beta1 = beta1.init,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = TRUE, beta1 = beta1.init,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
                 # iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
+
+mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
+dw2 <- rdist(s.scale, knots)^2
+dw2[dw2 < 1e-4] <- 0
+for (i in 1:10000) {
+  # update X matrix
+  B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
+  X.mu <- X.sig <- add.basis.X(X = X, B.i)
+  for (t in 1:nt) {
+    mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
+    sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
+  }
+  if (i %% 500 == 0) {
+    print(paste(i, "finished"))
+  }
+}
+
+par(mfrow = c(5, 7))
+sites <- sample(ns, 5, replace = FALSE)
+days  <- sample(nt, 7, replace = FALSE)
+
+for (i in sites) {
+  for (t in days) {
+    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
+  }
+}
+
+for (i in sites) {
+  for (t in days) {
+    plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
+  }
+}
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

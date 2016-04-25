@@ -38,6 +38,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
                    beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                    beta1.attempts = 50, beta2.attempts = 50, xi.attempts = 50,
                    bw.init = NULL, bw.random = TRUE, bw.attempts = 50,
+                   time.interact = FALSE,
                    keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
                    iterplot = FALSE){
   require(extRemes)
@@ -71,8 +72,8 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     bw.max <- quantile(dw2, 0.95)
 
     B.X <- makeW(dw2 = dw2, rho = bw)
-    X.mu <- add.basis.X(X = X.mu, B = B.X)
-    X.sig <- add.basis.X(X = X.sig, B = B.X)
+    X.mu <- add.basis.X(X = X.mu, B = B.X, time.interact = time.interact)
+    X.sig <- add.basis.X(X = X.sig, B = B.X, time.interact = time.interact)
   }
 
   p.mu    <- dim(X.mu)[3]
@@ -231,8 +232,10 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
       canbw <- transform$inv.logit(canbw.star, lower = bw.min, upper = bw.max)
 
       canB <- makeW(dw2 = dw2, rho = canbw)
-      canX.mu <- rep.basis.X(X = X.mu, newB = canB)
-      canX.sig <- rep.basis.X(X = X.sig, newB = canB)
+      canX.mu <- rep.basis.X(X = X.mu, newB = canB,
+                             time.interact = time.interact)
+      canX.sig <- rep.basis.X(X = X.sig, newB = canB,
+                              time.interact = time.interact)
       canmu <- 0
       for (j in 1:p.mu) {
         canmu <- canmu + canX.mu[, , j] * beta1[j]

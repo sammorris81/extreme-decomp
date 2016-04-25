@@ -201,34 +201,55 @@ make.kern <- function(d2, logrho) {
   return(w)
 }
 
-add.basis.X <- function(X, B) {
+add.basis.X <- function(X, B, time.interact = FALSE) {
   ns <- dim(X)[1]
   nt <- dim(X)[2]
   np <- dim(X)[3]
-  nB <- dim(B)[2]
+  if (time.interact) {
+    nB <- dim(B)[2] * 2
+  } else {
+    nB <- dim(B)[2]
+  }
 
   # create a new X array that will be big enough to hold the basis functions
   newX <- array(0, dim = c(ns, nt, np + nB))
 
   # copy over old X information
   newX[, , 1:np] <- X
-  for (t in 1:nt) {
-    newX[, t, (np + 1):(np + nB)] <- B
+  if (time.interact) {
+    B.interact <- B * X[, t, 2]
+    newX[, t, (np + 1):(np + nB)] <- cbind(B, B.interact)
+  } else {
+    for (t in 1:nt) {
+      newX[, t, (np + 1):(np + nB)] <- B
+    }
   }
 
   return(newX)
 }
 
-rep.basis.X <- function(X, newB) {
+rep.basis.X <- function(X, newB, time.interact = FALSE) {
   ns <- dim(X)[1]
   nt <- dim(X)[2]
   np <- dim(X)[3]
   nB <- dim(newB)[2]
-  start <- np - nB + 1
+  if (time.interact) {
+    start <- np - 2 * nB + 1
+  } else {
+    start <- np - nB + 1
+  }
   end   <- np
 
-  for (t in 1:nt) {
-    X[, t, start:end] <- newB
+
+  if (time.interact) {
+    for (t in 1:nt) {
+      newB.interact <- newB * X[, t, 2]
+      X[, t, start:end] <- cbind(newB, newB.interact)
+    }
+  } else {
+    for (t in 1:nt) {
+      X[, t, start:end] <- newB
+    }
   }
 
   return(X)

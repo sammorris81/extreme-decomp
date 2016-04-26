@@ -48,9 +48,6 @@ if (process == "ebf") {
   ec.smooth <- out$EC.smooth
   alpha     <- out$alpha
 } else {
-  # get the knot locations
-  knots <- cover.design(cents.grid, nd = L)$design
-
   cat("Start estimation of rho and alpha \n")
   # alpha and rho estimates using only the training data
   out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
@@ -64,28 +61,8 @@ if (process == "ebf") {
 ################################################################################
 #### Covariate basis functions #################################################
 ################################################################################
-if (margin == "ebf") {
-  if (process == "ebf") {  # we can just copy the empirical basis functions
-    cat("B.cov = B.sp \n")
-    B.cov <- B.sp
-  } else {  # we need to construct the empirical basis functions
-    cat("Estimating basis functions for covariates \n")
-    B.cov <- get.factors.EC(ec.hat[[cv]], L = L, s = s)$est
-  }
-} else if (margin == "gsk") {
-  if (process == "ebf") {
-    # get the knot locations
-    knots <- cover.design(cents.grid, nd = L)$design
-
-    # cat("Start estimation of Gaussian kernels for covariates \n")
-    # # alpha and rho estimates using only the training data
-    # out   <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-    # B.cov <- getW(rho = out$rho, dw2 = out$dw2)
-  } else{
-    cat("B.cov = B.sp \n")
-    B.cov <- B.sp
-  }
-}
+# get the knot locations
+knots <- cover.design(cents.grid, nd = L)$design
 
 ################################################################################
 #### Run the MCMC ##############################################################
@@ -104,11 +81,6 @@ Y[cv.idx[[cv]]] <- NA  # remove the testing data
 ns <- nrow(Y)
 nt <- ncol(Y)
 np <- 2 # + L * 2  # for a single year (int, t)
-
-## standardize spatial basis functions
-# for (i in 1:L) {
-#   B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
-# }
 
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
@@ -142,14 +114,6 @@ thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
 
 ################################################################################
-#### initial values ############################################################
-################################################################################
-# the default estimate usually puts the intercept at something much larger
-# than 0 thereby making it difficult to get sigma^2_beta1 to be reasonably
-# sized which greatly impacts the ability to get the MCMC to mix.
-beta1.init <- 0
-
-################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
 iters  <- 30000
@@ -164,6 +128,7 @@ set.seed(6262)  # mcmc
 # s is scaled locations
 fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 thresh = thresh95, B = B.sp, alpha = alpha,
+                time.interact = TRUE,
                 # beta1 = beta1.init,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
@@ -171,37 +136,37 @@ fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 # iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
-mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
-dw2 <- rdist(s.scale, knots)^2
-dw2[dw2 < 1e-4] <- 0
-for (i in 1:10000) {
-  # update X matrix
-  B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
-  X.mu <- X.sig <- add.basis.X(X = X, B.i)
-  for (t in 1:nt) {
-    mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
-    sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
-  }
-  if (i %% 500 == 0) {
-    print(paste(i, "finished"))
-  }
-}
-
-par(mfrow = c(5, 7))
-sites <- sample(ns, 5, replace = FALSE)
-days  <- sample(nt, 7, replace = FALSE)
-
-for (i in sites) {
-  for (t in days) {
-    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
-  }
-}
-
-for (i in sites) {
-  for (t in days) {
-    plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
-  }
-}
+# mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
+# dw2 <- rdist(s, knots)^2
+# dw2[dw2 < 1e-4] <- 0
+# for (i in 1:10000) {
+#   # update X matrix
+#   B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
+#   X.mu <- X.sig <- add.basis.X(X = X, B.i, time.interact = TRUE)
+#   for (t in 1:nt) {
+#     mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
+#     sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
+#   }
+#   if (i %% 500 == 0) {
+#     print(paste(i, "finished"))
+#   }
+# }
+#
+# par(mfrow = c(5, 7))
+# sites <- sample(ns, 5, replace = FALSE)
+# days  <- sample(nt, 7, replace = FALSE)
+#
+# for (i in sites) {
+#   for (t in days) {
+#     plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
+#   }
+# }
+#
+# for (i in sites) {
+#   for (t in days) {
+#     plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
+#   }
+# }
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
@@ -223,5 +188,5 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
+save(B.sp, knots, out, thresh90, thresh95, thresh99,
      alpha, fit, cv.idx, results, file = results.file)

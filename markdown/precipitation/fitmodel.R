@@ -179,7 +179,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 30000; burn <- 20000; update <- 100  # for testing
+# iters <- 30000; burn <- 20000; update <- 100  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")
@@ -198,52 +198,52 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
                 time.interact = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
+                iters = iters, burn = burn, update = update, iterplot = FALSE)
+                # iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
-par(mfrow = c(7, 5))
-for (i in 1:np) {
-  plot(fit$beta1[, i], type = "l",
-       main = bquote(paste(mu, ": ", beta[.(i)])))
-}
-for (i in 1:np) {
-  plot(fit$beta2[, i], type = "l",
-       main = bquote(paste("log(", sigma, "): ", beta[.(i)])))
-}
-plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
-
-mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
-dw2 <- rdist(s.scale, knots)^2
-dw2[dw2 < 1e-4] <- 0
-for (i in 1:10000) {
-  # update X matrix
-  B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
-  X.mu <- X.sig <- add.basis.X(X = X, B.i)
-  for (t in 1:nt) {
-    mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
-    sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
-  }
-  if (i %% 500 == 0) {
-    print(paste(i, "finished"))
-  }
-}
-
-par(mfrow = c(5, 7))
-sites <- sample(ns, 5, replace = FALSE)
-days  <- sample(nt, 7, replace = FALSE)
-
-for (i in sites) {
-  for (t in days) {
-    plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
-  }
-}
-
-for (i in sites) {
-  for (t in days) {
-    plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
-  }
-}
+# par(mfrow = c(7, 5))
+# for (i in 1:np) {
+#   plot(fit$beta1[, i], type = "l",
+#        main = bquote(paste(mu, ": ", beta[.(i)])))
+# }
+# for (i in 1:np) {
+#   plot(fit$beta2[, i], type = "l",
+#        main = bquote(paste("log(", sigma, "): ", beta[.(i)])))
+# }
+# plot(fit.rw.noblock$xi, type = "l", main = bquote(xi))
+#
+# mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
+# dw2 <- rdist(s.scale, knots)^2
+# dw2[dw2 < 1e-4] <- 0
+# for (i in 1:10000) {
+#   # update X matrix
+#   B.i <- makeW(dw2 = dw2, rho = fit$bw[i])
+#   X.mu <- X.sig <- add.basis.X(X = X, B.i)
+#   for (t in 1:nt) {
+#     mu.post[i, , t] <- X.mu[, t, ] %*% fit$beta1[i, ]
+#     sig.post[i, , t] <- X.sig[, t, ] %*% fit$beta2[i, ]
+#   }
+#   if (i %% 500 == 0) {
+#     print(paste(i, "finished"))
+#   }
+# }
+#
+# par(mfrow = c(5, 7))
+# sites <- sample(ns, 5, replace = FALSE)
+# days  <- sample(nt, 7, replace = FALSE)
+#
+# for (i in sites) {
+#   for (t in days) {
+#     plot(mu.post[, i, t], type = "l", main = bquote(paste(mu, "(", .(i), ", ", .(t), ")")))
+#   }
+# }
+#
+# for (i in sites) {
+#   for (t in days) {
+#     plot(sig.post[, i, t], type = "l", main = bquote(paste(sigma, "(", .(i), ", ", .(t), ")")))
+#   }
+# }
 
 # calculate the scores
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)

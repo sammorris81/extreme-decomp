@@ -46,8 +46,8 @@ bwsubmit r fit-gsk-20-3.R
 bwsubmit r fit-gsk-20-4.R
 bwsubmit r fit-gsk-20-5.R
 bwsubmit r fit-gsk-25-1.R
-bwsubmit r fit-gsk-25-2.R
-bwsubmit r fit-gsk-25-3.R
-bwsubmit r fit-gsk-25-4.R
-bwsubmit r fit-gsk-25-5.R
+# bwsubmit r fit-gsk-25-2.R
+# bwsubmit r fit-gsk-25-3.R
+# bwsubmit r fit-gsk-25-4.R
+# bwsubmit r fit-gsk-25-5.R
 done

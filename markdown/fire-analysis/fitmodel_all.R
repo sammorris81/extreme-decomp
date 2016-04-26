@@ -153,5 +153,5 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, B.cov, out, thresh90, thresh95, thresh99,
+save(B.sp, knots, out, thresh90, thresh95, thresh99,
      alpha, fit, cv.idx, results, file = results.file)

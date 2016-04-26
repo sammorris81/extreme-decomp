@@ -89,13 +89,15 @@ Y.all <- Y
 
 ## Y contains both current and future data, so subset on the relevant years
 if (time == "current") {
+  this.cv <- cv.idx[[cv]][, 1:nt]
   Y <- Y[, 1:nt]
-  Y.tst <- Y[cv.idx[[cv]][, 1:nt]]  # save the testing data to validate
-  Y[cv.idx[[cv]][, 1:nt]] <- NA  # remove the testing data
+  Y.tst <- Y[this.cv]  # save the testing data to validate
+  Y[this.cv] <- NA  # remove the testing data
 } else {
+  this.cv <- cv.idx[[cv]][, (nt + 1):(2 * nt)]
   Y <- Y[, (nt + 1):(2 * nt)]
-  Y.tst <- Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]]
-  Y[cv.idx[[cv]][, (nt + 1):(2 * nt)]] <- NA
+  Y.tst <- Y[this.cv]
+  Y[this.cv] <- NA
 }
 
 ## standardize elevations
@@ -168,9 +170,9 @@ for (i in 1:ns) {
 thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
-thresh90.tst <- thresh90[cv.idx[[cv]]]
-thresh95.tst <- thresh95[cv.idx[[cv]]]
-thresh99.tst <- thresh99[cv.idx[[cv]]]
+thresh90.tst <- thresh90[this.cv]
+thresh95.tst <- thresh95[this.cv]
+thresh99.tst <- thresh99[this.cv]
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -179,7 +181,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <- 30000; burn <- 20000; update <- 100  # for testing
+# iters <- 100; burn <- 50; update <- 10  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")
@@ -265,7 +267,7 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, knots, out, thresh90, thresh95, thresh99,
+save(B.sp, knots, thresh90, thresh95, thresh99,
      alpha, fit, cv.idx, results, file = results.file)
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))

@@ -25,7 +25,7 @@ cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
 
 # standardize the locations
 s <- cents
-s <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min   <- apply(s, 2, min)
 s[, 1] <- (s[, 1] - s.min[1]) / s.scale
 s[, 2] <- (s[, 2] - s.min[2]) / s.scale

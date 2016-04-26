@@ -5,7 +5,8 @@ load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
 procs <- c("ebf", "gsk")  # what process determines the spatial structure
 nprocs <- length(procs)
-margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
+# margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
+margs <- "gsk"
 nmargs <- length(margs)
 bases   <- c(5, 10, 15, 20, 25)
 nbases  <- length(bases)
@@ -36,15 +37,15 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
-  margin.idx <- which(procs == split[2])
+  margin.idx <- which(margs == split[2])
   basis.idx <- which(bases == split[3])
-  
+
   # idx: 1 - 5: ebf spatial, ebf marginal
   # idx: 6 - 10: ebf spatial, gsk marginal
   # idx: 11 - 15: gsk spatial, ebf marginal
   # idx: 16 - 20: gsk spatial, gsk marginal
   # idx: 21: gsk spatial, gsk marginal - knots at all counties
-  
+
   if (as.numeric(split[3]) == 159) {
     idx <- 21
   } else {
@@ -88,7 +89,7 @@ for (p in 1:nprocs) {
       this.bs <- bs.results[[this.row]]
       qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
                                          na.rm = TRUE)
-      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean, 
+      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
                                          na.rm = TRUE)
       qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
                                          na.rm = TRUE) / sqrt(10)
@@ -104,7 +105,7 @@ this.qs <- qs.results[[this.row]]
 this.bs <- bs.results[[this.row]]
 qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
                                    na.rm = TRUE)
-bs.results.mn[this.row, ] <- apply(this.bs, 2, mean, 
+bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
                                    na.rm = TRUE)
 qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
                                    na.rm = TRUE) / sqrt(10)
@@ -112,11 +113,11 @@ bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
                                    na.rm = TRUE) / sqrt(10)
 
 process.col <- c(rep("ebf", nbases * 2), rep("gsk", nbases * 2 + 1))
-margin.col  <- c(rep("ebf", nbases), rep("gsk", nbases), 
+margin.col  <- c(rep("ebf", nbases), rep("gsk", nbases),
                  rep("ebf", nbases), rep("gsk", nbases + 1))
 bases.col   <- c(rep(bases, 4), 159)
-results.df <- data.frame(process = as.factor(process.col), 
-                         margin = as.factor(margin.col), 
+results.df <- data.frame(process = as.factor(process.col),
+                         margin = as.factor(margin.col),
                          bases = as.integer(bases.col),
                          bs95 = as.double(100 * bs.results.mn[, 1]),
                          bs99 = as.double(100 * bs.results.mn[, 2]),
@@ -135,23 +136,23 @@ plot(results.df$bases[these], results.df$bs95[these], type = "l",
      xlab = "Number of knots/basis functions",
      col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$bs95[these], 
+lines(results.df$bases[these], results.df$bs95[these],
       col = "dodgerblue1", lty = 2)
 these <- results.df$process == "gsk" & results.df$margin == "ebf"
-lines(results.df$bases[these], results.df$bs95[these], 
+lines(results.df$bases[these], results.df$bs95[these],
       col = "firebrick1", lty = 1)
 these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$bs95[these], 
+lines(results.df$bases[these], results.df$bs95[these],
       col = "firebrick1", lty = 2)
-curve(results.df$bs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black", 
+curve(results.df$bs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
       add = TRUE)
 
-legend("topright", legend = c("Process: ebf Margin: ebf", 
-                              "Process: ebf Margin: gsk", 
-                              "Process: gsk Margin: ebf", 
+legend("topright", legend = c("Process: ebf Margin: ebf",
+                              "Process: ebf Margin: gsk",
+                              "Process: gsk Margin: ebf",
                               "Process: gsk Margin: gsk",
                               "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2), 
+       lty = c(1, 2, 1, 2),
        col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
        cex = 1.5)
 
@@ -166,23 +167,23 @@ plot(results.df$bases[these], results.df$bs99[these], type = "l",
      xlab = "Number of knots/basis functions",
      col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$bs99[these], 
+lines(results.df$bases[these], results.df$bs99[these],
       col = "dodgerblue1", lty = 2)
 these <- results.df$process == "gsk" & results.df$margin == "ebf"
-lines(results.df$bases[these], results.df$bs99[these], 
+lines(results.df$bases[these], results.df$bs99[these],
       col = "firebrick1", lty = 1)
 these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$bs99[these], 
+lines(results.df$bases[these], results.df$bs99[these],
       col = "firebrick1", lty = 2)
-curve(results.df$bs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black", 
+curve(results.df$bs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
       add = TRUE)
 
-legend("topright", legend = c("Process: ebf Margin: ebf", 
-                              "Process: ebf Margin: gsk", 
-                              "Process: gsk Margin: ebf", 
+legend("topright", legend = c("Process: ebf Margin: ebf",
+                              "Process: ebf Margin: gsk",
+                              "Process: gsk Margin: ebf",
                               "Process: gsk Margin: gsk",
                               "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2), 
+       lty = c(1, 2, 1, 2),
        col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
        cex = 1.5)
 dev.print(device = pdf, file = "plots/bs-mean-fire.pdf")
@@ -200,22 +201,22 @@ plot(results.df$bases[these], results.df$qs95[these], type = "l",
      xlim = c(5, 25), xlab = "Number of knots/basis functions",
      col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$qs95[these], 
+lines(results.df$bases[these], results.df$qs95[these],
       col = "dodgerblue1", lty = 2)
 these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
-lines(results.df$bases[these], results.df$qs95[these], 
+lines(results.df$bases[these], results.df$qs95[these],
       col = "firebrick1", lty = 1)
 these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$qs95[these], 
+lines(results.df$bases[these], results.df$qs95[these],
       col = "firebrick1", lty = 2)
-curve(results.df$qs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black", 
+curve(results.df$qs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
       add = TRUE)
-legend("topleft", legend = c("Process: ebf Margin: ebf", 
-                             "Process: ebf Margin: gsk", 
-                             "Process: gsk Margin: ebf", 
+legend("topleft", legend = c("Process: ebf Margin: ebf",
+                             "Process: ebf Margin: gsk",
+                             "Process: gsk Margin: ebf",
                              "Process: gsk Margin: gsk",
                              "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2), 
+       lty = c(1, 2, 1, 2),
        col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
        cex = 1.5)
 
@@ -230,22 +231,22 @@ plot(results.df$bases[these], results.df$qs99[these], type = "l",
      xlim = c(5, 25), xlab = "Number of knots/basis functions",
      col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$qs99[these], 
+lines(results.df$bases[these], results.df$qs99[these],
       col = "dodgerblue1", lty = 2)
 these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
-lines(results.df$bases[these], results.df$qs99[these], 
+lines(results.df$bases[these], results.df$qs99[these],
       col = "firebrick1", lty = 1)
 these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$qs99[these], 
+lines(results.df$bases[these], results.df$qs99[these],
       col = "firebrick1", lty = 2)
-curve(results.df$qs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black", 
+curve(results.df$qs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
       add = TRUE)
-legend("topleft", legend = c("Process: ebf Margin: ebf", 
-                             "Process: ebf Margin: gsk", 
-                             "Process: gsk Margin: ebf", 
+legend("topleft", legend = c("Process: ebf Margin: ebf",
+                             "Process: ebf Margin: gsk",
+                             "Process: gsk Margin: ebf",
                              "Process: gsk Margin: gsk",
                              "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2), 
+       lty = c(1, 2, 1, 2),
        col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
        cex = 1.5)
 dev.print(device = pdf, file = "plots/qs-mean-fire.pdf")

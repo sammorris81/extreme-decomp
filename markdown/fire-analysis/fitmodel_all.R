@@ -71,17 +71,12 @@ ns <- nrow(Y)
 nt <- ncol(Y)
 np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 
-## standardize spatial basis functions
-for (i in 1:L) {
-  B.cov[, i] <- (B.cov[, i] - mean(B.cov[, i])) / sd(B.cov[, i])
-}
-
 ## create covariate matrix for training
 X <- array(1, dim = c(ns, nt, np))
 for (i in 1:ns) {
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
-    X[i, t, 2:np] <- c(time, B.cov[i, ], B.cov[i, ] * time)
+    X[i, t, 2:np] <- time
   }
 }
 
@@ -121,19 +116,21 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 iters  <- 30000
 burn   <- 20000
 update <- 1000
-# update <- 100
 
 # iters <-2000; burn <- 500; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, thresh = thresh95, B = B.sp, alpha = alpha,
-# fit <- ReShMCMC(y = Y, X = X, thresh = thresh90, B = B.sp, alpha = alpha,
+# s is scaled locations
+fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
+                thresh = thresh95, B = B.sp, alpha = alpha,
+                time.interact = TRUE,
+                # beta1 = beta1.init,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
                 # iters = iters, burn = burn, update = update, iterplot = TRUE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # calculate the scores

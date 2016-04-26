@@ -123,7 +123,7 @@ cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
 # s is scaled locations
-fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
+fit <- ReShMCMC(y = Y, X = X, s = s, knots = s,
                 thresh = thresh95, B = B.sp, alpha = alpha,
                 time.interact = TRUE,
                 # beta1 = beta1.init,

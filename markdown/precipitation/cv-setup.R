@@ -75,7 +75,7 @@ s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
 s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
 cents.grid     <- s.scale
 
-nknots <- c(5, 10, 15, 20, 25, 30)
+nknots <- c(5, 10, 15, 20, 25, 30, 35)
 
 for (L in nknots) {
   # Empirical basis functions

@@ -30,6 +30,16 @@
 # bwsubmit r ebf-gsk-30-3.R
 # bwsubmit r ebf-gsk-30-4.R
 # bwsubmit r ebf-gsk-30-5.R
+bwsubmit r ebf-gsk-35-1.R
+bwsubmit r ebf-gsk-35-2.R
+bwsubmit r ebf-gsk-35-3.R
+bwsubmit r ebf-gsk-35-4.R
+bwsubmit r ebf-gsk-35-5.R
+bwsubmit r ebf-gsk-40-1.R
+bwsubmit r ebf-gsk-40-2.R
+bwsubmit r ebf-gsk-40-3.R
+bwsubmit r ebf-gsk-40-4.R
+bwsubmit r ebf-gsk-40-5.R
 # bwsubmit r gsk-gsk-5-1.R
 # bwsubmit r gsk-gsk-5-2.R
 # bwsubmit r gsk-gsk-5-3.R
@@ -60,4 +70,14 @@
 # bwsubmit r gsk-gsk-30-3.R
 # bwsubmit r gsk-gsk-30-4.R
 # bwsubmit r gsk-gsk-30-5.R
+bwsubmit r gsk-gsk-35-1.R
+bwsubmit r gsk-gsk-35-2.R
+bwsubmit r gsk-gsk-35-3.R
+bwsubmit r gsk-gsk-35-4.R
+bwsubmit r gsk-gsk-35-5.R
+bwsubmit r gsk-gsk-40-1.R
+bwsubmit r gsk-gsk-40-2.R
+bwsubmit r gsk-gsk-40-3.R
+bwsubmit r gsk-gsk-40-4.R
+bwsubmit r gsk-gsk-40-5.R
 done

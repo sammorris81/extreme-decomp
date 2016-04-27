@@ -33,6 +33,7 @@ for (b in 1:(ntimes * nbases * nmargs * nprocs + 1)) {
 timing <- data.frame(timing = double(), hostname = factor(),
                      proc = factor(), time = factor(),
                      basis = factor(), fold = factor())
+rownames <- rep(0, ntimes * nbases * nmargs * nprocs + 1)
 for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
@@ -47,10 +48,16 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   # idx: 21: gsk spatial, gsk marginal - knots at all counties
 
   if (as.numeric(split[3]) == 159) {
-    idx <- 21
+    idx <- length(rownames)
   } else {
     idx       <- (proc.idx - 1) * (nbases * ntimes) +
       (time.idx - 1) * nbases + basis.idx
+  }
+
+  if (time.idx == 1) {
+    rownames[idx] <- paste(split[1], "-cur-", split[3], sep = "")
+  } else {
+    rownames[idx] <- paste(split[1], "-fut-", split[3], sep = "")
   }
 
   fold      <- as.numeric(split[4])
@@ -98,6 +105,9 @@ for (p in 1:nprocs) {
     }
   }
 }
+
+rownames(bs.results.mn) <- rownames
+rownames(qs.results.mn) <- rownames
 
 # add in 21st row
 this.row <- 21

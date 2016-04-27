@@ -75,9 +75,9 @@ s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
 s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
 cents.grid     <- s.scale
 
-nknots <- c(5, 10, 15, 20, 25, 30, 35)
+nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots) {
+for (L in nknots[7:8]) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)

@@ -8,7 +8,7 @@ nprocs <- length(procs)
 # margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
 margs <- "gsk"
 nmargs <- length(margs)
-bases   <- c(5, 10, 15, 20, 25, 30)
+bases   <- c(5, 10, 15, 20, 25, 30, 35, 40)
 nbases  <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)
@@ -104,6 +104,9 @@ for (p in 1:nprocs) {
 
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
+
+round(bs.results.mn * 100, 3)
+round(qs.results.mn[, c(1, 5)], 3)
 
 # add in 21st row
 this.row <- 21

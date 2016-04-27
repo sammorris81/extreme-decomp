@@ -263,7 +263,7 @@ To calculate $T_i$ for each county, we find $\hat{q}(0.95)$ by taking the 95$th$
 %\end{figure}
 
 \subsection{Results}\label{s:results}
-\hl{still waiting for some of the results back here, so it's not been updated.}
+\hl{have included a set of partial results, still waiting for some.}
 We use 10-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 10\% of sites and years are withheld for testing model predictions.
@@ -273,7 +273,7 @@ The Brier score is given by \hl{give formula}.
 For both of these methods, we use a negative orientation, so a lower score indicates a better fit.
 
 \begin{table}[htbp]
-\caption{Average quantile scores for selected quantiles and Brier scores ($\times 100$) for selected thresholds \hl{Needs to be updated with new results post MCMC update, also needs timings added in}}
+\caption{Average quantile scores for selected quantiles and Brier scores ($\times 100$) for selected thresholds \hl{Need update with L = 30 and 159, timings to be added in}}
 \centering
 \small
   \begin{tabular}{lc|rr|rr|c}
@@ -281,22 +281,25 @@ For both of these methods, we use a negative orientation, so a lower score indic
    \hline
    & Process & $q(0.95)$ & $q(0.99)$ & $q(0.95)$ & $q(0.99)$\\
    \hline
-  \multirow{2}{*}{L = 5} & ebf & 5.622 & 2.221 & 130.46 & 78.33 & \\
-                         & gsk & 5.612 & 2.238 & 129.26 & 76.95 & \\
+  \multirow{2}{*}{L = 5}  & ebf & 5.709 & 2.268 & 131.92 & 79.525 & \\
+                          & gsk & 5.808 & 2.303 & 133.37 & 79.985 & \\
    \hline
-  \multirow{2}{*}{L = 10} & ebf & 5.299 & 2.160 & 126.18 & 72.64 & \\
-                          & gsk & 5.337 & 2.186 & 128.28 & 74.05 & \\
+  \multirow{2}{*}{L = 10} & ebf & 5.066 & 2.101 & 130.21 & 72.486 & \\
+                          & gsk & 5.192 & 2.126 & 130.67 & 75.501 & \\
    \hline
-  \multirow{2}{*}{L = 15} & ebf & 5.172 & 2.114 & 129.48 & 74.85 & \\
-                          & gsk & 5.153 & 2.123 & 130.35 & 74.50 & \\
+  \multirow{2}{*}{L = 15} & ebf & 4.947 & 2.041 & 130.95 & 64.586 & \\
+                          & gsk & 5.078 & 2.074 & 130.79 & 69.610 & \\
    \hline
-  \multirow{2}{*}{L = 20} & ebf & 5.177 & 2.109 & \textbf{126.16} & 72.33 & \\
-                          & gsk & \textbf{5.077} & 2.113 & 128.20 & 71.47 & \\
+  \multirow{2}{*}{L = 20} & ebf & 4.989 & 2.035 & 122.64 & 66.102 & \\
+                          & gsk & 4.942 & 2.030 & 121.71 & 65.267 & \\
    \hline
-  \multirow{2}{*}{L = 25} & ebf & 5.206 & \textbf{2.095} & 127.06 & \textbf{70.53} & \\
-                          & gsk & 5.124 & 2.116 & 129.43 & 72.16 & \\
+  \multirow{2}{*}{L = 25} & ebf & 4.911 & \textbf{1.999} & \textbf{119.71} & 63.302 & \\
+                          & gsk & \textbf{4.842} & 2.017 & 119.94 & \textbf{62.192} & \\
+   \hline
+  \multirow{2}{*}{L = 30} & ebf &  &  &  &  & \\
+                          & gsk &  &  &  &  & \\
   \hline
-  L = 159 & gsk & 5.00 & 2.08 & 127.72 & 68.70 & \\
+  L = 159                 & gsk &  &  &  &  & \\
   \hline
 	\end{tabular}
 \end{table}

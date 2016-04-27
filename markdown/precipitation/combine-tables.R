@@ -1,15 +1,15 @@
 rm(list = ls())
 
-load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
-procs <- c("ebf", "gsk")  # what process determines the spatial structure
+procs  <- c("ebf", "gsk")  # what process determines the spatial structure
 nprocs <- length(procs)
-# margs <- c("ebf", "gsk")  # basis functions for the marginal distributions
-margs <- "gsk"
+times  <- c("current", "future")  # is this current or future data
+ntimes <- length(times)
+margs  <- "gsk"
 nmargs <- length(margs)
-bases   <- c(5, 10, 15, 20, 25, 30)
-nbases  <- length(bases)
+bases  <- c(5, 10, 15, 20, 25, 30)
+nbases <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)
 nprobs.qs <- length(probs.for.qs)
@@ -20,7 +20,7 @@ files <- list.files(path = "cv-tables/")
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
 
-for (b in 1:(nbases * nmargs * nprocs + 1)) {
+for (b in 1:(ntimes * nbases * nmargs * nprocs + 1)) {
   qs.results[[b]] <- matrix(NA, nfolds, nprobs.qs)
   bs.results[[b]] <- matrix(NA, nfolds, nprobs.bs)
   colnames(qs.results[[b]]) <- probs.for.qs
@@ -31,13 +31,13 @@ for (b in 1:(nbases * nmargs * nprocs + 1)) {
 
 # timing is a data.frame that contains time, hostname, basis, and fold
 timing <- data.frame(timing = double(), hostname = factor(),
-                     proc = factor(), margin = factor(),
+                     proc = factor(), time = factor(),
                      basis = factor(), fold = factor())
 for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
-  margin.idx <- which(margs == split[2])
+  time.idx  <- which(times == split[2])
   basis.idx <- which(bases == split[3])
 
   # idx: 1 - 5: ebf spatial, ebf marginal
@@ -49,8 +49,8 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   if (as.numeric(split[3]) == 159) {
     idx <- 21
   } else {
-    idx       <- (proc.idx - 1) * (nbases * nmargs) +
-                 (margin.idx - 1) * nbases + basis.idx
+    idx       <- (proc.idx - 1) * (nbases * ntimes) +
+      (time.idx - 1) * nbases + basis.idx
   }
 
   fold      <- as.numeric(split[4])
@@ -61,7 +61,7 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   timing.tail <- tail(table.set$x, 2)
   timing.row <- data.frame(timing = as.numeric(timing.tail[1]),
                            host = timing.tail[2],
-                           proc = split[1], margin = split[2],
+                           proc = split[1], time = split[2],
                            basis = split[3], fold = as.factor(fold))
   timing <- rbind(timing, timing.row)
   qs.results[[idx]][fold, ] <- as.numeric(table.set$x[1:nprobs.qs])
@@ -73,18 +73,18 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
 # combine lists into a single matrix that averages qs over all folds for
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
-qs.results.mn <- qs.results.se <- matrix(NA, nbases * nmargs * 2 + 1, nprobs.qs)
-bs.results.mn <- bs.results.se <- matrix(NA, nbases * nmargs * 2 + 1, nprobs.bs)
+qs.results.mn <- qs.results.se <- matrix(NA, nbases * ntimes * 2 + 1, nprobs.qs)
+bs.results.mn <- bs.results.se <- matrix(NA, nbases * ntimes * 2 + 1, nprobs.bs)
 # idx: 1 - 5: ebf spatial, ebf marginal
 # idx: 6 - 10: ebf spatial, gsk marginal
 # idx: 11 - 15: gsk spatial, ebf marginal
 # idx: 16 - 20: gsk spatial, gsk marginal
 # idx: 21: gsk spatial, gsk marginal, knots at all locations
 for (p in 1:nprocs) {
-  for (m in 1:nmargs) {
+  for (t in 1:ntimes) {
     for (b in 1:nbases) {
-      this.row <- (p - 1) * (nbases * nmargs) +
-                  (m - 1) * nbases + b
+      this.row <- (p - 1) * (nbases * ntimes) +
+        (t - 1) * nbases + b
       this.qs <- qs.results[[this.row]]
       this.bs <- bs.results[[this.row]]
       qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
@@ -92,9 +92,9 @@ for (p in 1:nprocs) {
       bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
                                          na.rm = TRUE)
       qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
-                                         na.rm = TRUE) / sqrt(10)
+                                         na.rm = TRUE) / sqrt(5)
       bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
-                                         na.rm = TRUE) / sqrt(10)
+                                         na.rm = TRUE) / sqrt(5)
     }
   }
 }

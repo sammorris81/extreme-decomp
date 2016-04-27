@@ -20,11 +20,16 @@ bwsubmit r fit-ebf-20-2.R
 bwsubmit r fit-ebf-20-3.R
 bwsubmit r fit-ebf-20-4.R
 bwsubmit r fit-ebf-20-5.R
-# bwsubmit r fit-ebf-25-1.R
-# bwsubmit r fit-ebf-25-2.R
-# bwsubmit r fit-ebf-25-3.R
-# bwsubmit r fit-ebf-25-4.R
-# bwsubmit r fit-ebf-25-5.R
+bwsubmit r fit-ebf-25-1.R
+bwsubmit r fit-ebf-25-2.R
+bwsubmit r fit-ebf-25-3.R
+bwsubmit r fit-ebf-25-4.R
+bwsubmit r fit-ebf-25-5.R
+# bwsubmit r fit-ebf-30-1.R
+# bwsubmit r fit-ebf-30-2.R
+# bwsubmit r fit-ebf-30-3.R
+# bwsubmit r fit-ebf-30-4.R
+# bwsubmit r fit-ebf-30-5.R
 bwsubmit r fit-gsk-5-1.R
 bwsubmit r fit-gsk-5-2.R
 bwsubmit r fit-gsk-5-3.R
@@ -45,9 +50,14 @@ bwsubmit r fit-gsk-20-2.R
 bwsubmit r fit-gsk-20-3.R
 bwsubmit r fit-gsk-20-4.R
 bwsubmit r fit-gsk-20-5.R
-# bwsubmit r fit-gsk-25-1.R
-# bwsubmit r fit-gsk-25-2.R
-# bwsubmit r fit-gsk-25-3.R
-# bwsubmit r fit-gsk-25-4.R
-# bwsubmit r fit-gsk-25-5.R
+bwsubmit r fit-gsk-25-1.R
+bwsubmit r fit-gsk-25-2.R
+bwsubmit r fit-gsk-25-3.R
+bwsubmit r fit-gsk-25-4.R
+bwsubmit r fit-gsk-25-5.R
+# bwsubmit r fit-gsk-30-1.R
+# bwsubmit r fit-gsk-30-2.R
+# bwsubmit r fit-gsk-30-3.R
+# bwsubmit r fit-gsk-30-4.R
+# bwsubmit r fit-gsk-30-5.R
 done

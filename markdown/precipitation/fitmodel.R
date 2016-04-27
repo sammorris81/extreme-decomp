@@ -11,10 +11,10 @@ load(file = "precip_preprocess.RData")
 # need to rerun all of cv-setup.
 basis.file   <- paste("./ebf-", L, ".RData", sep = "")
 gsk.file     <- paste("./gsk-", L, ".RData", sep = "")
-results.file <- paste("./cv-results/", process, "-", margin, "-", L, "-", cv,
-                      ".RData", sep = "")
-table.file   <- paste("./cv-tables/", process, "-", margin, "-", L, "-", cv,
-                      ".txt", sep = "")
+results.file <- paste("./cv-results/", process, "-", time, "-", L,
+                      "-", cv, ".RData", sep = "")
+table.file   <- paste("./cv-tables/", process, "-", time, "-", L,
+                      "-", cv, ".txt", sep = "")
 
 #### spatial setup ####
 d <- rdist(s)

@@ -5,8 +5,8 @@ source(file = "./package_load.R", chdir = T)
 process <- "ebf"      # ebf: empirical basis functions, gsk: gaussian kernels
 margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
 time    <- "current"  # current or future
-L       <- 20         # number of knots to use for the basis functions
-cv      <- 4          # which cross-validation set to use
+L       <- 30         # number of knots to use for the basis functions
+cv      <- 2          # which cross-validation set to use
 
 loc.fun <- scale.fun <- ~ time + elev # + B1 + B2 + B3 + B4 + B5 + 0
 
@@ -20,8 +20,8 @@ source(file = "./package_load.R", chdir = T)
 process <- "ebf"      # ebf: empirical basis functions, gsk: gaussian kernels
 margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
 time    <- "future"   # current or future
-L       <- 20         # number of knots to use for the basis functions
-cv      <- 4          # which cross-validation set to use
+L       <- 30         # number of knots to use for the basis functions
+cv      <- 2          # which cross-validation set to use
 
 loc.fun <- scale.fun <- ~ time + elev # + B1 + B2 + B3 + B4 + B5 + 0
 

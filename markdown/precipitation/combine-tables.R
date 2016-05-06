@@ -8,7 +8,7 @@ times  <- c("current", "future")  # is this current or future data
 ntimes <- length(times)
 margs  <- "gsk"
 nmargs <- length(margs)
-bases  <- c(5, 10, 15, 20, 25, 30)
+bases  <- c(5, 10, 15, 20, 25, 30, 35, 40)
 nbases <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)

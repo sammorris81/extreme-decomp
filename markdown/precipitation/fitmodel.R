@@ -200,8 +200,8 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
                 time.interact = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
+                iters = iters, burn = burn, update = update, iterplot = FALSE)
+#                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # par(mfrow = c(7, 5))
@@ -261,12 +261,13 @@ names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
 
 write.table(results, file = table.file)
 
-upload.pre <- "samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/markdown/"
-upload.pre <- paste(upload.pre, "precipitation/cv-tables/", sep = "")
 if (do.upload) {
+  upload.pre <- paste("samorris@hpc.stat.ncsu.edu:~/repos-git/extreme-decomp/",
+                      "markdown/precipitation/cv-tables/", sep = "")
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
+
 save(B.sp, knots, thresh90, thresh95, thresh99, Y.tst,
      alpha, fit, cv.idx, results, file = results.file)
 

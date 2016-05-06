@@ -80,4 +80,4 @@ bwsubmit r fit-gsk-30-5.R
 # bwsubmit r fit-gsk-40-3.R
 # bwsubmit r fit-gsk-40-4.R
 # bwsubmit r fit-gsk-40-5.R
-done
+exit 0

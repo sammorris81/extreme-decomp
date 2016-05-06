@@ -200,8 +200,8 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
                 time.interact = FALSE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
-                # iters = iters, burn = burn, update = update, iterplot = TRUE)
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
 
 # par(mfrow = c(7, 5))
@@ -267,7 +267,7 @@ if (do.upload) {
   upload.cmd <- paste("scp ", table.file, " ", upload.pre, sep = "")
   system(upload.cmd)
 }
-save(B.sp, knots, thresh90, thresh95, thresh99,
+save(B.sp, knots, thresh90, thresh95, thresh99, Y.tst,
      alpha, fit, cv.idx, results, file = results.file)
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))

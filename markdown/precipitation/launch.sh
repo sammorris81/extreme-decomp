@@ -1,8 +1,12 @@
 #!/bin/bash
 # CWD=`pwd`
-RBIN=$HOME/packages/R/lib64/R/bin/R
-PREC=$HOME/repos-git/extreme-decomp/markdown/precipitation
 
-bwsubmit exec $RBIN CMD BATCH --vanilla --no-save fit-ebf-5-1.R fit-ebf-5-1.out 2>&1
-
+for i in `seq 1 2`
+do
+  for j in `seq 1 2`
+  do
+    L=$((i * 5))
+    bwsubmit exec launch-ebf.sh $L $j
+  done
+done
 exit 0

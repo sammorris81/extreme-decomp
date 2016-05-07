@@ -20,6 +20,8 @@ if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
   do.upload <- TRUE
 } else {
   do.upload <- FALSE
+  # set number of threads to use
+  openblas.set.num.threads(1)
 }
 
 options(warn = 2)

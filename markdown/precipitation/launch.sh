@@ -1,7 +1,7 @@
 #!/bin/bash
 # CWD=`pwd`
 
-for i in `seq 1 7`
+for i in `seq 1 6`
 do
   for j in `seq 1 5`
   do

@@ -17,8 +17,8 @@ nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
-qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
-bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
+qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
+bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
 
 for (b in 1:(ntimes * nbases * nmargs * nprocs + 1)) {
   qs.results[[b]] <- matrix(NA, nfolds, nprobs.qs)
@@ -33,7 +33,7 @@ for (b in 1:(ntimes * nbases * nmargs * nprocs + 1)) {
 timing <- data.frame(timing = double(), hostname = factor(),
                      proc = factor(), time = factor(),
                      basis = factor(), fold = factor())
-rownames <- rep(0, ntimes * nbases * nmargs * nprocs + 1)
+rownames <- rep(0, ntimes * nbases * nmargs * nprocs)
 for (i in 1:(length(files) - 1)) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
@@ -80,8 +80,8 @@ for (i in 1:(length(files) - 1)) {  # last file is timing.txt
 # combine lists into a single matrix that averages qs over all folds for
 # each entry in probs.for.qs
 # CHECK to make sure you're only including the folds that you want
-qs.results.mn <- qs.results.se <- matrix(NA, nbases * ntimes * 2 + 1, nprobs.qs)
-bs.results.mn <- bs.results.se <- matrix(NA, nbases * ntimes * 2 + 1, nprobs.bs)
+qs.results.mn <- qs.results.se <- matrix(NA, nbases * ntimes * 2, nprobs.qs)
+bs.results.mn <- bs.results.se <- matrix(NA, nbases * ntimes * 2, nprobs.bs)
 # idx: 1 - 5: ebf spatial, ebf marginal
 # idx: 6 - 10: ebf spatial, gsk marginal
 # idx: 11 - 15: gsk spatial, ebf marginal

@@ -3,6 +3,8 @@
 # margin := how to construct marginal basis functions
 # cv     := which cross-validation testing set to use
 # L      := the number of basis functions to use
+library(compiler)
+enableJIT(3)
 
 #### load in the data ####
 load(file = "precip_preprocess.RData")

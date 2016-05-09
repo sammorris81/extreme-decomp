@@ -109,6 +109,88 @@ for (p in 1:nprocs) {
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
 
+# Brier scores
+quartz(width = 8, height = 8)
+par(mfrow = c(2, 2))
+plot(1:8, bs.results.mn[1:8, 1], type = "l",
+     main = "Current: Brier score for q(0.95)",
+     ylab = "Brier score", xlab = "Knots",
+     ylim = range(bs.results.mn[c(1:8, 17:24), 1]),
+     xaxt = "n")
+lines(1:8, bs.results.mn[17:24, 1], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, bs.results.mn[9:16, 1], type = "l",
+     main = "Future: Brier score for q(0.95)",
+     ylab = "Brier score", xlab = "Knots",
+     ylim = range(bs.results.mn[c(9:16, 25:32), 1]),
+     xaxt = "n")
+lines(1:8, bs.results.mn[25:32, 1], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, bs.results.mn[1:8, 2], type = "l",
+     main = "Current: Brier score for q(0.99)",
+     ylab = "Brier score", xlab = "Knots",
+     ylim = range(bs.results.mn[c(1:8, 17:24), 2]),
+     xaxt = "n")
+lines(1:8, bs.results.mn[17:24, 2], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, bs.results.mn[9:16, 2], type = "l",
+     main = "Future: Brier score for q(0.99)",
+     ylab = "Brier score", xlab = "Knots",
+     ylim = range(bs.results.mn[c(9:16, 25:32), 2]),
+     xaxt = "n")
+lines(1:8, bs.results.mn[25:32, 2], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+dev.print(device = pdf, file = "~/Desktop/precip-bs.pdf")
+dev.off()
+
+#### Quantile scores
+quartz(width = 8, height = 8)
+par(mfrow = c(2, 2))
+plot(1:8, qs.results.mn[1:8, 1], type = "l",
+     main = "Current: Quantile score for q(0.95)",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = range(qs.results.mn[c(1:8, 17:24), 1]),
+     xaxt = "n")
+lines(1:8, qs.results.mn[17:24, 1], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, qs.results.mn[9:16, 1], type = "l",
+     main = "Future: Quantile score for q(0.95)",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = range(qs.results.mn[c(9:16, 25:32), 1]),
+     xaxt = "n")
+lines(1:8, qs.results.mn[25:32, 1], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, qs.results.mn[1:8, 5], type = "l",
+     main = "Current: Quantile score for q(0.99)",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = range(qs.results.mn[c(1:8, 17:24), 5]),
+     xaxt = "n")
+lines(1:8, qs.results.mn[17:24, 5], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(1:8, qs.results.mn[9:16, 5], type = "l",
+     main = "Future: Quantile score for q(0.99)",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = range(qs.results.mn[c(9:16, 25:32), 5]),
+     xaxt = "n")
+lines(1:8, qs.results.mn[25:32, 5], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+dev.print(device = pdf, file = "~/Desktop/precip-qs.pdf")
+dev.off()
+
 # add in 21st row
 this.row <- 21
 this.qs <- qs.results[[this.row]]

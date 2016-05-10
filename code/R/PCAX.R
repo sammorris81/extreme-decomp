@@ -20,6 +20,9 @@
 #  EC.smooth := smoothed version of EC
 #
 ######################################################################
+if (!exists("rowSumsC")) {
+  sourceCpp(file = "pcax.cpp")
+}
 
 get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
                            init.B = NULL, iters = 10, verbose = TRUE){
@@ -105,7 +108,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
       if (fit$convergence == 0) {
         convergence.outer[i] <- TRUE
         B[i, ] <- abs(fit$par) / sum(abs(fit$par))
-        B.star[i, ] <- B[, i]^(1 / alpha)
+        B.star[i, ] <- B[i, ]^(1 / alpha)
       } else if (fit$convergence != 0) {
         convergence.outer[i] <- FALSE
       }
@@ -159,8 +162,10 @@ SSE <- function(B1, B2, B.star, Y, alpha, lambda = 1000){
   BB  <- B1^(1 / alpha)
   # B2  <- B2^(1 / alpha)
   B2  <- B.star
-  EC  <- sweep(B2, 2, BB, "+")
-  EC  <- rowSums(EC^alpha)
+  # EC.temp <- sweep(B2, 2, BB, "+")
+  EC  <- sweepC2plus(X = B2, y = BB)
+  # EC.temp <- rowSums(EC^alpha)
+  EC  <- rowSumsC(EC^alpha)
 
   # penalty term is to make sure that the bases sum to 1
   sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
@@ -174,8 +179,11 @@ SSE.grad <- function(B1, B2, B.star, Y, alpha, lambda = 1000, exclude = 1){
   # B2   <- B2^(1 / alpha)
   B2   <- B.star
 
-  BB   <- sweep(B2, 2, BB, "+")
-  EC0  <- rowSums(BB^alpha)
+  # BB   <- sweep(B2, 2, BB, "+")
+  # BB.temp <- sweep(B2, 2, BB, "+")
+  BB <- sweepC2plus(X = B2, y = BB)
+  # EC0.temp  <- rowSums(BB^alpha)
+  EC0  <- rowSumsC(BB^alpha)
 
   EC1  <- BB^(alpha - 1)
   EC1  <- sweep(EC1, 2, B1^(1 / alpha - 1), "*")

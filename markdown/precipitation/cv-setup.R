@@ -111,6 +111,12 @@ for (L in nknots[7:8]) {
   cat("Finished L = ", L, ".\n", sep = "")
 }
 
+par(mfrow = c(1, 2))
+quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf[[1]][, 4],
+           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf1[[1]][, 4],
+           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+
 #### looks like L = 35 is after things settle down.
 # get pairwise extremal coefficients
 # build ec matrix: ns x ns

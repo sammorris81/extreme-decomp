@@ -37,3 +37,31 @@ double ssebCPP(arma::vec B1, arma::mat B2, arma::vec Y, int exclude,
 
   return sse;
 }
+
+// [[Rcpp::export]]
+arma::vec rowSumsC(arma::mat X) {
+  int nrow = X.n_rows; int ncol = X.n_cols;
+
+  arma::vec out(nrow);
+  for (uword i = 0; i < nrow; i++) {
+    double total = 0;
+    for (uword j = 0; j < ncol; j++) {
+      total += X(i, j);
+    }
+    out[i] = total;
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+arma::mat sweepC2plus(arma::mat X, arma::rowvec y) {
+  int nrow = X.n_rows; int ncol = X.n_cols;
+
+  arma::mat out(nrow, ncol);
+  for (uword i = 0; i < nrow; i++) {
+    out.row(i) = X.row(i) + y;
+  }
+
+  return out;
+}

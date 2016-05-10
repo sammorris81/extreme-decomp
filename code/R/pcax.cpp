@@ -65,3 +65,19 @@ arma::mat sweepC2plus(arma::mat X, arma::rowvec y) {
 
   return out;
 }
+
+// [[Rcpp::export]]
+arma::mat getECRhoAlphaC(arma::mat w, double alpha) {
+  int n = w.n_rows;
+
+  arma::mat ec(n, n); double ec_ij;
+  for (uword i = 0; i < (n - 1); i++) {
+    for (uword j = (i + 1); j < n; j++) {
+      ec_ij = accu(pow(w.row(i) + w.row(j), alpha));
+      ec(i, j) = ec_ij;
+      ec(j, i) = ec_ij;
+    }
+  }
+
+  return(ec);
+}

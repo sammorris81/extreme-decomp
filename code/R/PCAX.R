@@ -302,12 +302,15 @@ SSE.rhoalpha <- function(rho, dw2, Y, alpha) {
   w <- w^(1 / alpha)
 
   n <- ncol(Y)
-  EC <- matrix(NA, n, n)
-  for (i in 1:(n - 1)) {
-    for (j in (i + 1):n) {
-      EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
-    }
-  }
+  # EC <- matrix(NA, n, n)
+  # for (i in 1:(n - 1)) {
+  #   for (j in (i + 1):n) {
+  #     EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
+  #   }
+  # }
+
+  EC <- getECRhoAlphaC(w = w, alpha = alpha)
+  diag(EC) <- NA
 
   if (any(is.nan(EC))) {
     return(Inf)

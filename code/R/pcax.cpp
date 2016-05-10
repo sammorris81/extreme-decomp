@@ -39,20 +39,29 @@ double ssebCPP(arma::vec B1, arma::mat B2, arma::vec Y, int exclude,
 }
 
 // [[Rcpp::export]]
-arma::vec rowSumsC(arma::mat X) {
-  int nrow = X.n_rows; int ncol = X.n_cols;
+Rcpp::NumericVector rowSumsC(arma::mat X) {
+  int nrow = X.n_rows;
 
-  arma::vec out(nrow);
+  Rcpp::NumericVector out(nrow);
   for (uword i = 0; i < nrow; i++) {
-    double total = 0;
-    for (uword j = 0; j < ncol; j++) {
-      total += X(i, j);
-    }
-    out[i] = total;
+    out[i] = accu(X.row(i));
   }
 
   return out;
 }
+
+// [[Rcpp::export]]
+Rcpp::NumericVector colSumsC(arma::mat X) {
+  int ncol = X.n_cols;
+
+  Rcpp::NumericVector out(ncol);
+  for (uword i = 0; i < ncol; i++) {
+    out[i] = accu(X.col(i));
+  }
+
+  return out;
+}
+
 
 // [[Rcpp::export]]
 arma::mat sweepC2plus(arma::mat X, arma::rowvec y) {
@@ -61,6 +70,18 @@ arma::mat sweepC2plus(arma::mat X, arma::rowvec y) {
   arma::mat out(nrow, ncol);
   for (uword i = 0; i < nrow; i++) {
     out.row(i) = X.row(i) + y;
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+arma::mat sweepC2times(arma::mat X, arma::rowvec y) {
+  int nrow = X.n_rows; int ncol = X.n_cols;
+
+  arma::mat out(nrow, ncol);
+  for (uword i = 0; i < nrow; i++) {
+    out.row(i) = X.row(i) % y;
   }
 
   return out;

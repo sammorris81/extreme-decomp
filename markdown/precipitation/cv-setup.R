@@ -83,7 +83,10 @@ for (L in nknots[7:8]) {
   alphas <- rep(0, nfolds)
   ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
+    Rprof(filename = "Rprof.out", line.profiling = TRUE)
     out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+    Rprof(filename = NULL)
+    summaryRprof(filename = "Rprof.out", lines = "show")
     B.ebf[[fold]]     <- out$est
     ec.smooth[[fold]] <- out$EC.smooth
     alphas[fold]      <- out$alpha
@@ -115,6 +118,11 @@ par(mfrow = c(1, 2))
 quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf[[1]][, 4],
            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
 quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf1[[1]][, 4],
+           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+
+quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk[[1]][, 4],
+           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk1[[1]][, 3],
            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
 
 #### looks like L = 35 is after things settle down.

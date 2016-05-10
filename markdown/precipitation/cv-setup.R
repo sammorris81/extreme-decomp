@@ -111,6 +111,32 @@ for (L in nknots[7:8]) {
   cat("Finished L = ", L, ".\n", sep = "")
 }
 
+#### looks like L = 35 is after things settle down.
+# get pairwise extremal coefficients
+# build ec matrix: ns x ns
+ec <- get.pw.ec.fmado(Y = Y)
+ec.hat <- ec$ec
+
+# Empirical basis functions
+cat("Starting estimation of empirical basis functions \n")
+out       <- get.factors.EC(ec.hat, L = L, s = s.scale)
+B.ebf     <- out$est
+ec.smooth <- out$EC.smooth
+alpha     <- out$alpha
+
+filename <- paste("ebf-", L, "-all.RData", sep = "")
+save(B.ebf, ec.smooth, alpha, file = filename)
+
+# Gaussian kernel functions
+cat("Starting estimation of Gaussian kernels \n")
+knots <- cover.design(cents.grid, nd = L)$design
+out   <- get.rho.alpha(EC = ec.hat, s = s.scale, knots = knots)
+B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
+
+filename <- paste("gsk-", L, "-all.RData", sep = "")
+save(B.gsk, alpha, knots, file = filename)
+
+
 #### plot some of the basis functions ####
 nx <- length(unique(s[, 1]))
 ny <- length(unique(s[, 2]))

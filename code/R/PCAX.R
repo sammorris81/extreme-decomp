@@ -68,10 +68,11 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
       if (iter.inner %% 5 == 0) {
         maxit <- maxit + 500
       }
+      B.star <- B^(1 / alpha)
       for (i in 1:n) {
         if (!convergence.inner[i]) {
-          fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
-                       alpha = alpha,
+          fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
+                       B2 = B, B.star = B.star, alpha = alpha,
                        lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                        method = "L-BFGS-B", control = list(maxit = maxit))
 
@@ -79,6 +80,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
           if (fit$convergence == 0) {
             convergence.inner[i] <- TRUE
             B[i, ] <- abs(fit$par) / sum(abs(fit$par))  # change if converged
+            B.star[i, ] <- B[i, ]^(1 / alpha)
           } else if (fit$convergence != 0) {
             convergence.inner[i] <- FALSE
           }
@@ -94,8 +96,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     cat("  Start convergence check \n")
     convergence.outer <- rep(FALSE, n)
     for (i in 1:n) {  # double check that everything has converged
-      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ], B2 = B,
-                   alpha = alpha,
+      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
+                   B2 = B, B.star = B.star, alpha = alpha,
                    lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                    method = "L-BFGS-B", control = list(maxit = 1000))
 
@@ -103,6 +105,7 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
       if (fit$convergence == 0) {
         convergence.outer[i] <- TRUE
         B[i, ] <- abs(fit$par) / sum(abs(fit$par))
+        B.star[i, ] <- B[, i]^(1 / alpha)
       } else if (fit$convergence != 0) {
         convergence.outer[i] <- FALSE
       }
@@ -151,10 +154,11 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
 }
 
 # SSE for row of Y-EC
-SSE <- function(B1, B2, Y, alpha, lambda = 1000){
+SSE <- function(B1, B2, B.star, Y, alpha, lambda = 1000){
 
   BB  <- B1^(1 / alpha)
-  B2  <- B2^(1 / alpha)
+  # B2  <- B2^(1 / alpha)
+  B2  <- B.star
   EC  <- sweep(B2, 2, BB, "+")
   EC  <- rowSums(EC^alpha)
 
@@ -164,10 +168,11 @@ SSE <- function(B1, B2, Y, alpha, lambda = 1000){
   return(sse)
 }
 
-SSE.grad <- function(B1, B2, Y, alpha, lambda = 1000, exclude = 1){
+SSE.grad <- function(B1, B2, B.star, Y, alpha, lambda = 1000, exclude = 1){
 
   BB   <- B1^(1 / alpha)
-  B2   <- B2^(1 / alpha)
+  # B2   <- B2^(1 / alpha)
+  B2   <- B.star
 
   BB   <- sweep(B2, 2, BB, "+")
   EC0  <- rowSums(BB^alpha)

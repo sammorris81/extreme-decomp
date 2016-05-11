@@ -62,21 +62,53 @@ Rcpp::NumericVector colSumsC(arma::mat X) {
   return out;
 }
 
-
 // [[Rcpp::export]]
-arma::mat sweepC2plus(arma::mat X, arma::rowvec y) {
-  int nrow = X.n_rows; int ncol = X.n_cols;
+Rcpp::NumericMatrix sweepC1plus(Rcpp::NumericMatrix X,
+                                Rcpp::NumericVector y) {
+  int nrow = X.nrow(); int ncol = X.ncol();
 
-  arma::mat out(nrow, ncol);
-  for (uword i = 0; i < nrow; i++) {
-    out.row(i) = X.row(i) + y;
+  Rcpp::NumericMatrix out(nrow, ncol);
+  for (uword i = 0; i < ncol; i++) {
+    out(_, i) = X(_, i) + y;
   }
 
   return out;
 }
 
 // [[Rcpp::export]]
-arma::mat sweepC2times(arma::mat X, arma::rowvec y) {
+Rcpp::NumericMatrix sweepC2plus(Rcpp::NumericMatrix X,
+                                Rcpp::NumericVector y) {
+  int nrow = X.nrow(); int ncol = X.ncol();
+
+  Rcpp::NumericMatrix out(nrow, ncol);
+  for (uword i = 0; i < nrow; i++) {
+    out(i, _) = X(i, _) + y;
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+arma::mat sweepC1times(arma::mat X,
+                       arma::colvec y) {
+  int nrow = X.n_rows; int ncol = X.n_cols;
+
+  arma::mat out(nrow, ncol);
+  for (uword i = 0; i < ncol; i++) {
+    out.col(i) = X.col(i) % y;
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+arma::mat powC(arma::mat X, double alpha) {
+  return exp(alpha * log(X));
+}
+
+// [[Rcpp::export]]
+arma::mat sweepC2times(arma::mat X,
+                       arma::rowvec y) {
   int nrow = X.n_rows; int ncol = X.n_cols;
 
   arma::mat out(nrow, ncol);

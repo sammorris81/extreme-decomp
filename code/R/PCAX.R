@@ -190,7 +190,8 @@ SSE.grad <- function(B1, B2, B.star, Y, alpha, lambda = 1000, exclude = 1){
   # EC1.t  <- sweep(EC1, 2, B1^(1 / alpha - 1), "*")
   # EC1.t  <- sweep(EC1, 2, B1.star / B1, "*")
   EC1  <- sweepC2times(EC1, B1.star / B1)
-  EC1  <- sweep(EC1, 1, Y - EC0, "*")
+  # EC1.1  <- sweep(EC1, 1, Y - EC0, "*")
+  EC1  <- sweepC1times(EC1, Y - EC0)
 
   grad <- -2 * colSums(EC1, na.rm = TRUE) +
            2 * lambda * (sum(B1) - 1)

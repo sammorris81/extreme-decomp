@@ -3,7 +3,7 @@ source(file = "./package_load.R", chdir = T)
 library(compiler)
 enableJIT(3)
 
-setMKLthreads(5)
+# setMKLthreads(5)
 ################################################################################
 #### Load in the data ##########################################################
 ################################################################################
@@ -79,7 +79,7 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots[7:8]) {
+for (L in nknots) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)

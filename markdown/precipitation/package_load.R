@@ -16,7 +16,8 @@ source(file = "../../code/R/PCAX.R", chdir = TRUE)
 source(file = "../../code/R/mcmc.R")
 
 if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
-  setMKLthreads(1)
+  # setMKLthreads(1)
+  openblas.set.num.threads(1)
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Darwin") {
   do.upload <- TRUE

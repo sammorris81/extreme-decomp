@@ -68,6 +68,10 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####
+load("precip_preprocess.RData")
+load("cv-extcoef.RData")
+nfolds <- length(cv.idx)
+openblas.set.num.threads(4)
 s.scale        <- s
 s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min          <- apply(s, 2, min)
@@ -77,7 +81,7 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots[7:8]) {
+for (L in nknots[1:4]) {
   # # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)

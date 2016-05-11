@@ -274,9 +274,11 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   }
   dw2             <- as.matrix(rdist(s, knots))^2
   dw2[dw2 < 1e-6] <- 0
+  dknots2 <- rdist(knots)^2
+  diag(dknots2) <- 0
 
   if (is.null(init.rho)) {
-    rho <- quantile(dw2, probs = 0.15)
+    rho <- min(dknots2[dknots2 != 0]) * 1.5
   }
 
   w <- getW(rho = rho, dw2 = dw2)

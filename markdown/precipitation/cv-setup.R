@@ -77,22 +77,22 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots) {
+for (L in nknots[1:4]) {
   # # Empirical basis functions
-  # cat("Starting estimation of empirical basis functions \n")
+  cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
-  # ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-  # for (fold in 1:nfolds) {
-  #   out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-  #   B.ebf[[fold]]     <- out$est
-  #   ec.smooth[[fold]] <- out$EC.smooth
-  #   alphas[fold]      <- out$alpha
-  #
-  #   cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
-  # }
-  #
-  # filename <- paste("ebf-", L, ".RData", sep = "")
-  # save(B.ebf, ec.smooth, alphas, file = filename)
+  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
+  for (fold in 1:nfolds) {
+    out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
+    B.ebf[[fold]]     <- out$est
+    ec.smooth[[fold]] <- out$EC.smooth
+    alphas[fold]      <- out$alpha
+
+    cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
+  }
+
+  filename <- paste("ebf-", L, ".RData", sep = "")
+  save(B.ebf, ec.smooth, alphas, file = filename)
 
   # Gaussian kernel functions
   set.seed(5687 + L)  # knots + L
@@ -101,7 +101,7 @@ for (L in nknots) {
   B.gsk <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
     out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s.scale, knots = knots,
-                           init.rho = 0.2)
+                           init.rho = 0.3)
     B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
     alphas[fold]  <- out$alpha
 
@@ -109,7 +109,7 @@ for (L in nknots) {
   }
 
   filename <- paste("gsk-", L, ".RData", sep = "")
-  # save(B.gsk, alphas, knots, file = filename)
+  save(B.gsk, alphas, knots, file = filename)
 
   cat("Finished L = ", L, ".\n", sep = "")
 }

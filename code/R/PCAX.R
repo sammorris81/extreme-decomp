@@ -296,6 +296,7 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   rho <- fit$par
   if (fit$convergence != 0) {
     cat(" Warning, optim returned convergence code", fit$convergence, "\n")
+    cat(" Message: ", fit$message, "\n")
   }
 
   tock <- proc.time()[3]

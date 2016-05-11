@@ -77,7 +77,7 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots[1:4]) {
+for (L in nknots[5:6]) {
   # # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)

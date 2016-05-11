@@ -1,7 +1,5 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
-library(compiler)
-enableJIT(3)
 
 # setMKLthreads(5)
 ################################################################################

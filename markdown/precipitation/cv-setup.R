@@ -1,5 +1,7 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
+library(compiler)
+enableJIT(3)
 
 setMKLthreads(5)
 ################################################################################
@@ -83,10 +85,7 @@ for (L in nknots[7:8]) {
   alphas <- rep(0, nfolds)
   ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
-    Rprof(filename = "Rprof.out", line.profiling = TRUE)
     out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
-    Rprof(filename = NULL)
-    summaryRprof(filename = "Rprof.out", lines = "show")
     B.ebf[[fold]]     <- out$est
     ec.smooth[[fold]] <- out$EC.smooth
     alphas[fold]      <- out$alpha

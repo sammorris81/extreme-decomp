@@ -279,7 +279,10 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   diag(dknots2) <- 0
 
   if (is.null(init.rho)) {
-    rho <- min(dknots2[dknots2 != 0]) * 1.5
+    rho <- max(dknots2[dknots2 != 0]) * 0.2
+    print(rho)
+  } else {
+    rho <- init.rho
   }
 
   w <- getW(rho = rho, dw2 = dw2)

@@ -81,7 +81,7 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots[1:4]) {
+for (L in nknots[3:4]) {
   # # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
@@ -134,6 +134,7 @@ quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk1[[1]][, 3],
 # build ec matrix: ns x ns
 ec <- get.pw.ec.fmado(Y = Y)
 ec.hat <- ec$ec
+L <- 35
 
 # Empirical basis functions
 cat("Starting estimation of empirical basis functions \n")

@@ -4,6 +4,8 @@
 # cv     := which cross-validation testing set to use
 # L      := the number of basis functions to use
 options(warn = 2)
+library(compiler)
+enableJIT(3)
 
 # basis functions are precomputed, so if we change cv settings, we'll
 # need to rerun all of cv-setup.

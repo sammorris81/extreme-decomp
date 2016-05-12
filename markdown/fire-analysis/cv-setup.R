@@ -104,7 +104,7 @@ cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots) {
+for (L in nknots[7:8]) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
@@ -128,7 +128,7 @@ for (L in nknots) {
   B.gsk <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
     out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s, knots = knots,
-                           init.rho = 0.3)
+                           init.rho = 0.25)
     B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
     alphas[fold]  <- out$alpha
 

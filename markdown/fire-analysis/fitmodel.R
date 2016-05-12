@@ -5,6 +5,11 @@
 # L      := the number of basis functions to use
 options(warn = 2)
 
+# basis functions are precomputed, so if we change cv settings, we'll
+# need to rerun all of cv-setup.
+basis.file   <- paste("./ebf-", L, ".RData", sep = "")
+gsk.file     <- paste("./gsk-", L, ".RData", sep = "")
+
 #### load in the data ####
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 

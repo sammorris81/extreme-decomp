@@ -73,29 +73,74 @@ neighbors <- 5
 d <- rdist(s)
 diag(d) <- 0
 
-ec.hat.2 <- vector(mode = "list", length = nfolds)
-for (fold in 1:nfolds) {
-  Y.tst <- Y
-  Y.tst[cv.idx[[fold]]] <- NA
+save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
-  # take the 5 closest neighbors when finding the threshold
-  # for (i in 1:ns) {
-  #   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
-  #   thresh80[i] <- quantile(Y.tst[these, ], probs = 0.80, na.rm = TRUE)
-  #   thresh90[i] <- quantile(Y.tst[these, ], probs = 0.90, na.rm = TRUE)
-  #   thresh95[i] <- quantile(Y.tst[these, ], probs = 0.95, na.rm = TRUE)
-  #   thresh99[i] <- quantile(Y.tst[these, ], probs = 0.99, na.rm = TRUE)
-  # }
-  # the 5nn approach sometimes gives thresholds that are over 100% of the
-  # marginal data.
-  # thresh80 <- apply(Y.tst, 1, quantile, probs = 0.80, na.rm = TRUE)
-  # thresh90 <- apply(Y.tst, 1, quantile, probs = 0.90, na.rm = TRUE)
+#### Try to precalculate the basis functions #########
+#### Hoping to save a little time in the analysis ####
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+load("cv-extcoef.RData")
+nfolds <- length(cv.idx)
+d <- rdist(cents)
+diag(d) <- 0
+n <- nrow(cents)
 
-  ec <- get.pw.ec.fmado(Y = Y.tst, thresh = 0.90, thresh.quant = TRUE)
-  ec.hat.2[[fold]] <- ec$ec
+# get candidate knot grid for Gaussian kernel functions
+grid.x <- seq(min(cents[, 1]), max(cents[, 1]), length = 100)
+grid.y <- seq(min(cents[, 2]), max(cents[, 2]), length = 100)
+cents.grid <- as.matrix(expand.grid(grid.x, grid.y))
+inGA <- map.where("state", x = cents.grid[, 1], y = cents.grid[, 2])
+cents.grid <- cents.grid[inGA == "georgia", ]
+cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
+
+# standardize the locations
+s <- cents
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min   <- apply(s, 2, min)
+s[, 1] <- (s[, 1] - s.min[1]) / s.scale
+s[, 2] <- (s[, 2] - s.min[2]) / s.scale
+cents.grid[, 1] <- (cents.grid[, 1] - s.min[1]) / s.scale
+cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
+
+nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
+
+for (L in nknots) {
+  # Empirical basis functions
+  cat("Starting estimation of empirical basis functions \n")
+  alphas <- rep(0, nfolds)
+  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
+  for (fold in 1:nfolds) {
+    out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s)
+    B.ebf[[fold]]     <- out$est
+    ec.smooth[[fold]] <- out$EC.smooth
+    alphas[fold]      <- out$alpha
+
+    cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
+  }
+
+  filename <- paste("ebf-", L, ".RData", sep = "")
+  save(B.ebf, ec.smooth, alphas, file = filename)
+
+  # Gaussian kernel functions
+  set.seed(5687 + L)  # knots + L
+  cat("Starting estimation of Gaussian kernels \n")
+  knots <- cover.design(cents.grid, nd = L)$design
+  B.gsk <- vector(mode = "list", length = nfolds)
+  for (fold in 1:nfolds) {
+    out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s, knots = knots,
+                           init.rho = 0.3)
+    B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
+    alphas[fold]  <- out$alpha
+
+    cat("  Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
+  }
+
+  filename <- paste("gsk-", L, ".RData", sep = "")
+  save(B.gsk, alphas, knots, file = filename)
+
+  cat("Finished L = ", L, ".\n", sep = "")
 }
 
-save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 
 library(ggplot2)
 library(gridExtra)

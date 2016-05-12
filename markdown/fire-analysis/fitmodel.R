@@ -36,6 +36,8 @@ cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
 #### Load in cross-validation setup ############################################
 ################################################################################
 load(file = "./cv-extcoef.RData")
+load(file = basis.file)
+load(file = gsk.file)
 
 set.seed(5668)  # knot
 # get the knot locations
@@ -45,21 +47,14 @@ knots <- cover.design(cents.grid, nd = L)$design
 #### Get weight functions for spatial process ##################################
 ################################################################################
 if (process == "ebf") {
-  cat("Start basis function estimation \n")
-  # basis function estimates using only the training data
-  out       <- get.factors.EC(ec.hat[[cv]], L = L, s = s)
-  B.sp      <- out$est
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
+  B.sp      <- B.ebf[[cv]]
+  ec.smooth <- ec.smooth[[cv]]
+  alpha     <- alphas[cv]
 } else {
-  cat("Start estimation of rho and alpha \n")
-  # alpha and rho estimates using only the training data
-  out       <- get.rho.alpha(EC = ec.hat[[cv]], s = s, knots = knots)
-  rho       <- out$rho
-  ec.smooth <- out$EC.smooth
-  alpha     <- out$alpha
-  dw2       <- out$dw2
-  B.sp      <- getW(rho = rho, dw2 = dw2)  # using w as basis functions in MCMC
+  # get the knot locations
+  # knots <- cover.design(cents.grid, nd = L)$design
+  alpha <- alphas[cv]
+  B.sp  <- B.gsk[[cv]]
 }
 
 ################################################################################

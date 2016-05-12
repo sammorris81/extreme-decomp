@@ -137,7 +137,7 @@ fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
                 beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
                 # iters = iters, burn = burn, update = update, iterplot = TRUE)
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
+                iters = iters, burn = burn, update = update, iterplot = FALSE)
 cat("Finished fit and predict \n")
 
 # mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))

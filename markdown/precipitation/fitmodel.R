@@ -49,7 +49,7 @@ if (process == "ebf") {
   alpha     <- alphas[cv]
 } else {
   # get the knot locations
-  knots <- cover.design(cents.grid, nd = L)$design
+  # knots <- cover.design(cents.grid, nd = L)$design
   alpha <- alphas[cv]
   B.sp  <- B.gsk[[cv]]
 }

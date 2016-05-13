@@ -49,7 +49,6 @@ if (process == "ebf") {
   alpha     <- alphas[cv]
 } else {
   # get the knot locations
-  knots <- cover.design(cents.grid, nd = L)$design
   alpha <- alphas[cv]
   B.sp  <- B.gsk[[cv]]
 }
@@ -67,8 +66,6 @@ if (margin == "ebf") {
   }
 } else if (margin == "gsk") {
   if (process == "ebf") {
-    # get the knot locations
-    knots <- cover.design(cents.grid, nd = L)$design
     B.cov <- B.gsk[[cv]]
   } else{
     cat("B.cov = B.sp \n")

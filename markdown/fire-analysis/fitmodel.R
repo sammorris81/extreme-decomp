@@ -46,10 +46,6 @@ load(file = "./cv-extcoef.RData")
 load(file = basis.file)
 load(file = gsk.file)
 
-set.seed(5668)  # knot
-# get the knot locations
-knots <- cover.design(cents.grid, nd = L)$design
-
 ################################################################################
 #### Get weight functions for spatial process ##################################
 ################################################################################
@@ -58,8 +54,6 @@ if (process == "ebf") {
   ec.smooth <- ec.smooth[[cv]]
   alpha     <- alphas[cv]
 } else {
-  # get the knot locations
-  # knots <- cover.design(cents.grid, nd = L)$design
   alpha <- alphas[cv]
   B.sp  <- B.gsk[[cv]]
 }

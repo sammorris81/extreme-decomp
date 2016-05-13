@@ -34,7 +34,7 @@ timing <- data.frame(timing = double(), hostname = factor(),
                      proc = factor(), margin = factor(),
                      basis = factor(), fold = factor())
 rownames <- rep(0, nbases * nmargs * nprocs + 1)
-for (i in 1:(length(files) - 1)) {  # last file is timing.txt
+for (i in 1:(length(files))) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])
@@ -108,8 +108,8 @@ rownames(qs.results.mn) <- rownames
 # Brier scores
 quartz(width = 8, height = 8)
 par(mfrow = c(2, 2))
-these.ebf <- 1:5
-these.gsk <- 9:12
+these.ebf <- 1:3
+these.gsk <- 9:10
 plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
      main = "Brier score for q(0.95)",
      ylab = "Brier score", xlab = "Knots",

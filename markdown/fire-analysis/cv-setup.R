@@ -150,7 +150,7 @@ L <- 35
 
 # Empirical basis functions
 cat("Starting estimation of empirical basis functions \n")
-out       <- get.factors.EC(ec.hat, L = L, s = s.scale)
+out       <- get.factors.EC(ec.hat, L = L, s = s)
 B.ebf     <- out$est
 ec.smooth <- out$EC.smooth
 alpha     <- out$alpha
@@ -162,7 +162,7 @@ save(B.ebf, ec.smooth, alpha, file = filename)
 cat("Starting estimation of Gaussian kernels \n")
 set.seed(5687)
 knots <- cover.design(cents.grid, nd = L)$design
-out   <- get.rho.alpha(EC = ec.hat, s = s.scale, knots = knots)
+out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots)
 B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
 
 filename <- paste("gsk-", L, "-all.RData", sep = "")

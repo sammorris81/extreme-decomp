@@ -34,7 +34,7 @@ timing <- data.frame(timing = double(), hostname = factor(),
                      proc = factor(), time = factor(),
                      basis = factor(), fold = factor())
 rownames <- rep(0, ntimes * nbases * nmargs * nprocs)
-for (i in 1:(length(files) - 1)) {  # last file is timing.txt
+for (i in 1:(length(files))) {  # last file is timing.txt
   split     <- unlist(strsplit(unlist(strsplit(files[i], "-")), "[.]"))
   # files are named by the number of basis functions which skips numbers
   proc.idx  <- which(procs == split[1])

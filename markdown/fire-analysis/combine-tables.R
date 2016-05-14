@@ -108,8 +108,8 @@ rownames(qs.results.mn) <- rownames
 # Brier scores
 quartz(width = 8, height = 8)
 par(mfrow = c(2, 2))
-these.ebf <- 1:3
-these.gsk <- 9:10
+these.ebf <- 1:8
+these.gsk <- 9:16
 plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
      main = "Brier score for q(0.95)",
      ylab = "Brier score", xlab = "Knots",

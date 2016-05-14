@@ -109,50 +109,47 @@ for (p in 1:nprocs) {
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
 
+these.ebf.cur <- 1:8
+these.ebf.fut <- 9:16
+these.gsk.cur <- 17:24
+these.gsk.fut <- 25:32
+
 # Brier scores
 quartz(width = 8, height = 8)
 par(mfrow = c(2, 2))
-these.ebf <- 1:8
-these.gsk <- 17:24
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
+plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1], type = "l",
      main = "Current: Brier score for q(0.95)",
      ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 1]),
+     ylim = range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), 1]),
      xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1], lty = 2)
+lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 9:15
-these.gsk <- 25:31
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
+plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1], type = "l",
      main = "Future: Brier score for q(0.95)",
      ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 1]),
+     ylim = range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), 1]),
      xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1], lty = 2)
+lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 1:8
-these.gsk <- 17:24
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 2], type = "l",
+plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2], type = "l",
      main = "Current: Brier score for q(0.99)",
      ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 2]),
+     ylim = range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), 2]),
      xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2], lty = 2)
+lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 2], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 9:15
-these.gsk <- 25:31
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 2], type = "l",
+plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2], type = "l",
      main = "Future: Brier score for q(0.99)",
      ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 2]),
+     ylim = range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), 2]),
      xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2], lty = 2)
+lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 dev.print(device = pdf, file = "~/Desktop/precip-bs.pdf")
@@ -161,47 +158,39 @@ dev.off()
 #### Quantile scores
 quartz(width = 8, height = 8)
 par(mfrow = c(2, 2))
-these.ebf <- 1:8
-these.gsk <- 17:24
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
+plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 1], type = "l",
      main = "Current: Quantile score for q(0.95)",
      ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
+     ylim = range(qs.results.mn[c(these.ebf.cur, these.gsk.cur), 1]),
      xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
+lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 9:15
-these.gsk <- 25:31
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
+plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 1], type = "l",
      main = "Future: Quantile score for q(0.95)",
      ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
+     ylim = range(qs.results.mn[c(these.ebf.fut, these.gsk.fut), 1]),
      xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
+lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 1:8
-these.gsk <- 17:24
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 5], type = "l",
+plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 5], type = "l",
      main = "Current: Quantile score for q(0.99)",
      ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 5]),
+     ylim = range(qs.results.mn[c(these.ebf.cur, these.gsk.cur), 5]),
      xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 2)
+lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 5], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-these.ebf <- 9:15
-these.gsk <- 25:31
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 5], type = "l",
+plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5], type = "l",
      main = "Future: Quantile score for q(0.99)",
      ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 5]),
+     ylim = range(qs.results.mn[c(these.ebf.fut, these.gsk.fut), 5]),
      xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 2)
+lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 5], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 dev.print(device = pdf, file = "~/Desktop/precip-qs.pdf")

@@ -11,12 +11,12 @@ load(file = "precip_preprocess.RData")
 
 # basis functions are precomputed, so if we change cv settings, we'll
 # need to rerun all of cv-setup.
-basis.file   <- paste("./ebf-", L, ".RData", sep = "")
-gsk.file     <- paste("./gsk-", L, ".RData", sep = "")
+basis.file   <- paste("./ebf-", L, "-all.RData", sep = "")
+gsk.file     <- paste("./gsk-", L, "-all.RData", sep = "")
 results.file <- paste("./cv-results/", process, "-", time, "-", L,
-                      "-", cv, ".RData", sep = "")
+                      "-all.RData", sep = "")
 table.file   <- paste("./cv-tables/", process, "-", time, "-", L,
-                      "-", cv, ".txt", sep = "")
+                      "-all.txt", sep = "")
 
 #### spatial setup ####
 d <- rdist(s)
@@ -36,7 +36,7 @@ cents.grid <- s.scale
 ################################################################################
 #### Load in cross-validation setup ############################################
 ################################################################################
-load(file = "./cv-extcoef.RData")
+# load(file = "./cv-extcoef.RData")
 load(file = basis.file)
 load(file = gsk.file)
 
@@ -44,13 +44,13 @@ load(file = gsk.file)
 #### Get weight functions for spatial process ##################################
 ################################################################################
 if (process == "ebf") {
-  B.sp      <- B.ebf[[cv]]
-  ec.smooth <- ec.smooth[[cv]]
-  alpha     <- alphas[cv]
+  B.sp      <- B.ebf
+  ec.smooth <- ec.smooth
+  alpha     <- alpha
 } else {
   # get the knot locations
-  alpha <- alphas[cv]
-  B.sp  <- B.gsk[[cv]]
+  alpha <- alpha
+  B.sp  <- B.gsk
 }
 
 ################################################################################
@@ -62,11 +62,11 @@ if (margin == "ebf") {
     B.cov <- B.sp
   } else {  # we need to construct the empirical basis functions
     cat("Estimating basis functions for covariates \n")
-    B.cov <- B.ebf[[cv]]
+    B.cov <- B.ebf
   }
 } else if (margin == "gsk") {
   if (process == "ebf") {
-    B.cov <- B.gsk[[cv]]
+    B.cov <- B.gsk
   } else{
     cat("B.cov = B.sp \n")
     B.cov <- B.sp
@@ -88,15 +88,9 @@ Y.all <- Y
 
 ## Y contains both current and future data, so subset on the relevant years
 if (time == "current") {
-  this.cv <- cv.idx[[cv]][, 1:nt]
   Y <- Y[, 1:nt]
-  Y.tst <- Y[this.cv]  # save the testing data to validate
-  Y[this.cv] <- NA  # remove the testing data
 } else {
-  this.cv <- cv.idx[[cv]][, (nt + 1):(2 * nt)]
   Y <- Y[, (nt + 1):(2 * nt)]
-  Y.tst <- Y[this.cv]
-  Y[this.cv] <- NA
 }
 
 ## standardize elevations
@@ -169,9 +163,6 @@ for (i in 1:ns) {
 thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
-thresh90.tst <- thresh90[this.cv]
-thresh95.tst <- thresh95[this.cv]
-thresh99.tst <- thresh99[this.cv]
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -246,17 +237,16 @@ cat("Finished fit and predict \n")
 #   }
 # }
 
-# calculate the scores
-probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
-qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs,
-                         validate = Y.tst)
-bs.results95 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
-                           thresh = thresh95.tst)
-bs.results99 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
-                           thresh = thresh99.tst)
-results <- c(qs.results, bs.results95, bs.results99, fit$timing)
-results <- c(results, Sys.info()["nodename"])
-names(results) <- c(probs.for.qs, "bs-95", "bs-99", "timing", "system")
+# # calculate the scores
+# probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)
+# qs.results <- QuantScore(preds = fit$y.pred, probs = probs.for.qs,
+#                          validate = Y.tst)
+# bs.results95 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+#                            thresh = thresh95.tst)
+# bs.results99 <- BrierScore(preds = fit$y.pred, validate = Y.tst,
+#                            thresh = thresh99.tst)
+results <- c(fit$timing, Sys.info()["nodename"])
+names(results) <- c("timing", "system")
 
 write.table(results, file = table.file)
 
@@ -267,8 +257,8 @@ if (do.upload) {
   system(upload.cmd)
 }
 
-save(B.sp, knots, thresh90, thresh95, thresh99, Y.tst,
-     alpha, fit, cv.idx, results, file = results.file)
+save(B.sp, knots, thresh90, thresh95, thresh99,
+     alpha, fit, results, file = results.file)
 
 # np <- 2 + L * 2  # for a single year (int, t, B1...BL, t * (B1...BL))
 # np <- 3 + L  # for a single year (t, elev, log(elev), B1...BL) - No intercept

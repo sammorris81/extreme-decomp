@@ -171,7 +171,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 100
 
-# iters <- 100; burn <- 50; update <- 10  # for testing
+iters <- 100; burn <- 50; update <- 10  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")

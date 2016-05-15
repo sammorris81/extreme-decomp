@@ -118,7 +118,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <-100; burn <- 50; update <- 10  # for testing
+# iters <-100; burn <- 50; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc

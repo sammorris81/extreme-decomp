@@ -109,10 +109,10 @@ for (p in 1:nprocs) {
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
 
-these.ebf.cur <- 1:8
-these.ebf.fut <- 9:16
-these.gsk.cur <- 17:24
-these.gsk.fut <- 25:32
+these.ebf.cur <- c(1:5, 7:8)
+these.ebf.fut <- c(9:13, 15:16)
+these.gsk.cur <- c(17:21, 23:24)
+these.gsk.fut <- c(25:29, 31:32)
 
 # Brier scores
 quartz(width = 8, height = 8)

@@ -1,6 +1,7 @@
 rm(list = ls())
 
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+Y <- t(Y)
 load(file = "cv-extcoef.RData")
 nfolds <- length(cv.idx)
 procs <- c("ebf", "gsk")  # what process determines the spatial structure
@@ -105,6 +106,9 @@ for (p in 1:nprocs) {
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
 
+round(bs.results.mn * 100, 3)
+round(qs.results.mn[, c(1, 5)], 3)
+
 # Brier scores
 quartz(width = 8, height = 8)
 par(mfrow = c(2, 2))
@@ -152,6 +156,177 @@ dev.off()
 
 round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)
+
+#### Panel for beta_time EBF
+rm(list = ls())
+source(file = "./package_load.R", chdir = T)
+library(fields)
+load("./cv-results/ebf-gsk-35-all.RData")
+load("./ebf-35-all.RData")
+load("./gsk-35-all.RData")
+#### spatial setup ####
+# get Georgia coordinates from georgia_preprocess in code/analysis/fire
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+Y <- t(Y)
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+
+# get candidate knot grid for Gaussian kernel functions
+grid.x <- seq(min(cents[, 1]), max(cents[, 1]), length = 100)
+grid.y <- seq(min(cents[, 2]), max(cents[, 2]), length = 100)
+cents.grid <- as.matrix(expand.grid(grid.x, grid.y))
+inGA <- map.where("state", x = cents.grid[, 1], y = cents.grid[, 2])
+cents.grid <- cents.grid[inGA == "georgia", ]
+cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
+
+# standardize the locations
+s <- cents
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min   <- apply(s, 2, min)
+s[, 1] <- (s[, 1] - s.min[1]) / s.scale
+s[, 2] <- (s[, 2] - s.min[2]) / s.scale
+cents.grid[, 1] <- (cents.grid[, 1] - s.min[1]) / s.scale
+cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
+
+dw2 <- rdist(s, knots)^2
+dw2[dw2 < 1e-4] <- 0
+ns <- nrow(Y)
+niters <- length(fit$bw)
+L <- nrow(knots)
+beta.mu.time <- beta.sig.time <- matrix(0, nrow = niters, ncol = ns)
+for (i in 1:niters) {
+  B <- makeW(dw2 = dw2, rho = fit$bw[i])
+  beta.mu.time[i, ] <- fit$beta1[i, 2] + B %*% fit$beta1[i, (L + 3):(2 * L + 2)]
+  beta.sig.time[i, ] <- fit$beta2[i, 2] + B %*% fit$beta2[i, (L + 3):(2 * L + 2)]
+}
+
+beta.mu.mean <- apply(beta.mu.time, 2, mean)
+beta.mu.sd   <- apply(beta.mu.time, 2, sd)
+beta.mu.ppos <- apply(beta.mu.time > 0, 2, mean)
+beta.sig.mean <- apply(beta.sig.time, 2, mean)
+beta.sig.sd   <- apply(beta.sig.time, 2, sd)
+beta.sig.ppos <- apply(beta.sig.time > 0, 2, mean)
+
+title <- bquote(paste("EBF: Posterior mean of ",
+                      beta[paste(mu, ", time")]))
+legend.title <- bquote(paste("E(", beta[paste(mu, ", time")], ")"))
+p1 <- map.ga.ggplot(Y = beta.mu.mean, midpoint = 0,
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("EBF: Posterior SD of ",
+                      beta[paste(mu, ", time")]))
+legend.title <- bquote(paste("SD(", beta[paste(mu, ", time")], ")"))
+p2 <- map.ga.ggplot(Y = beta.mu.sd, midpoint = median(beta.mu.sd),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("EBF: Posterior P(",
+                      beta[paste(mu, ", time")], "> 0)"))
+legend.title <- bquote(paste("P(", beta[paste(mu, ", time")], "> 0)"))
+p3 <- map.ga.ggplot(Y = beta.mu.ppos, midpoint = 0.5, limits = c(0, 1),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("EBF: Posterior mean of ",
+                      beta[paste(sigma, ", time")]))
+legend.title <- bquote(paste("E(", beta[paste(sigma, ", time")], ")"))
+p4 <- map.ga.ggplot(Y = beta.sig.mean, midpoint = 0,
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("EBF: Posterior SD of ",
+                      beta[paste(sigma, ", time")]))
+legend.title <- bquote(paste("SD(", beta[paste(sigma, ", time")], ")"))
+p5 <- map.ga.ggplot(Y = beta.sig.sd, midpoint = median(beta.sig.sd),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("EBF: Posterior P(",
+                      beta[paste(sigma, ", time")], "> 0)"))
+legend.title <- bquote(paste("P(", beta[paste(sigma, ", time")], "> 0)"))
+p6 <- map.ga.ggplot(Y = beta.sig.ppos, midpoint = 0.5, limits = c(0, 1),
+              main = title, fill.legend = legend.title)
+multiplot(p1, p2, p3, p4, p5, p6, cols = 2)
+
+rm(list = ls())
+source(file = "./package_load.R", chdir = T)
+library(fields)
+load("./cv-results/gsk-gsk-35-all.RData")
+load("./ebf-35-all.RData")
+load("./gsk-35-all.RData")
+#### spatial setup ####
+# get Georgia coordinates from georgia_preprocess in code/analysis/fire
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
+Y <- t(Y)
+load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+
+# get candidate knot grid for Gaussian kernel functions
+grid.x <- seq(min(cents[, 1]), max(cents[, 1]), length = 100)
+grid.y <- seq(min(cents[, 2]), max(cents[, 2]), length = 100)
+cents.grid <- as.matrix(expand.grid(grid.x, grid.y))
+inGA <- map.where("state", x = cents.grid[, 1], y = cents.grid[, 2])
+cents.grid <- cents.grid[inGA == "georgia", ]
+cents.grid <- cents.grid[rowSums(is.na(cents.grid)) == 0, ]
+
+# standardize the locations
+s <- cents
+s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min   <- apply(s, 2, min)
+s[, 1] <- (s[, 1] - s.min[1]) / s.scale
+s[, 2] <- (s[, 2] - s.min[2]) / s.scale
+cents.grid[, 1] <- (cents.grid[, 1] - s.min[1]) / s.scale
+cents.grid[, 2] <- (cents.grid[, 2] - s.min[2]) / s.scale
+
+dw2 <- rdist(s, knots)^2
+dw2[dw2 < 1e-4] <- 0
+ns <- nrow(Y)
+niters <- length(fit$bw)
+L <- nrow(knots)
+beta.mu.time <- beta.sig.time <- matrix(0, nrow = niters, ncol = ns)
+for (i in 1:niters) {
+  B <- makeW(dw2 = dw2, rho = fit$bw[i])
+  beta.mu.time[i, ] <- fit$beta1[i, 2] + B %*% fit$beta1[i, (L + 3):(2 * L + 2)]
+  beta.sig.time[i, ] <- fit$beta2[i, 2] + B %*% fit$beta2[i, (L + 3):(2 * L + 2)]
+}
+
+beta.mu.mean <- apply(beta.mu.time, 2, mean)
+beta.mu.sd   <- apply(beta.mu.time, 2, sd)
+beta.mu.ppos <- apply(beta.mu.time > 0, 2, mean)
+beta.sig.mean <- apply(beta.sig.time, 2, mean)
+beta.sig.sd   <- apply(beta.sig.time, 2, sd)
+beta.sig.ppos <- apply(beta.sig.time > 0, 2, mean)
+
+title <- bquote(paste("GSK: Posterior mean of ",
+                      beta[paste(mu, ", time")]))
+legend.title <- bquote(paste("E(", beta[paste(mu, ", time")], ")"))
+p1 <- map.ga.ggplot(Y = beta.mu.mean, midpoint =0,
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("GSK: Posterior SD of ",
+                      beta[paste(mu, ", time")]))
+legend.title <- bquote(paste("SD(", beta[paste(mu, ", time")], ")"))
+p2 <- map.ga.ggplot(Y = beta.mu.sd, midpoint = median(beta.mu.sd),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("GSK: Posterior P(",
+                      beta[paste(mu, ", time")], "> 0)"))
+legend.title <- bquote(paste("P(", beta[paste(mu, ", time")], "> 0)"))
+p3 <- map.ga.ggplot(Y = beta.mu.ppos, midpoint = 0.5, limits = c(0, 1),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("GSK: Posterior mean of ",
+                      beta[paste(sigma, ", time")]))
+legend.title <- bquote(paste("E(", beta[paste(sigma, ", time")], ")"))
+p4 <- map.ga.ggplot(Y = beta.sig.mean, midpoint = 0,
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("GSK: Posterior SD of ",
+                      beta[paste(sigma, ", time")]))
+legend.title <- bquote(paste("SD(", beta[paste(sigma, ", time")], ")"))
+p5 <- map.ga.ggplot(Y = beta.sig.sd, midpoint = median(beta.sig.sd),
+              main = title, fill.legend = legend.title)
+
+title <- bquote(paste("GSK: Posterior P(",
+                      beta[paste(sigma, ", time")], "> 0)"))
+legend.title <- bquote(paste("P(", beta[paste(sigma, ", time")], "> 0)"))
+p6 <- map.ga.ggplot(Y = beta.sig.ppos, midpoint = 0.5, limits = c(0, 1),
+              main = title, fill.legend = legend.title)
+multiplot(p1, p2, p3, p4, p5, p6, cols = 2)
 
 # add in 21st row
 this.row <- 21

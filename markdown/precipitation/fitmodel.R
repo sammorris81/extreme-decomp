@@ -198,7 +198,7 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta2.sd = 1, beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
-                time.interact = FALSE,
+                time.interact = TRUE,
                 iters = iters, burn = burn, update = update, iterplot = FALSE)
 #                iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")

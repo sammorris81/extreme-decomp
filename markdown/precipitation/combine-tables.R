@@ -152,7 +152,7 @@ plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2], type = "l",
 lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-dev.print(device = pdf, file = "~/Desktop/precip-bs.pdf")
+dev.print(device = pdf, file = "./plots/precip-bs.pdf")
 dev.off()
 
 #### Quantile scores
@@ -193,7 +193,31 @@ plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5], type = "l",
 lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 5], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-dev.print(device = pdf, file = "~/Desktop/precip-qs.pdf")
+dev.print(device = pdf, file = "./plots/precip-qs.pdf")
+dev.off()
+
+# posterior of time coefficient
+load("./cv-results/ebf-current-35-all.RData")
+beta1 <- fit$beta1[, 2]
+beta2 <- fit$beta2[, 2]
+load("./cv-results/gsk-current-35-all.RData")
+beta1 <- cbind(beta1, fit$beta1[, 2])
+beta2 <- cbind(beta2, fit$beta2[, 2])
+load("./cv-results/ebf-future-35-all.RData")
+beta1 <- cbind(beta1, fit$beta1[, 2])
+beta2 <- cbind(beta2, fit$beta2[, 2])
+load("./cv-results/gsk-future-35-all.RData")
+beta1 <- cbind(beta1, fit$beta1[, 2])
+beta2 <- cbind(beta2, fit$beta2[, 2])
+quartz(width = 12, height = 6)
+par(mfrow = c(1, 2))
+boxplot(beta1, xlab = "", xaxt = "n")
+axis(1, at = 1:4,
+     labels = c("Current EBF", "Current GSK", "Future EBF", "Future GSK"))
+boxplot(beta2, xlab = "", xaxt = "n")
+axis(1, at = 1:4,
+     labels = c("Current EBF", "Current GSK", "Future EBF", "Future GSK"))
+dev.print(device = pdf, file = "./plots/precip-post-time.pdf")
 dev.off()
 
 # add in 21st row

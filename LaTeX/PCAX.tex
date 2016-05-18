@@ -50,7 +50,7 @@
 Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal setting in Section \ref{s:estimation}.
 To focus attention on the extreme values, we emphasize the statistical model for exceedances above a location-specific threshold $T(\bs)$.
 We begin by specifying a spatial model for the complete data $Y(\bs)$ and then use the censored likelihood defined by $T(\bs)$ for inference as described in Section \ref{s:MCMC}.
-Although the model presented implements a censored likelihood, it should be noted that the model also can fit max-stable data by setting $T(\bs) = -\infty$.
+Although the model presented implements a censored likelihood, the model also can fit uncensored data (such as block-maxima) by setting $T(\bs) = -\infty$.
 
 Spatial dependence is captured by modeling $Y(\bs)$ as a max-stable process (ref).
 Max-stable processes have generalized extremal value (GEV; see Appendix A.1) marginal distribution.
@@ -170,7 +170,7 @@ $\sigma_{it}^* = \alpha\sigma_{it}\theta_{it}^\xi$, and $\xi^* = \alpha\xi$.
 Therefore, the conditional likelihood conveniently factors across observations; marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence.
 To focus on the extreme values above the local threshold $T_i$, we use the censored likelihood
 \beq\label{g}
-d(y;\theta_{it},\Theta_{it})  =
+d(y;\theta_{it},\Theta_{it}, T_i)  =
 \left\{\begin{array}{ll}
     F(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y \le T_i \\
   f(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y>T_i,
@@ -181,7 +181,7 @@ where $F$ and $f$ are the GEV distribution and density functions, respectively, 
 
 In summary, given the estimates of $\alpha$ and $\bB$, the hierarchical model is
 \beqn \label{bayesmodel}
-  Y_{it} |\theta_{ij} & \indep & d(y;\theta_{it},\Theta_{it}) \\
+  Y_{it} |\theta_{ij} & \indep & d(y;\theta_{it},\Theta_{it}, T_i) \\
   \theta_{it} &=& \left(\sum_{l=1}^L{\hat B}_{il}^{1/\alphahat}A_{lt}\right)^{\alphahat}
   \mbox{\ \ \ where \ \ \ }
   A_{lt} \iid PS(\alphahat)\nonumber\\
@@ -190,38 +190,34 @@ In summary, given the estimates of $\alpha$ and $\bB$, the hierarchical model is
   \mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2. \nonumber
 \eeqn
 To complete the Bayesian model, we select independent normal priors with mean zero and variance $\sigma^2_1$ and $\sigma^2_2$ for the components of $\bbeta_1$ and $\bbeta_2$ respectively, and $\xi\sim \mbox{Normal}(0,0.5^2)$.
-We use inverse gamma (1, 1) priors for $\sigma^2_1$ and $\sigma^2_2$.
+We use InvGamma(1, 1) priors for $\sigma^2_1$ and $\sigma^2_2$.
+We estimate parameters $\Theta = \left\{A_{lt}, \bbeta_1, \bbeta_2, \xi, \sigma^2_1, \sigma^2_2 \right\}$ using Markov chain Monte Carlo methods.
+We use a Metropolis-Hastings algorithm to update the model parameters with random walk candidate distributions for all parameters except $\sigma^2_1$ and  $\sigma^2_2$ which we update using Gibbs sampling.
+The PS density is challenging to evaluate as it does not have a closed form.
+One technique to avoid this complication is to incorporate auxiliary random variables (Stephenson et al, \hl{ref}), but we opt for a numerical approximation to the integral as described in Appendix \hl{which one}.
+
 The first-stage estimate of the extremal coefficients has three tuning parameters: the quantile thresholds $q_1,...,q_{n_q}$, the kernel bandwidth $\phi$, and the number of terms $L$.
-We set $\{q_1,...,q_{n_q}\} = \{0.95,0.96,...,0.99\}$.
 In Section \ref{s:analysis} we explore a few possibilities for $\phi$ and $L$ and discuss sensitivity to these choices.
 The second-stage Bayesian analysis requires selecting thresholds $T_i,...,T_{n_s}$.  For this we use spatially smoothed sample quantiles.
 That is, we set $T_i$ to the 0.95 quantile of the $Y_{it}$ and $Y_{jt}$ for sites $j$ with $||\bs_i-\bs_j||<r$, where $r$ is set to XXX?
 
-We estimate parameters $\Theta = \left\{A_{lt}, \bbeta_1, \bbeta_2, \xi, \sigma^2_1, \sigma^2_2 \right\}$ using Markov chain Monte Carlo methods.
-We use a Metropolis-Hastings algorithm to update the model parameters with random walk candidate distributions for all parameters except $\sigma^2_1, \sigma^2_2$ which we update using Gibbs sampling.
-The positive stable density can be challenging to evaluate due to the integral inside the density function.
-One technique to avoid this complication is to incorporate auxiliary i.i.d. Uniform(0, 1) random variables (Stephenson et al, \hl{ref}).
-We opt for a numerical approximation to the integral using 51 evenly spaced quantiles for a Beta(0.5, 0.5) distribution.
-
 \section{Data analysis}\label{s:analysis}
-In this section, we illustrate our method using both censored and max-stable datasets.
+In this section, we illustrate our method using both points above a threshold and block maxima.
 In Section \ref{s:georgia}, we present an analysis using annual acreage burned due to wildfires in Georgia from 1965 -- 2014.
 This is followed in Section \ref{s:precip} by an analysis of precipitation data in the eastern U.S.
-These applications are chosen because they demonstrate the suitability of our model for both censored and max-stable data.
 
 \subsection{Analysis of extreme Georgia fires}\label{s:georgia}
-The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.stat.ga.us/FireData/}).
+The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.state.ga.us/FireData/}).
 Figure \ref{fig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
 Based on this plot and other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
 For covariates we use the standardized linear time trend $t^* = (t-n_t/2)/n_t$, and $L$ bivariate Gaussian kernel functions $\widetilde{B}_{il}$, and their interactions: $\bX_{it} = (1,t^*,\widetilde{B}_{i1},...,\widetilde{B}_{iL},t^*\widetilde{B}_{i1},...,t^*\widetilde{B}_{iL})^T$.
-For the bivariate Gaussian kernels, we select $L$ knot locations, $\bv_{1}, \ldots, \bv_{L}$ from the county centroids, using the space-filling design by (\hl{ref add to bibtex Johnson, M.E., Moore, L.M., and Ylvisaker, D. ,1990}).
+For the bivariate Gaussian kernels, we select $L$ knot locations, $\bv_{1}, \ldots, \bv_{L}$ from the county centroids, using a space-filling design (\hl{ref add to bibtex Johnson, M.E., Moore, L.M., and Ylvisaker, D. ,1990}).
 Then
 \begin{align}
   \widetilde{B}_{il} = \exp\left\{-\frac{||\bs_i - \bv_l||^2}{\rho^2}\right\}
 \end{align}
-where $\rho$ is included as a parameter in the MCMC.
-We also tried using the estimated basis functions, $\hat{B}_1, \ldots, \hat{B}_L$ as covariates, but they did not perform as well as the bivariate Gaussian kernels.
-\hl{Note: I decided not to standardize the basis functions because it allows for an intercept which is easier to come up with a starting value for.}
+where $\rho$ is included as an unknown parameter with a U($\rho_l$, $\rho_u$) prior where $\rho_l$ is the 5th quantile of $||\bs_i - \bv_l||^2$ and $\rho_u$ is the 95th quantile of $||\bs_i - \bv_l||^2$ \hl{basically I took the 5th and 95th quantile of the squared distances between the sites and the knots}.
+
 
 \vspace{2em} % remove this
 
@@ -229,29 +225,30 @@ We also tried using the estimated basis functions, $\hat{B}_1, \ldots, \hat{B}_L
   \centering
   \includegraphics[width=0.47\linewidth]{plots/fire-spag-rand-25}
   \includegraphics[width=0.47\linewidth, trim = 0 10em 0 10em]{plots/fire-spatial-q95.pdf}
-  \caption{Time series of log acres burned for 25 randomly selected counties (left). \hl{need to adjust time series plot} Spatially smoothed threshold values for each county (right).}
+  \caption{Time series of log acres burned for 25 randomly selected counties with colors coding the county's quadrant (left), and spatially smoothed threshold values, $T_i$ for each county (right).}
   \label{fig:firets25}
 \end{figure}
 
 We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_1 = 0.90$ and using $n_q = 100$.
 With more data, it would possible to increase $q_1$, but we set $q_1 = 0.90$ to increase the stability when estimating $\hat{\vartheta}_{ij}$.
 
-Because these data are not max-stable, we select a site-specific threshold $T_i$ to use in the analysis with the following algorithm.
+Because these data are not block-maxima, we select a site-specific threshold $T_i$ to use in the analysis with the following algorithm.
 Without some adjustment to the data, it is challenging to borrow information across sites to inform the threshold selection.
-We first compute
-\begin{align}
-  \widetilde{\bY}_i = \frac{\bY_i - \text{med}(\bY_i)}{\text{IQR}(\bY_i)}
-\end{align}
-where med$(\cdot)$ is the median, and IQR$(\cdot)$ is the inter-quartile range.
-Then we combine all sites together and plot a mean residual plot for $\widetilde{\bY}_i, i = 1, \ldots, n_s$.
-The mean residual plot is given in Figure \ref{fig:mrlthresh}, with a vertical line indicating the quantile we use for the county-specific values $\bT$.
-Based upon the mean residual plot, we select $q(0.95)$ for the spatially smoothed threshold.
-To calculate $T_i$ for each county, we find $\hat{q}(0.95)$ by taking the 95$th$ quantile for county $i$ and the five closest counties.
+We first standardize the data, separated by county, by subtracting the site's median and dividing by the site's interquartile range.
+Denote the standardized data by $\widetilde{\bY}_i$.
+% \begin{align}
+%   \widetilde{\bY}_i = \frac{\bY_i - \text{med}(\bY_i)}{\text{IQR}(\bY_i)}
+% \end{align}
+% where med$(\cdot)$ is the median, and IQR$(\cdot)$ is the inter-quartile range.
+Then we combine all sites together and plot a mean residual plot for $\widetilde{Y}_{it}, i = 1, \ldots, n_s$ and $t = 1, \ldots, n_t$.
+The mean residual plot is given in Figure \ref{fig:mrlthresh}.
+Based upon the mean residual plot, we select the 95th percentile for the threshold.
+To calculate $T_i$ for each county, we use the 95th percentile for the combined data for county $i$ and its five closest counties.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width = \linewidth]{plots/fire-mrl-plots.pdf}  % markdown/eda/eda-plotting.R
-  \caption{Mean residual plot from min(Adj Y) to q(0.995) (left). Mean residual plot from q(0.90) to 20 (right). Vertical lines for q(0.90) and q(0.95) are given in the plots.}
+  \caption{Mean residual plot for the data pooled across counties after standardizing using the county's median and interquartile range. The two panels show different ranges on the x-axis and include a vertical line at the sample 95th percentile.}
   \label{fig:mrlthresh}
 \end{figure}
 
@@ -262,8 +259,7 @@ To calculate $T_i$ for each county, we find $\hat{q}(0.95)$ by taking the 95$th$
 %  \label{fig:mrlthresh}
 %\end{figure}
 
-\subsection{Results}\label{s:results}
-\hl{have included a set of partial results, still waiting for some.}
+\subsection{Results for fire analysis}\label{s:results-fire}
 We use 10-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 10\% of sites and years are withheld for testing model predictions.
@@ -271,38 +267,64 @@ To assess the predictions for the test set, we use quantile scores and Brier sco
 The quantile score is given by \hl{give formula}.
 The Brier score is given by \hl{give formula}.
 For both of these methods, we use a negative orientation, so a lower score indicates a better fit.
+The Brier and quantile scores for the fire analysis are given in Table \ref{tbl:firescores}.
+
+Based on the Brier scores and quantiles scores, we run a full analysis using all of the data with $L = 35$.
+Posterior summaries for each county's $\beta_\text{time}$ coefficient are given in Figures \ref{fig:ebfpost} and \ref{fig:gskpost}.
+These plots both seem to catch similar features with some differences particularly in the posterior distribution of the county-specific $\beta_{\mu, \text{time}}$.
 
 \begin{table}[htbp]
-\caption{Average quantile scores for selected quantiles and Brier scores ($\times 100$) for selected thresholds \hl{Need update with L = 30 and 159, timings to be added in}}
+\caption{Average Brier scores ($\times 100$) for selected thresholds and quantile scores for selected quantiles for fire analysis \hl{Need timings for L = 35, 40 to be added in}}
+\label{tbl:firescores}
 \centering
 \small
   \begin{tabular}{lc|rr|rr|c}
-   \multicolumn{2}{c}{  }& \multicolumn{2}{|c|}{Brier Scores ($\times 100$)} & \multicolumn{2}{|c|}{Quantile Scores} & Time (in hours)\\
-   \hline
-   & Process & $q(0.95)$ & $q(0.99)$ & $q(0.95)$ & $q(0.99)$\\
-   \hline
-  \multirow{2}{*}{L = 5}  & ebf & 5.709 & 2.268 & 131.92 & 79.525 & \\
-                          & gsk & 5.808 & 2.303 & 133.37 & 79.985 & \\
-   \hline
-  \multirow{2}{*}{L = 10} & ebf & 5.066 & 2.101 & 130.21 & 72.486 & \\
-                          & gsk & 5.192 & 2.126 & 130.67 & 75.501 & \\
-   \hline
-  \multirow{2}{*}{L = 15} & ebf & 4.947 & 2.041 & 130.95 & 64.586 & \\
-                          & gsk & 5.078 & 2.074 & 130.79 & 69.610 & \\
-   \hline
-  \multirow{2}{*}{L = 20} & ebf & 4.989 & 2.035 & 122.64 & 66.102 & \\
-                          & gsk & 4.942 & 2.030 & 121.71 & 65.267 & \\
-   \hline
-  \multirow{2}{*}{L = 25} & ebf & 4.911 & \textbf{1.999} & \textbf{119.71} & 63.302 & \\
-                          & gsk & \textbf{4.842} & 2.017 & 119.94 & \textbf{62.192} & \\
-   \hline
-  \multirow{2}{*}{L = 30} & ebf & 4.790 & 1.963 & 117.37 & 61.881 & \\
-                          & gsk & 4.791 & 1.963 & 114.57 & 59.740 & \\
+  \multicolumn{2}{c}{  }& \multicolumn{2}{|c|}{Brier Scores ($\times 100$)} & \multicolumn{2}{|c|}{Quantile Scores} & Time (in hours)\\
   \hline
-  L = 159                 & gsk &  &  &  &  & \\
+  & Process & $q(0.95)$ & $q(0.99)$ & $q(0.95)$ & $q(0.99)$\\
+  \hline
+  \multirow{2}{*}{L = 5}  & EBF & 5.640 & 2.265 & 135.685 & 80.471 & 1.1\\
+                          & GSK & 5.726 & 2.301 & 134.419 & 78.639 & 1.1\\
+  \hline
+  \multirow{2}{*}{L = 10} & EBF & 5.329 & 2.130 & 127.313 & 75.974 & 1.8\\
+                          & GSK & 5.311 & 2.142 & 127.593 & 75.123 & 1.9\\
+  \hline
+  \multirow{2}{*}{L = 15} & EBF & 4.997 & 2.043 & 128.277 & 68.946 & 2.7\\
+                          & GSK & 4.907 & 2.034 & 124.537 & \textbf{59.266} & 2.7\\
+  \hline
+  \multirow{2}{*}{L = 20} & EBF & 4.930 & 2.036 & 122.394 & 66.413 & 3.7\\
+                          & GSK & 4.864 & 2.043 & 121.145 & 62.172 & 3.7\\
+  \hline
+  \multirow{2}{*}{L = 25} & EBF & 4.776 & \textbf{1.920} & 116.944 & 61.704 & 4.8\\
+                          & GSK & 4.740 & 1.921 & 113.872 & 59.524 & 4.7\\
+  \hline
+  \multirow{2}{*}{L = 30} & EBF & 4.745 & 1.923 & 114.878 & 62.020 & 5.9\\
+                          & GSK & 4.719 & 1.936 & 114.918 & 61.905 & 5.7\\
+  \hline
+  \multirow{2}{*}{L = 35} & EBF & 4.761 & 1.920 & 115.696 & 62.581 & \\
+                          & GSK & 4.767 & 1.933 & 114.026 & 60.805 & \\
+  \hline
+  \multirow{2}{*}{L = 40} & EBF & 4.722 & 1.935 & 115.213 & 62.039 & \\
+                          & GSK & \textbf{4.716} & 1.921 & \textbf{113.362} & 60.300 & \\
   \hline
 	\end{tabular}
 \end{table}
+
+\hl{We need a plot of the first 5 basis functions, and we also talked about the \% variability. I wasn't sure if this should be for $L = 35$ or a different number of knots.}
+
+\begin{figure}  % markdown/fire-analysis/combine-tables.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/ebf-post-betatime.pdf}
+  \caption{Posterior summaries of $\beta_{\text{time}}$ when using EBF for the spatial process with $L = 35$.}
+  \label{fig:ebfpost}
+\end{figure}
+
+\begin{figure}  % markdown/fire-analysis/combine-tables.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/gsk-post-betatime.pdf}
+  \caption{Posterior summaries of $\beta_{\text{time}}$ when using GSK for the spatial process with $L = 35$.}
+  \label{fig:gskpost}
+\end{figure}
 
 % \begin{figure}  % markdown/fire-analysis/combine-tables.R
 %   \centering
@@ -336,7 +358,7 @@ We also conduct an analysis of the precipitation data presented in \citep{Reich2
 The data are climate model output from the North American Regional Climate Change Assessment Program (NARCCAP).
 This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern US, and includes historical data (1969 -- 2000) as well as future conditions (2039 -- 2070).
 
-\begin{figure}  % markdown/precipitation/cv-setup
+\begin{figure}  % markdown/precipitation/cv-setup.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-ts}
   \caption{Time series of yearly max precipitation for current (1969 -- 2000) (left). Time series of yearly max precipitation for future (2039 -- 2070) (right).}
@@ -344,12 +366,37 @@ This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern
 
 \hl{Include figures of locations of grid cells}
 
+\subsection{Results for precipitation analysis}\label{s:results-precip}
+
+\begin{figure}  % markdown/precipitation/combine-tables.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-bs.pdf}
+  \caption{Brier scores for current and future precipitation analysis.}
+  \label{fig:precip-bs}
+\end{figure}
+
+\begin{figure}  % markdown/precipitation/combine-tables.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-qs.pdf}
+  \caption{Quantile scores for current and future precipitation analysis.}
+  \label{fig:precip-qs}
+\end{figure}
+
+\begin{figure}  % markdown/precipitation/combine-tables.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-post-time.pdf}
+  \caption{Posterior distributions for $\beta_{\text{time}}$ for $\mu$ (left) and $\log(\sigma)$ (right).}
+  \label{fig:precip-qs}
+\end{figure}
+
 \section{Conclusions}\label{s:con}
 
 \section*{Acknowledgements}
 
 \section*{A.1 Extreme value distributions}
 Define (1) GEV density f and CDF F; (2) PS pdf  and the grid approximation to the integral.
+
+\section*{A.2 Gradient for $\beta$}
 
 \begin{singlespace}
 \bibliographystyle{rss}

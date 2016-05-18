@@ -335,8 +335,8 @@ theme_clean <- function(base_size = 12) {
       panel.background    =   element_blank(),
       panel.grid      =   element_blank(),
       axis.ticks.length   =   unit(0,"cm"),
-      panel.margin    =   unit(0,"lines"),
-      plot.margin     =   unit(c(0,0,0,0),"lines"),
+      panel.margin    =   unit(0.5,"lines"),
+      plot.margin     =   unit(c(0.5,0.5,0.5,1),"lines"),
       complete = TRUE
     )
 }

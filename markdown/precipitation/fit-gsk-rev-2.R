@@ -8,7 +8,7 @@ for (this.L in Ls) {
   process <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
   margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
   time    <- "current"  # current or future
-  L       <- this.L     # number of knots to use for the basis functions
+  # L       <- 40         # number of knots to use for the basis functions
   cv      <- 2          # which cross-validation set to use
 
   loc.fun <- scale.fun <- ~ time + elev # + B1 + B2 + B3 + B4 + B5 + 0
@@ -23,7 +23,7 @@ for (this.L in Ls) {
   process <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
   margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
   time    <- "future"   # current or future
-  L       <- this.L     # number of knots to use for the basis functions
+  # L       <- 40         # number of knots to use for the basis functions
   cv      <- 2          # which cross-validation set to use
 
   loc.fun <- scale.fun <- ~ time + elev # + B1 + B2 + B3 + B4 + B5 + 0

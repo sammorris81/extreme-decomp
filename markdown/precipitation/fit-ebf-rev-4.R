@@ -1,7 +1,7 @@
 Ls <- c(40, 35, 30, 25, 20, 15, 10, 5)
 
 for (L in Ls) {
-  rm(list=ls())
+  rm(list=setdiff(ls(), c("Ls", "L")))  # don't lose which setting we're running
 
   source(file = "./package_load.R", chdir = T)
   # Number of bases: 5, 10, 15, 20
@@ -16,7 +16,7 @@ for (L in Ls) {
   # fit the model and get predictions
   source(file = "./fitmodel.R")
 
-  rm(list=ls())
+  rm(list=setdiff(ls(), c("Ls", "L")))  # don't lose which setting we're running
 
   source(file = "./package_load.R", chdir = T)
   # Number of bases: 5, 10, 15, 20

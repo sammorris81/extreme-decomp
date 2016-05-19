@@ -186,7 +186,6 @@ A.init <- exp(6)  # consistent with estimates of alpha
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
-cat(beta1.init, "\n")
 # fit the model using the training data
 fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 thresh = -Inf, B = B.sp, alpha = alpha,

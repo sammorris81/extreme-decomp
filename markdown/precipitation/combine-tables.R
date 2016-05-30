@@ -445,83 +445,159 @@ dev.print(device = pdf, file = "../../LaTeX/plots/timing.pdf")
 dev.off()
 
 
-
-
-
-
-
-
-
+#### Look at the convergence of each mu(s, t)
 rm(list=ls())
-library(fields)
-# look at results
-# load in the data
-load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
-Y <- Y.all <- t(Y)
-ns <- nrow(Y)
-nt <- ncol(Y)
+source(file = "./package_load.R", chdir = T)
+# Number of bases: 5, 10, 15, 20
+process <- "ebf"      # ebf: empirical basis functions, gsk: gaussian kernels
+margin  <- "gsk"      # ebf: empirical basis functions, gsk: gaussian kernels
+time    <- "current"  # current or future
+L       <- 35         # number of knots to use for the basis functions
 
-fold <- 1
-load(paste("./cv-results/basis-10-", fold, ".RData", sep = ""))
-fit.basis <- fit
-load(paste("./cv-results/kern-10-", fold, ".RData", sep = ""))
-fit.kern <- fit
+# Already set in other file:
+# process:= what kind of spatial process (ebf, gsk)
+# margin := how to construct marginal basis functions
+# cv     := which cross-validation testing set to use
+# L      := the number of basis functions to use
+library(compiler)
+enableJIT(3)
 
-Y.tst <- Y[sort(cv.idx[[fold]])]
-Y[cv.idx[[fold]]] <- NA
+#### load in the data ####
+load(file = "precip_preprocess.RData")
 
-################################################################################
-## need spatially smoothed threshold - only using training data
-################################################################################
-# get the Georgia map and coordinates
-# from georgia_preprocess in code/analysis/fire
-load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
-d <- rdist(cents)
-diag(d) <- 0
-n <- nrow(cents)
+# basis functions are precomputed, so if we change cv settings, we'll
+# need to rerun all of cv-setup.
+basis.file   <- paste("./ebf-", L, "-all.RData", sep = "")
+gsk.file     <- paste("./gsk-", L, "-all.RData", sep = "")
+results.file <- paste("./cv-results/", process, "-", time, "-", L,
+                      "-all.RData", sep = "")
+table.file   <- paste("./cv-tables/", process, "-", time, "-", L,
+                      "-all.txt", sep = "")
 
-# standardize the locations
-s <- cents
-s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
-s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
-
-thresh <- rep(0, ns)
-neighbors <- 5
+#### spatial setup ####
 d <- rdist(s)
 diag(d) <- 0
+n <- nrow(s)
 
-# take the 5 closest neighbors when finding the threshold
-for (i in 1:ns) {
-  these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
-  thresh[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
+# standardize the locations
+s.scale        <- s
+s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min          <- apply(s, 2, min)
+s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
+s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
+
+# get candidate knot grid for Gaussian kernel functions
+cents.grid <- s.scale
+
+################################################################################
+#### Load in cross-validation setup ############################################
+################################################################################
+# load(file = "./cv-extcoef.RData")
+load(file = basis.file)
+load(file = gsk.file)
+
+################################################################################
+#### Get weight functions for spatial process ##################################
+################################################################################
+if (process == "ebf") {
+  B.sp      <- B.ebf
+  ec.smooth <- ec.smooth
+  alpha     <- alpha
+} else {
+  # get the knot locations
+  alpha <- alpha
+  B.sp  <- B.gsk
 }
-thresh <- matrix(thresh, ns, nt)
-thresh.tst <- thresh[sort(cv.idx[[fold]])]
 
-this.Y <- Y.tst[1]
-this.thresh <- thresh.tst[1]
-quantile(fit.basis$y.pred[, 1], probs = c(0.025, 0.975))
-quantile(fit.kern$y.pred[, 1], probs = c(0.025, 0.975))
+################################################################################
+#### Covariate basis functions #################################################
+################################################################################
+if (margin == "ebf") {
+  if (process == "ebf") {  # we can just copy the empirical basis functions
+    cat("B.cov = B.sp \n")
+    B.cov <- B.sp
+  } else {  # we need to construct the empirical basis functions
+    cat("Estimating basis functions for covariates \n")
+    B.cov <- B.ebf
+  }
+} else if (margin == "gsk") {
+  if (process == "ebf") {
+    B.cov <- B.gsk
+  } else{
+    cat("B.cov = B.sp \n")
+    B.cov <- B.sp
+  }
+}
 
-this.Y <- Y[sort(cv.idx[[1]])[2]]
-quantile(fit.basis$y.pred[, 2], probs = c(0.025, 0.975))
-quantile(fit.kern$y.pred[, 2], probs = c(0.025, 0.975))
+################################################################################
+#### Run the MCMC ##############################################################
+#### Use the basis functions with the MCMC
+#### The response is the total acreage burned in a year
+####   Y[i, t] = acres burned in county i and year t
+####   X[i, t, p] = pth covariate for site i in year t
+####     Using (1, time, B.cov, B.cov * time) where time = (t - nt / 2) / nt
+################################################################################
 
-this.Y <- Y[sort(cv.idx[[1]])[711]]
-quantile(fit.basis$y.pred[, 711], probs = c(0.025, 0.975))
-quantile(fit.kern$y.pred[, 711], probs = c(0.025, 0.975))
+ns <- nrow(Y)
+nt <- ncol(Y) / 2
+Y.all <- Y
 
-dim(fit.basis$beta2)
+## Y contains both current and future data, so subset on the relevant years
+if (time == "current") {
+  Y <- Y[, 1:nt]
+} else {
+  Y <- Y[, (nt + 1):(2 * nt)]
+}
 
-plot(fit.basis$beta1[, 1], type = "l")
-plot(fit.kern$beta1[, 1], type = "l")
-plot(fit.basis$beta1[, 6], type = "l")
-plot(fit.kern$beta1[, 6], type = "l")
-plot(fit.basis$beta2[, 1], type = "l")
-plot(fit.kern$beta2[, 1], type = "l")
-plot(fit.basis$beta2[, 6], type = "l")
-plot(fit.kern$beta2[, 6], type = "l")
+## standardize elevations
+elev.std <- (elev - mean(elev)) / sd(elev)
 
-hist(fit.basis$y.pred[, 1])
-hist(fit.kern$y.pred[, 1])
+X <- array(1, dim = c(ns, nt, 3))
+for (i in 1:ns) {
+  for (t in 1:nt) {
+    time <- (t - nt / 2) / nt
+    X[i, t, 2:3] <- c(time, elev.std[i])
+  }
+}
 
+load("cv-results/ebf-current-35-all.RData")
+
+dw2 <- rdist(s.scale, knots)^2
+dw2[dw2 < 1e-4] <- 0
+
+B <- makeW(dw2 = dw2, rho = fit$bw[1])
+X.mu <- add.basis.X(X = X, B = B, time.interact = TRUE)
+X.sig <- add.basis.X(X = X, B = B, time.interact = TRUE)
+
+# storage
+niters <- length(fit$bw)
+p.mu <- p.sig <- dim(X.mu)[3]
+mu <- array(0, dim = c(niters, ns, nt))
+logsig <- array(0, dim = c(niters, ns, nt))
+
+for (i in 1:niters) {
+  B <- makeW(dw2 = dw2, rho = fit$bw[i])
+  X.mu <- rep.basis.X(X = X.mu, newB = B, time.interact = TRUE)
+  X.sig <- rep.basis.X(X = X.sig, newB = B, time.interact = TRUE)
+  for(j in 1:p.mu) {
+    mu[i, , ] <- mu[i, , ] + X.mu[, , j] * fit$beta1[i, j]
+  }
+  for(j in 1:p.sig) {
+    logsig[i, , ] <- logsig[i, , ] + X.sig[, , j] * fit$beta2[i, j]
+  }
+  if (i %% 100 == 0) {
+    print(paste("Iter ", i, " complete", sep = ""))
+    par(mfrow = c(5, 5))
+    sites <- sample(1:ns, 5)
+    days  <- sample(1:nt, 5)
+    for (s in sites) { for (t in days) {
+      plot(mu[1:i, s, t], type = "l")
+    }}
+  }
+}
+
+sites <- sample(1:ns, 5)
+days  <- sample(1:nt, 5)
+for (s in sites) { for (t in days) {
+  plot(mu[1:i, s, t], type = "l")
+}}

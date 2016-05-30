@@ -139,10 +139,10 @@ options(warn = 2)
 
 beta1.init <- c(fit.mle$fitted.values[1], fit.mle$fitted.values[6],
                 fit.mle$fitted.values[2])
-beta1.init <- c(beta1.init, rep(0, L))
+beta1.init <- c(beta1.init, rep(0, 2 * L))
 beta2.init <- c(fit.mle$fitted.values[3], fit.mle$fitted.values[7],
                 fit.mle$fitted.values[4])
-beta2.init <- c(beta2.init, rep(0, L))
+beta2.init <- c(beta2.init, rep(0, 2 * L))
 xi.init <- fit.mle$fitted.values[5]
 
 ################################################################################

@@ -34,9 +34,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
                    xi = 0.001, A = NULL,
                    can.mu.sd = 0.1, can.sig.sd = 0.1,
                    beta1.block = FALSE, beta2.block = FALSE,
-                   beta1.tau.a = 1, beta1.tau.b = 1,
-                   beta2.tau.a = 1, beta2.tau.b = 1,
-                   mu.tau.a = 1, mu.tau.b = 1, mu.sd.fix = FALSE,
+                   beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                   beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                   mu.tau.a = 0.1, mu.tau.b = 0.1, mu.sd.fix = FALSE,
                    logsig.tau.a = 1, logsig.tau.b = 1, logsig.sd.fix = FALSE,
                    mu.attempts = 50, logsig.attempts = 50, xi.attempts = 50,
                    bw.basis.init = NULL, bw.basis.random = TRUE,
@@ -48,86 +48,91 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   require(extRemes)
   require(fields)
   # BOOKKEEPING
-  
+
   ns   <- nrow(y)
   nt   <- ncol(y)
   L    <- ncol(B)
-  
+
   if (is.null(X.mu)) {
     X.mu <- X
   }
   if (is.null(X.sig)) {
     X.sig <- X
   }
-  
+
   # initialize distance matrix from site to knot
   dw2 <- rdist(s, knots)^2
   dw2[dw2 < 1e-4] <- 0
-  
-  if (bw.basis.random) {
+
+  # if (bw.basis.random) {
     # initialize basis functions
     if (is.null(bw.basis.init)) {
-      bw.basis <- quantile(dw2, 0.5)
+      bw.basis <- quantile(dw2, 0.3)
     } else {
       bw.basis <- bw.basis.init
     }
-    
+
     bw.basis.min <- quantile(dw2, 0.05)
     bw.basis.max <- quantile(dw2, 0.95)
-    
+
     B.X <- makeW(dw2 = dw2, rho = bw.basis)
     X.mu <- add.basis.X(X = X.mu, B = B.X, time.interact = time.interact)
     X.sig <- add.basis.X(X = X.sig, B = B.X, time.interact = time.interact)
-  }
-  
+  # }
+
   p.mu    <- dim(X.mu)[3]
   p.sig   <- dim(X.sig)[3]
-  
+
   miss  <- is.na(y)
   if (length(thresh) == 1) {
     thresh <- matrix(thresh, ns, nt)
   }
   y     <- ifelse(y < thresh, thresh, y)
-  
+
   # initial missing values to be set at threshold
   # looping over time because threshold is a vector of ns length
   if (any(miss)) {
     missing.times <- which(colSums(miss) > 0)
   }
-  
+
   # INITIAL VALUES:
   if (is.null(beta2)) {
     beta2    <- rep(0, p.sig)
     beta2[1] <- log(sqrt(6) * sd(as.vector(y), na.rm = TRUE) / pi)
   }
-  
+
   if (is.null(beta1)) {
     beta1    <- rep(0, p.mu)
     beta1[1] <- -0.57722 * beta2[1]
   }
-  
+
   # set the initial mu and logsig to the mean
   mu <- Xb1 <- getXBeta(X = X.mu, beta = beta1)
   logsig <- Xb2 <- getXBeta(X = X.sig, beta = beta2)
-  
+  Xb1 <- Xb2 <- matrix(0, ns, nt)
+
   # get the initial covariance matrix for the gaussian process
   d <- rdist(s)
   diag(d) <- 0
-  bw.gp.min <- quantile(d, 0.025)
-  bw.gp.max <- quantile(d, 0.975)
+  bw.gp.min <- quantile(d[upper.tri(d)], 0.001)
+  bw.gp.max <- quantile(d[upper.tri(d)], 0.999)
   if (!is.null(bw.gp.init)) {
     bw.gp <- bw.gp.init
   } else {
-    bw.gp <- quantile(d, prob = 0.1)
+    bw.gp <- min(d[upper.tri(d)]) * 4
+    # bw.gp <- 0.7
   }
   Sigma <- exp(-d / bw.gp)
-  
+  Qb    <- chol2inv(chol(Sigma))
+
+  SS1 <- SS2 <- rep(0, nt)
+
   tau1 <- tau2 <- rep(0, nt)
   for (t in 1:nt) {
-    tau1 <- 1 / var(mu[, t])
-    tau2 <- 1 / var(logsig[, t])
+    tau1[t] <- 1 / var(mu[, t])
+    tau2[t] <- 1 / var(logsig[, t])
   }
-  
+
   # adjust xi until it is valid for all y, mu, and sig
   if (xi < 0) {
     while (any(y - mu > -exp(logsig) / xi, na.rm = TRUE)) {
@@ -138,14 +143,14 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
       xi <- xi * 0.8
     }
   }
-  
+
   # dPS approximation:
   npts      <- 50
   Ubeta     <- qbeta(seq(0, 1, length = npts + 1), 0.5, 0.5)
   MidPoints <- (Ubeta[-1] + Ubeta[-(npts + 1)]) / 2
   BinWidth  <- Ubeta[-1] - Ubeta[-(npts + 1)]
   bins      <- list(npts = npts, MidPoints = MidPoints, BinWidth = BinWidth)
-  
+
   if (is.null(A)) {
     A <- matrix(1, L, nt)
   } else if (length(A) == 1) {
@@ -154,37 +159,43 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     stop("The length of the initial A must be either 1 or L * nt")
   }
   oldA <- A
-  
+
   Ba    <- B^(1 / alpha)
   theta <- (Ba %*% A)^alpha  # should be ns x nt
   theta.xi <- theta^xi
-  
+
   # initial values for loglikelihood and gradients
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
-  
+
   beta1.grad.cur <- grad_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
                                         beta.sd = beta1.sd, X.mu = X.mu, y = y,
                                         theta = theta, logsig = logsig, xi = xi,
                                         thresh = thresh, alpha = alpha)
-  
+
   beta2.grad.cur <- grad_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
                                          beta.sd = beta2.sd, X.sig = X.sig,
                                          y = y, theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
-  
+
   beta1.hess.cur <- hess_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
                                         beta.sd = beta1.sd, X.mu = X.mu, y = y,
                                         theta = theta, logsig = logsig,
                                         xi = xi, thresh = thresh, alpha = alpha)
-  
+
   beta2.hess.cur <- hess_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
                                          beta.sd = beta2.sd, X.sig = X.sig, y = y,
                                          theta = theta, mu = mu, xi = xi,
                                          thresh = thresh, alpha = alpha)
-  
+
   # STORAGE:
   keep.beta1   <- matrix(0, iters, p.mu)
   keep.beta2   <- matrix(0, iters, p.sig)
+  keep.tau1    <- matrix(0, iters, nt)
+  keep.tau2    <- matrix(0, iters, nt)
+  keep.mu      <- array(0, dim = c(iters, 5, 5))
+  keep.logsig  <- array(0, dim = c(iters, 5, 5))
+  these.sites <- sample(1:ns, 5)
+  these.days <- sample(1:nt, 5)
   keep.beta.mu <- matrix(0, iters, 2)  # mean terms for beta priors
   keep.beta.sd <- matrix(0, iters, 2)  # variance terms for beta priors
   keep.xi      <- rep(0, iters)
@@ -196,20 +207,20 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   } else {
     keep.y <- NULL
   }
-  
+
   theta.mn   <- 0
-  
+
   # TUNING:
-  
+
   cuts <- exp(c(-1, 0, 1, 2, 5, 10))
   MH.a  <- rep(1, 100)
   att.a <- acc.a <- 0 * MH.a
   att.mu     <- acc.mu     <- MH.mu     <- matrix(0.5, ns, nt)
   att.logsig <- acc.logsig <- MH.logsig <- matrix(0.1, ns, nt)
   att.xi    <- acc.xi    <- MH.xi    <- 0.1
-  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- 0.001
+  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- 0.1
   att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- 0.1
-  
+
   tic <- proc.time()[3]
   for (iter in 1:iters) {
     ####################################################
@@ -217,105 +228,135 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     ####################################################
     oldA  <- A
     this.update <- updateA(A = A, cuts = cuts, bins = bins, Ba = Ba,
-                           y = y, mu = mu, logsig = logsig, xi = xi,
-                           thresh = thresh, alpha = alpha, curll = curll,
-                           MH = Mh.a)
-    
+                           theta = theta, y = y, mu = mu, logsig = logsig,
+                           xi = xi, thresh = thresh, alpha = alpha,
+                           curll = curll, MH = MH.a)
+
     A     <- this.update$A
+    l1    <- this.update$l1
     theta <- this.update$theta
     curll <- this.update$curll
-    
+
     ####################################################
     ##########      bandwidth for kernels      #########
     ####################################################
     if (bw.basis.random) {
       this.update <- updateXBasisBW(bw = bw.basis, bw.min = bw.basis.min,
-                                    bw.max = bw.basis.max, X.mu = X.mu,
+                                    bw.max = bw.basis.max, bw.mn = -2,
+                                    bw.sd = 1, X.mu = X.mu,
                                     beta1 = beta1, Xb1 = Xb1, mu = mu,
-                                    tau1 = tau1, X.sig = X.sig, beta2 = beta2,
-                                    Xb2 = Xb2, logsig = logsig, tau2 = tau2,
-                                    Qb = Qb, dw2 = dw2,
+                                    tau1 = tau1, SS1 = SS1, X.sig = X.sig,
+                                    beta2 = beta2, Xb2 = Xb2, logsig = logsig,
+                                    tau2 = tau2, SS2 = SS2, Qb = Qb, dw2 = dw2,
                                     time.interact = time.interact,
                                     acc = acc.bw.basis, att = att.bw.basis,
                                     MH = MH.bw.basis)
-      
+
       bw.basis     <- this.update$bw
       X.mu         <- this.update$X.mu
       Xb1          <- this.update$Xb1
+      SS1          <- this.update$SS1
       X.sig        <- this.update$X.sig
       Xb2          <- this.update$Xb2
+      SS2          <- this.update$SS2
       acc.bw.basis <- this.update$acc
       att.bw.basis <- this.update$att
     }
-    
+
     ####################################################
     ##############      GEV parameters      ############
     ####################################################
     # am trying a Gaussian process here
-    # location
+    # mu
     this.update <- updateMu(mu = mu, Qb = Qb, tau = tau1, Xb = Xb1,
-                            logsig = logsig, xi = xi, thresh = thresh,
-                            alpha = alpha, curll = curll, acc = acc.mu,
-                            att = att.mu, MH = MH.mu)
+                            y = y, theta = theta, logsig = logsig, xi = xi,
+                            thresh = thresh, alpha = alpha, SS = SS1,
+                            curll = curll, acc = acc.mu, att = att.mu,
+                            MH = MH.mu)
     mu     <- this.update$mu
+    SS1    <- this.update$SS
     curll  <- this.update$curll
     acc.mu <- this.update$acc
     att.mu <- this.update$att
-    
+
+    # logsig
     this.update <- updateLS(logsig = logsig, Qb = Qb, tau = tau2, Xb = Xb2,
-                            mu = mu, xi = xi, thresh = thresh,
-                            alpha = alpha, curll = curll, acc = acc.logsig,
-                            att = att.logsig, MH = MH.logsig)
+                            y = y, theta = theta, mu = mu, xi = xi,
+                            thresh = thresh, alpha = alpha, SS = SS2,
+                            curll = curll, acc = acc.logsig, att = att.logsig,
+                            MH = MH.logsig)
     logsig     <- this.update$logsig
+    SS2        <- this.update$SS
     curll      <- this.update$curll
     acc.logsig <- this.update$acc
     att.logsig <- this.update$att
-    
+
+    # xi
+    this.update <- updateXi(xi = xi, y = y, mu = mu, logsig = logsig,
+                            curll = curll, theta = theta, thresh = thresh,
+                            alpha = alpha, acc = acc.xi, att = att.xi,
+                            MH = MH.xi)
+    xi     <- this.update$xi
+    curll  <- this.update$curll
+    acc.xi <- this.update$acc
+    att.xi <- this.update$att
+
     ####################################################
     ###########      GEV hyper parameters      #########
     ####################################################
     # None of these terms should impact the log likelihood because they only
     # impact the gaussian process prior terms for mu and logsig
-    
+
     # beta terms
     this.update <- updateGPBeta(beta = beta1, beta.sd = beta1.sd, Qb = Qb,
-                                param = mu, X = X.mu, tau = tau1)
+                                param = mu, X = X.mu, SS = SS1, tau = tau1)
     beta1 <- this.update$beta
-    
+    Xb1   <- this.update$Xb
+    SS1   <- this.update$SS
+    # print(paste("SS1: ", sum(SS1)))
+
     this.update <- updateGPBeta(beta = beta2, beta.sd = beta2.sd, Qb = Qb,
-                                param = logsig, X = X.sig, tau = tau2)
+                                param = logsig, X = X.sig, SS = SS2, tau = tau2)
     beta2 <- this.update$beta
-    
+    Xb2   <- this.update$Xb
+    SS2   <- this.update$SS
+    # print(paste("SS2: ", sum(SS2)))
+
     # beta sd
     this.update <- updateGPBetaSD(beta = beta1, tau.a = beta1.tau.a,
-                                  tau.b, beta1.tau.b)
+                                  tau.b = beta1.tau.b)
     beta1.sd <- this.update$beta.sd
-    
+
     this.update <- updateGPBetaSD(beta = beta2, tau.a = beta2.tau.a,
-                                  tau.b, beta2.tau.b)
+                                  tau.b = beta2.tau.b)
     beta2.sd <- this.update$beta.sd
-    
+
     # variances
-    this.update <- updateGPTau(tau = tau1, Qb = Qb, param = mu, Xb = Xb1,
-                               tau.a = mu.tau.a, tau.b = mu.tau.b)
+    this.update <- updateGPTau(tau = tau1, SS = SS1,
+                               tau.a = mu.tau.a, tau.b = mu.tau.b, ns = ns)
     tau1 <- this.update$tau
-    
-    this.update <- updateGPTau(tau = tau2, Qb = Qb, param = logsig, Xb = Xb2,
-                               tau.a = mu.tau.a, tau.b = mu.tau.b)
+
+    this.update <- updateGPTau(tau = tau2, SS = SS2,
+                               tau.a = mu.tau.a, tau.b = mu.tau.b, ns = ns)
     tau2 <- this.update$tau
-    
+
     # spatial range
+    if (iter> 100) {
     this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
-                              bw.max = bw.gp.max, Qb = Qb, d = d,
-                              mu = mu, Xb1 = Xb1, tau1 = tau1,
-                              logsig = logsig, Xb2 = Xb2, tau2 = tau2,
+                              bw.mn = -2, bw.sd = 1, bw.max = bw.gp.max,
+                              Qb = Qb, d = d, mu = mu, Xb1 = Xb1, tau1 = tau1,
+                              SS1 = SS1, logsig = logsig, Xb2 = Xb2,
+                              tau2 = tau2, SS2 = SS2,
                               acc = acc.bw.gp, att = att.bw.gp, MH = MH.bw.gp)
     bw.gp     <- this.update$bw
     Qb        <- this.update$Qb
+    SS1       <- this.update$SS1
+    SS2       <- this.update$SS2
     acc.bw.gp <- this.update$acc
     att.bw.gp <- this.update$att
-    
-    
+    }
+
+
     # ####################################################
     # ##############      GEV parameters      ############
     # ####################################################
@@ -602,19 +643,9 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     #
     #   beta2.sd  <- sqrt(beta2.var)
     # }
-    
-    # xi
-    this.update <- updateXi(xi = xi, y = y, mu = mu, logsig = logsig,
-                            curll = curll, theta = theta, thresh = thresh,
-                            alpha = alpha, acc = acc.xi, att = att.xi,
-                            MH = MH.xi)
-    xi     <- this.update$xi
-    curll  <- this.update$curll
-    acc.xi <- this.update$acc
-    att.xi <- this.update$att
-    
+
     # TUNING
-    
+
     if (iter < burn / 2) {
       # if (iter > burn * 0.10) {
       for (j in 1:length(MH.a)) {
@@ -627,112 +658,130 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
         }
       }
       # }
-      
-      for (p in 1:p.mu) { if (att.beta1[p] > beta1.attempts) {
-        acc.rate <- acc.beta1[p] / att.beta1[p]
-        if (acc.rate < 0.4) { MH.beta1[p] <- MH.beta1[p] * 0.8 }
-        if (acc.rate > 0.7) { MH.beta1[p] <- MH.beta1[p] * 1.2 }
-        acc.beta1[p] <- att.beta1[p] <- 0
-      }}
-      
-      for (p in 1:p.sig) { if (att.beta2[p] > beta2.attempts) {
-        acc.rate <- acc.beta2[p] / att.beta2[p]
-        if (acc.rate < 0.4) { MH.beta2[p] <- MH.beta2[p] * 0.8 }
-        if (acc.rate > 0.7) { MH.beta2[p] <- MH.beta2[p] * 1.2 }
-        acc.beta2[p] <- att.beta2[p] <- 0
-      }}
-      
-      if (att.xi > xi.attempts) {
-        acc.rate <- acc.xi / att.xi
-        if (acc.rate < 0.3) { MH.xi <- MH.xi * 0.8 }
-        if (acc.rate > 0.6) { MH.xi <- MH.xi * 1.2 }
-        acc.xi <- att.xi <- 0
-      }
-      
-      if (att.bw > bw.attempts) {
-        acc.rate <- acc.bw / att.bw
-        if (acc.rate < 0.3) { MH.bw <- MH.bw * 0.8 }
-        if (acc.rate > 0.6) { MH.bw <- MH.bw * 1.2 }
-        acc.bw <- att.bw <- 0
-      }
+      this.update <- mhUpdate(acc = acc.bw.basis, att = att.bw.basis,
+                              MH = MH.bw.basis, nattempts = bw.basis.attempts,
+                              target.min = 0.3, target.max = 0.6,
+                              lower = 0.8, higher = 1.2)
+      acc.bw.basis <- this.update$acc
+      att.bw.basis <- this.update$att
+      MH.bw.basis  <- this.update$MH
+
+      this.update <- mhUpdate(acc = acc.mu, att = att.mu, nattempts = 50,
+                              MH = MH.mu, target.min = 0.3, target.max = 0.6,
+                              lower = 0.8, higher = 1.2)
+      acc.mu <- this.update$acc
+      att.mu <- this.update$att
+      MH.mu  <- this.update$MH
+
+      this.update <- mhUpdate(acc = acc.logsig, att = att.logsig,
+                              MH = MH.logsig, nattempts = 50,
+                              target.min = 0.3, target.max = 0.6,
+                              lower = 0.8, higher = 1.2)
+      acc.logsig <- this.update$acc
+      att.logsig <- this.update$att
+      MH.logsig  <- this.update$MH
+
+
+      this.update <- mhUpdate(acc = acc.xi, att = att.xi,
+                              nattempts = xi.attempts,
+                              MH = MH.xi, target.min = 0.3, target.max = 0.6,
+                              lower = 0.8, higher = 1.2)
+      acc.xi <- this.update$acc
+      att.xi <- this.update$att
+      MH.xi  <- this.update$MH
+
+      this.update <- mhUpdate(acc = acc.bw.gp, att = att.bw.gp,
+                              nattempts = bw.gp.attempts,
+                              MH = MH.bw.gp, target.min = 0.3, target.max = 0.6,
+                              lower = 0.8, higher = 1.2)
+      acc.bw.gp <- this.update$acc
+      att.bw.gp <- this.update$att
+      MH.bw.gp  <- this.update$MH
     }
-    
+
     ####################################################
     ##############      Impute missing      ############
     ####################################################
-    if (any(miss)) {
-      y.tmp <- y
-      for (t in missing.times) {
-        # calculate mu and sigma
-        miss.t   <- miss[, t]
-        sigma    <- exp(logsig[miss.t, t])
-        mu_star  <- mu[miss.t, t] + sigma * (theta[miss.t, t]^xi - 1) / xi
-        sig_star <- alpha * sigma * theta[miss.t, t]^xi
-        xi_star  <- alpha * xi
-        y.tmp[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star,
-                                 scale = sig_star, shape = xi_star,
-                                 type = "GEV")
-      }
-    }
-    
+    # if (any(miss)) {
+    #   y.tmp <- y
+    #   for (t in missing.times) {
+    #     # calculate mu and sigma
+    #     miss.t   <- miss[, t]
+    #     sigma    <- exp(logsig[miss.t, t])
+    #     mu_star  <- mu[miss.t, t] + sigma * (theta[miss.t, t]^xi - 1) / xi
+    #     sig_star <- alpha * sigma * theta[miss.t, t]^xi
+    #     xi_star  <- alpha * xi
+    #     y.tmp[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star,
+    #                              scale = sig_star, shape = xi_star,
+    #                              type = "GEV")
+    #   }
+    # }
+
     #KEEP TRACK OF STUFF:
-    keep.bw[iter]        <- bw
+    keep.bw.basis[iter]  <- bw.basis
+    # print(bw.basis)
+    keep.mu[iter, , ]    <- mu[these.sites, these.days]
+    keep.logsig[iter, , ] <- logsig[these.sites, these.days]
+    keep.tau1[iter, ]    <- tau1
+    keep.tau2[iter, ]    <- tau2
     keep.beta1[iter, ]   <- beta1
     keep.beta2[iter, ]   <- beta2
     keep.xi[iter]        <- xi
     keep.A[iter, , ]     <- A
-    keep.beta.mu[iter, ] <- c(beta1.mu, beta2.mu)
+    # keep.beta.mu[iter, ] <- c(beta1.mu, beta2.mu)
     keep.beta.sd[iter, ] <- c(beta1.sd, beta2.sd)
-    if (any(miss)) {
-      keep.y[iter, ]     <- y.tmp[miss]
-    }
+    keep.bw.gp[iter]     <- bw.gp
+    # if (any(miss)) {
+    #   keep.y[iter, ]     <- y.tmp[miss]
+    # }
     if (iter > burn) {
       theta.mn <- theta.mn + theta / (iters - burn)
     }
-    
-    
+
+
     #DISPLAY CURRENT VALUE:
-    
+
     if (iter %% update == 0) {
       if (iterplot) {
-        acc.rate.mu     <- round(acc.beta1 / att.beta1, 3)
-        acc.rate.logsig <- round(acc.beta2 / att.beta2, 3)
+        acc.rate.mu     <- round(acc.mu / att.mu, 3)
+        acc.rate.logsig <- round(acc.logsig / att.logsig, 3)
         acc.rate.xi     <- round(acc.xi / att.xi, 3)
-        acc.rate.bw     <- round(acc.bw / att.bw, 3)
-        
+        acc.rate.bw.basis <- round(acc.bw.basis / att.bw.basis, 3)
+        acc.rate.bw.gp    <- round(acc.bw.gp / att.bw.gp, 3)
+
         if (iter > burn) {
           start <- burn + 1
         } else {
           start <- max(iter - 2000, 1)
         }
-        
+
         if (!exists("this.plot")) {
           this.plot <- "all"
         }
         # this.plot <- "sig"
-        
+
         if (this.plot == "mu") {
           if (L <= 9) {
             par(mfrow = c(3, 3))
             for (plot.idx in 1:min(p.mu, 7)) {
               plot(keep.beta1[start:iter, plot.idx],
                    main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
-                   xlab = acc.rate.mu[plot.idx], type = "l",
-                   ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
+                   xlab = acc.rate.mu[plot.idx], type = "l")#,
+                   # ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
             }
           } else {
             par(mfrow = c(3, 4))
             for (plot.idx in 1:min(p.mu, 10)) {
               plot(keep.beta1[start:iter, plot.idx],
                    main = bquote(paste(mu, ": ", beta[.(plot.idx)])),
-                   xlab = acc.rate.mu[plot.idx], type = "l",
-                   ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
+                   xlab = acc.rate.mu[plot.idx], type = "l")#,
+                   #ylab = paste("MH =", round(MH.beta1[plot.idx], 3)))
             }
           }
-          
-          plot(keep.beta.mu[start:iter, 1],
-               main = bquote(paste(mu, ": ", mu[beta])), type = "l")
-          
+
+          # plot(keep.beta.mu[start:iter, 1],
+          #      main = bquote(paste(mu, ": ", mu[beta])), type = "l")
+
           plot(keep.beta.sd[start:iter, 1],
                main = bquote(paste(mu, ": ", sigma[beta])), type = "l")
           this.plot <- "sig"
@@ -742,98 +791,116 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
             for (plot.idx in 1:min(p.sig, 7)) {
               plot(keep.beta2[start:iter, plot.idx],
                    main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
-                   xlab = acc.rate.logsig[plot.idx], type = "l",
-                   ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
+                   xlab = acc.rate.logsig[plot.idx], type = "l")#,
+                   #ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
             }
           } else {
             par(mfrow = c(3, 4))
             for (plot.idx in 1:min(p.sig, 10)) {
               plot(keep.beta2[start:iter, plot.idx],
                    main = bquote(paste(sigma, ": ", beta[.(plot.idx)])),
-                   xlab = acc.rate.logsig[plot.idx], type = "l",
-                   ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
+                   xlab = acc.rate.logsig[plot.idx], type = "l")#,
+                   #ylab = paste("MH =", round(MH.beta2[plot.idx], 3)))
             }
           }
-          
-          plot(keep.beta.mu[start:iter, 2],
-               main = bquote(paste(sigma, ": ", mu[beta])), type = "l")
-          
+
+          # plot(keep.beta.mu[start:iter, 2],
+          #      main = bquote(paste(sigma, ": ", mu[beta])), type = "l")
+
           plot(keep.beta.sd[start:iter, 2],
                main = bquote(paste(sigma, ": ", sigma[beta])), type = "l")
           this.plot <- "all"
           # this.plot <- "mu"
         } else {
           par(mfrow = c(3, 5))
-          
-          for (i in 1:4) {
+
+          for (i in 1:2) {
             plot(keep.beta1[start:iter, i],
                  main = bquote(paste(mu, ": ", beta[.(i)])),
-                 xlab = acc.rate.mu[i], type = "l",
-                 ylab = paste("MH =", round(MH.beta1[i], 3)))
+                 xlab = acc.rate.mu[i], type = "l")#,
+                 #ylab = paste("MH =", round(MH.beta1[i], 3)))
           }
-          
+
+          for (i in 1:2) {
+            plot(keep.mu[start:iter, i, i], type = "l",
+                 main = bquote(paste(mu[.(i)])))
+          }
+
           # plot(keep.beta1[start:iter, p.mu],
           #      main = bquote(paste(mu, ": ", beta[.(p.mu)])),
           #      xlab = acc.rate.mu[p.mu], type = "l",
           #      ylab = paste("MH =", round(MH.beta1[p.mu], 3)))
-          
+
           plot(keep.xi[start:iter], main = bquote(xi),
                xlab = acc.rate.xi, type = "l",
                ylab = paste("MH =", round(MH.xi, 3)))
-          
-          for (i in 1:4) {
+
+          for (i in 1:2) {
             plot(keep.beta2[start:iter, i],
                  main = bquote(paste(sigma, ": ", beta[.(i)])),
-                 xlab = acc.rate.logsig[i], type = "l",
-                 ylab = paste("MH =", round(MH.beta2[i], 3)))
+                 xlab = acc.rate.logsig[i], type = "l")#,
+                 # ylab = paste("MH =", round(MH.beta2[i], 3)))
           }
-          
+
+          for (i in 1:2) {
+            plot(keep.logsig[start:iter, i, i], type = "l",
+                 main = bquote(paste("log(", sigma[.(i)], ")")))
+          }
+
           # plot(keep.beta2[start:iter, p.sig],
           #      main = bquote(paste(sigma, ": ", beta[.(p.sig)])),
           #      xlab = acc.rate.logsig[p.sig], type = "l",
           #      ylab = paste("MH =", round(MH.beta2[p.sig], 3)))
-          
-          plot(keep.bw[start:iter], main = "kernel bandwidth",
-               xlab = acc.rate.bw, type = "l",
-               ylab = paste("MH =", round(MH.bw, 3)))
-          
-          plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
-          
-          plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
-          
-          plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
-          
-          plot(log(keep.A[start:iter, L, 2]), main = "log(A[L, 2])", type = "l")
-          
-          plot(log(keep.A[start:iter, L, nt]),
-               main = "log(A[L, nt])", type = "l")
-          
+
+          plot(keep.bw.basis[start:iter], main = "kernel bandwidth",
+               xlab = acc.rate.bw.basis, type = "l",
+               ylab = paste("MH =", round(MH.bw.basis, 3)))
+          plot(keep.tau1[start:iter, 1], main = "tau1[1]", type = "l")
+          plot(keep.tau1[start:iter, 2], main = "tau1[2]", type = "l")
+          plot(keep.tau2[start:iter, 1], main = "tau2[1]", type = "l")
+          plot(keep.tau2[start:iter, 2], main = "tau2[2]", type = "l")
+          # plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
+          #
+          # plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
+          #
+          # plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
+          #
+          # plot(log(keep.A[start:iter, L, 2]), main = "log(A[L, 2])", type = "l")
+
+          # plot(log(keep.A[start:iter, L, nt]),
+          #      main = "log(A[L, nt])", type = "l")
+
+          plot(keep.bw.gp[start:iter], main = "gaussian process bandwidth",
+               xlab = acc.rate.bw.gp, type = "l",
+               ylab = paste("MH =", round(MH.bw.gp, 3)))
+
           # this.plot <- "mu"
         }
       }
       cat("    Finished fit:", iter, "of", iters, "iters \n")
     }
-    
+
   }#end iter
-  
+
   toc <- proc.time()[3]
-  
+
   if (keep.burn) {
     return.iters <- 1:iters
   } else {
     return.iters <- (burn + 1):iters
   }
-  
+
   if (any(miss)) {
     keep.y <- keep.y[return.iters, , drop = FALSE]
   }
-  
+
   list(beta1 = keep.beta1[return.iters, , drop = FALSE],
        beta2 = keep.beta2[return.iters, , drop = FALSE],
-       bw = keep.bw[return.iters],
+       bw.basis = keep.bw.basis[return.iters],
        xi = keep.xi[return.iters],
-       betamu = keep.beta.mu[return.iters, , drop = FALSE],
-       betasd = keep.beta.sd[return.iters, , drop = FALSE],
+       # betamu = keep.beta.mu[return.iters, , drop = FALSE],
+       # betasd = keep.beta.sd[return.iters, , drop = FALSE],
+       bw.gp = keep.bw.gp[return.iters],
        theta.mn = theta.mn,
        A = keep.A[return.iters, , , drop = FALSE],
        y.pred = keep.y,
@@ -866,51 +933,51 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
   if (is.null(end)) {
     end <- length(mcmcoutput$xi)
   }
-  
+
   if (length(dim(X.pred)) != 3) {
     stop("X.pred must be an array with dimensions npred x nt x p")
   }
-  
+
   npred <- dim(X.pred)[1]
   nt    <- dim(X.pred)[2]
   L     <- ncol(B)
   p     <- dim(X.pred)[3]
-  
+
   # stays the same for all iterations
   Ba    <- B^(1 / alpha)
-  
+
   # make sure we are iterating over the post burnin samples
   niters <- length(start:end)
   beta1  <- matrix(mcmcoutput$beta1[start:end, , drop = F], niters, p)
   beta2  <- matrix(mcmcoutput$beta2[start:end, , drop = F], niters, p)
   xi     <- mcmcoutput$xi[start:end]
   A      <- mcmcoutput$A[start:end, , , drop = F]
-  
+
   # storage for predictions
   y.pred <- array(-99999, dim = c(niters, npred, nt))
   iters <- length(start:end)
   for (iter in 1:iters) {
     xi.i <- xi[iter]
-    
+
     # calculate mu and sigma
     for (t in 1:nt) {
       theta.i <- (Ba %*% A[iter, , t])^alpha
       mu.i  <- X.pred[, t, ] %*% beta1[iter, ]
       sig.i <- exp(X.pred[, t, ] %*% beta2[iter, ])
-      
+
       mu.star  <- mu.i + sig.i * (theta.i^xi.i - 1) / xi.i
       sig.star <- alpha * sig.i * theta.i^xi.i
       xi.star  <- alpha * xi.i
-      
+
       y.pred[iter, , t] <- revd(n = npred, loc = mu.star, scale = sig.star,
                                 shape = xi.star, type = "GEV")
     }
-    
+
     if (iter %% update == 0) {
       cat("    Finished pred:", iter, "of", iters, "iters \n")
     }
   }
-  
+
   return(y.pred)
 }
 
@@ -920,18 +987,18 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
 #############################################################:
 
 loglike <- function(y, theta, mu, logsig, xi, thresh, alpha){
-  
+
   theta.xi  <- theta^xi
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta.xi) - 1) / xi
   sig_star <- alpha * sigma * (theta.xi)
   xi_star  <- alpha * xi
-  
+
   tx <- (1 + xi_star * (y - mu_star) / sig_star)^(-1 / xi_star)
   ll <- -tx + (y > thresh) * ((xi_star + 1) * log(tx) - log(sig_star))
   ll[is.na(y)] <- 0
   ll[is.na(ll)] <- -Inf
-  
+
   return(ll)
 }
 
@@ -942,23 +1009,23 @@ grad_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
   sig_star <- alpha * sigma * (theta^xi)
   xi_star  <- alpha * xi
-  
+
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
-  
+
   this.grad <- -(tx_star^(-1 / xi_star - 1)) / sig_star +
     (y > thresh) * (xi_star + 1) / (sig_star * tx_star)
   this.grad[is.na(y)] <- 0  # for the missing data
-  
+
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {
     grad[j] <- sum(this.grad * X.mu[, , j])
   }
-  
+
   return(grad)
 }
 
@@ -969,21 +1036,21 @@ grad_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   sig <- exp(logsig)
-  
+
   tx  <- (1 + xi * (y - mu) / sig)
-  
+
   this.grad <- - (tx^(-1 / (alpha * xi) - 1)) * theta^(1 / alpha) /
     (alpha * sig) +
     (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
   this.grad[is.na(y)] <- 0  # for the missing data
-  
+
   grad <- rep(0, p.mu)
   for (j in 1:p.mu) {
     grad[j] <- sum(this.grad * X.mu[, , j]) - (beta1[j] - beta.mu) / beta.sd^2
   }
-  
+
   return(grad)
 }
 
@@ -994,24 +1061,24 @@ hess_logpost_betamu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig,
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   sigma <- exp(logsig)
   tx <- (1 + xi * (y - mu) / sigma)
-  
+
   this.hess <- - (tx^(-1 / (alpha * xi) - 2) * (alpha * xi + 1) *
                     theta^(1 / alpha)) / (alpha^2 * sigma^2) +
     (y > thresh) * (alpha * xi + 1) * xi / (alpha * tx^2 * sigma^2)
   this.hess[is.na(y)] <- 0  # for missing data
-  
+
   hess <- matrix(0, p.mu, p.mu)
   for (j in 1:p.mu) {
     for (i in j:p.mu) {
       hess[i, j] <- hess[j, i] <- sum(this.hess * X.mu[, , i] * X.mu[, , j])
     }
   }
-  
+
   hess <- hess - diag(1 / beta.sd^2, p.mu)  # account for prior
-  
+
   return(hess)
 }
 
@@ -1022,25 +1089,25 @@ hess_loglike_betamu <- function(beta1, X.mu, y, theta, logsig, xi, thresh,
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   # print(mean(mu))
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
   sig_star <- alpha * sigma * (theta^xi)
   xi_star  <- alpha * xi
-  
+
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
   this.hess <- -(xi_star + 1) * tx_star^(-1 / xi_star - 2) / sig_star^2 +
     (y > thresh) * (xi_star + 1) * xi_star / (sig_star^2 * tx_star^2)
   this.hess[is.na(y)] <- 0
-  
+
   hess <- matrix(0, p.mu, p.mu)
   for (i in 1:p.mu) {
     for (j in i:p.mu) {
       hess[i, j] <- hess[j, i] <- sum(this.hess * X.mu[, , i] * X.mu[, , j])
     }
   }
-  
+
   return(hess)
 }
 
@@ -1050,10 +1117,10 @@ loglike_mu <- function(beta1, X.mu, y, theta, logsig, xi, thresh, alpha) {
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
                 thresh = thresh, alpha = alpha)
-  
+
   return(sum(ll[!is.na(y)]))
 }
 
@@ -1064,12 +1131,12 @@ logpost_mu <- function(beta1, beta.mu, beta.sd, X.mu, y, theta, logsig, xi,
   for (j in 1:p.mu) {
     mu <- mu + X.mu[, , j] * beta1[j]
   }
-  
+
   ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
                 thresh = thresh, alpha = alpha)
-  
+
   lp <- sum(dnorm(beta1, beta.mu, beta.sd, log = TRUE))
-  
+
   return(sum(ll[!is.na(y)]) + lp)
 }
 
@@ -1080,24 +1147,24 @@ grad_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
   sig_star <- alpha * sigma * (theta^xi)
   xi_star  <- alpha * xi
-  
+
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
   this.grad <- (-tx_star^(-1 / xi_star - 1) *
                   xi * (y - mu) / (xi_star * sigma * theta^xi) +
                   (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
                                     (xi_star * sigma * tx_star * theta^xi)))
   this.grad[is.na(y)] <- 0
-  
+
   grad <- rep(0, p.sig)
   for (j in 1:p.sig) {
     grad[j] <- sum(this.grad * X.sig[, , j])
   }
-  
+
   return(grad)
 }
 
@@ -1108,23 +1175,23 @@ grad_logpost_betasig <- function(beta2, beta.mu, beta.sd, X.sig, y, theta, mu,
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   sigma <- exp(logsig)
   res <- y - mu
-  
+
   tx <- (1 + xi * res / sigma)
-  
+
   this.grad <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) /
     (alpha * sigma) +
     (y > thresh) * ((alpha * xi + 1) * res / (alpha * tx * sigma) - 1)
-  
+
   this.grad[is.na(y)] <- 0
-  
+
   grad <- rep(0, p.sig)
   for (j in 1:p.sig) {
     grad[j] <- sum(this.grad * X.sig[, , j]) - (beta2[j] - beta.mu) / beta.sd^2
   }
-  
+
   return(grad)
 }
 
@@ -1135,27 +1202,27 @@ hess_logpost_betasig <- function(beta2, beta.mu, beta.sd, X.sig, y, theta, mu,
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   sigma <- exp(logsig)
   res <- y - mu
-  
+
   tx <- (1 + xi * res / sigma)
-  
+
   this.hess <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) * (
     (alpha * xi + 1) * xi * res / (alpha * xi * tx * sigma) - 1
   ) / (alpha * sigma) -
     (y > thresh) * (alpha * xi + 1) * res * sigma /
     (alpha * (sigma + xi * res)^2)
-  
+
   hess <- matrix(0, p.sig, p.sig)
   for (i in 1:p.sig) {
     for (j in i:p.sig) {
       hess[i, j] <- hess[j, i] <- sum(this.hess * X.sig[, , i] * X.sig[, , j])
     }
   }
-  
+
   hess <- hess - diag(1 / beta.sd^2, p.sig)  # account for prior
-  
+
   return(hess)
 }
 
@@ -1166,14 +1233,14 @@ hess_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   sigma    <- exp(logsig)
   mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
   sig_star <- alpha * sigma * (theta^xi)
   xi_star  <- alpha * xi
-  
+
   tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
-  
+
   hess <- matrix(0, p.sig, p.sig)
   dtx <- -xi * (y - mu) / (theta^xi * sigma)
   d12 <- (-1 / xi_star - 1) * tx_star^(-1 / xi_star - 2) * dtx^2
@@ -1187,7 +1254,7 @@ hess_loglike_betasig <- function(beta2, X.sig, y, theta, mu, xi, thresh,
       hess[i, j] <- hess[j, i] <- sum(this.hess * X.sig[, , i] * X.sig[, , j])
     }
   }
-  
+
   return(hess)
 }
 
@@ -1197,10 +1264,10 @@ loglike_sig <- function(beta2, X.sig, y, theta, mu, xi, thresh, alpha) {
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
                 thresh = thresh, alpha = alpha)
-  
+
   return(sum(ll))
 }
 
@@ -1211,10 +1278,10 @@ logpost_sig <- function(beta2, beta.mu, beta.sd, X.sig, y, theta, mu, xi,
   for (j in 1:p.sig) {
     logsig <- logsig + X.sig[, , j] * beta2[j]
   }
-  
+
   ll <- loglike(y = y, theta = theta, mu = mu, logsig = logsig, xi = xi,
                 thresh = thresh, alpha = alpha)
-  
+
   lp <- sum(dnorm(beta2, beta.mu, beta.sd, log = TRUE))
   return(sum(ll[!is.na(y)]) + lp)
 }
@@ -1267,7 +1334,7 @@ if (FALSE) {
   X[, , 1] <- 1
   y        <- 0.5 * X[, , 2] + 10 * matrix(rnorm(ns * nt), ns, nt)
   thresh   <- matrix(0, ns, nt)
-  
+
   fit    <- ReShMCMC(y = y, X = X, thresh = thresh, B = B, alpha = alpha)
 }
 

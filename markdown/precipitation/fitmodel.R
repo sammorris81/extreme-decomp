@@ -180,28 +180,33 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <- 100; burn <- 50; update <- 10  # for testing
+iters <- 2000; burn <- 1500; update <- 50  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
 # fit the model using the training data
+# Rprof(filename = "Rprof.out", line.profiling = TRUE)
 fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 thresh = -Inf, B = B.sp, alpha = alpha,
                 can.mu.sd = 0.001, can.sig.sd = 0.005,
-                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
+                # beta1.attempts = 50, beta2.attempts = 50,
+                A = A.init,
                 beta1 = beta1.init, beta2 = beta2.init, xi = 0,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 10, beta1.sd.fix = FALSE,
+                beta1.sd = 10, # beta1.sd.fix = FALSE,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 1, beta2.sd.fix = FALSE,
+                beta2.sd = 1, # beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
-                mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
+                mu1.sd = 50, mu2.sd = 5, bw.basis.attempts = 50,
+                bw.basis.init = 0.5, bw.basis.random = FALSE,
                 time.interact = TRUE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
-#                iters = iters, burn = burn, update = update, iterplot = TRUE)
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
+               iters = iters, burn = burn, update = update, iterplot = TRUE)
 cat("Finished fit and predict \n")
+# Rprof(filename = NULL)
+# summaryRprof(filename = "Rprof.out", lines = "show")
 
 # par(mfrow = c(7, 5))
 # for (i in 1:np) {

@@ -31,15 +31,15 @@ h1 <- function(logs, u, alpha, log = TRUE){
   psi <- pi*u
   c <- (sin(alpha * psi) / sin(psi))^(1 / (1 - alpha))
   c <- c * sin((1 - alpha) * psi) / sin(alpha * psi)
-
+  
   logd <- log(alpha) - log(1 - alpha) - (1 / (1 - alpha)) * logs +
-          log(c) - c * (1 / s^(alpha / (1 - alpha))) +
-          logs
-
+    log(c) - c * (1 / s^(alpha / (1 - alpha))) +
+    logs
+  
   if (!log) {
     logd <- exp(logd)
   }
-
+  
   return(logd)
 }
 
@@ -68,15 +68,15 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
                         bw = 1){
   library(evd)
   library(BMAmevt)
-
+  
   n      <- nrow(S)
   nknots <- nrow(knots)
-
+  
   d             <- rdist(S, knots)
   d[d < 0.0001] <- 0
   w             <- make.kern(d^2, log(bw))
   K             <- stdKern(w)^(1 / alpha)
-
+  
   y <- matrix(0, n, nreps)
   for (t in 1:nreps) {
     A     <- rep(0, nknots)
@@ -84,14 +84,14 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
       A[j] <- rstable.posit(alpha)
     }
     theta <- (K %*% A)^alpha
-
+    
     xi_star  <- alpha*xi
     mu_star  <- mu+sig*(theta^xi-1)/xi
     sig_star <- alpha*sig*theta^xi
-
+    
     y[,t]    <- rgev(n,mu_star,sig_star,xi_star)
   }
-
+  
   return(y)
 }
 
@@ -99,12 +99,12 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
 ll.ind <- function(beta, X, y, xi = -0.1) {
   # nt <- dim(X)[2]
   # np <- dim(X)[3]
-
+  
   np <- dim(X)[2]
   beta1 <- beta[1:np]
   beta2 <- beta[(np + 1):(2 * np)]
   ll <- 0
-
+  
   mu <- X %*% beta1
   sig <- exp(X %*% beta2)
   # if (any(sig[!is.na(y[, t])] == 0)) {
@@ -113,20 +113,20 @@ ll.ind <- function(beta, X, y, xi = -0.1) {
   ll <- sum(
     dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
     na.rm = TRUE)
-
+  
   return(-ll)
 }
 
 ll.ind.xi <- function(beta, X, y) {
   # nt <- dim(X)[2]
   # np <- dim(X)[3]
-
+  
   np <- dim(X)[2]
   beta1 <- beta[1:np]
   beta2 <- beta[(np + 1):(2 * np)]
   xi <- tail(beta, 1)
   ll <- 0
-
+  
   mu <- X %*% beta1
   sig <- exp(X %*% beta2)
   if (any(sig[!is.na(y)] == 0)) {
@@ -136,7 +136,7 @@ ll.ind.xi <- function(beta, X, y) {
   ll <- sum(
     dgev(y, loc = mu, scale = sig, shape = xi, log = TRUE),
     na.rm = TRUE)
-
+  
   return(-ll)
 }
 
@@ -157,15 +157,15 @@ proj.beta <- function(B, d12, d22, S11inv, tau, logrho) {
   #B<-n-vector of observed beta (minus the mean)
   ns <- nrow(d22)
   rho <- exp(logrho)
-
+  
   S22 <- exp(-d22 / rho) / tau
   S12 <- exp(-d12 / rho) / tau
   S11inv <- S11inv * tau
-
+  
   P2 <- S12 %*% S11inv
   P1 <- S22 - S12 %*% S11inv %*% t(S12)
   P1 <- t(chol(P1))
-
+  
   Bnew <- P2 %*% B + P1 %*% rnorm(ns)
   return(Bnew)
 }
@@ -210,10 +210,10 @@ add.basis.X <- function(X, B, time.interact = FALSE) {
   } else {
     nB <- dim(B)[2]
   }
-
+  
   # create a new X array that will be big enough to hold the basis functions
   newX <- array(0, dim = c(ns, nt, np + nB))
-
+  
   # copy over old X information
   newX[, , 1:np] <- X
   if (time.interact) {
@@ -224,7 +224,7 @@ add.basis.X <- function(X, B, time.interact = FALSE) {
       newX[, t, (np + 1):(np + nB)] <- B
     }
   }
-
+  
   return(newX)
 }
 
@@ -239,8 +239,8 @@ rep.basis.X <- function(X, newB, time.interact = FALSE) {
     start <- np - nB + 1
   }
   end   <- np
-
-
+  
+  
   if (time.interact) {
     for (t in 1:nt) {
       newB.interact <- newB * X[, t, 2]
@@ -251,7 +251,7 @@ rep.basis.X <- function(X, newB, time.interact = FALSE) {
       X[, t, start:end] <- newB
     }
   }
-
+  
   return(X)
 }
 
@@ -292,19 +292,32 @@ dtnorm <- function(y, mn, sd = 0.25, fudge = 0){
   return(l)
 }
 
+getXBeta <- function(X, beta) {
+  np <- length(beta)
+  if (np != dim(X)[3]) {
+    stop("X has the wrong dimensions")
+  }
+  XBeta <- 0
+  for (p in 1:np) {
+    XBeta <- XBeta + X[, , p] * beta[p]
+  }
+  
+  return(XBeta)
+}
+
 # update candidate standard deviation
 mhUpdate <- function(acc, att, mh, nattempts = 50, lower = 0.8, higher = 1.2) {
   acc.rate     <- acc / att
   these.update <- att > nattempts
   these.low    <- (acc.rate < 0.25) & these.update
   these.high   <- (acc.rate > 0.50) & these.update
-
+  
   mh[these.low]  <- mh[these.low] * lower
   mh[these.high] <- mh[these.high] * higher
-
+  
   acc[these.update] <- 0
   att[these.update] <- 0
-
+  
   results <- list(acc=acc, att=att, mh=mh)
   return(results)
 }
@@ -318,7 +331,7 @@ dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
     ns <- nrow(a)
     nt <- ncol(a)
   }
-
+  
   results <- dPSCPP(a=a, alpha=alpha, mid_points=mid.points,
                     bin_width=bin.width)
   return(results)
@@ -352,7 +365,7 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
                  plot = FALSE)
   subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
   county_map <- map_data(map = "county", region = "georgia")
-
+  
   # a hack in case the data is in a different order than subregion
   if (is.null(counties)) {
     cat("To guarantee accurate maps, it is recommended to include",
@@ -362,11 +375,11 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
     basis <- data.frame(Y, subregion = counties)
   }
   extcoef_map <- merge(county_map, basis, all.x = TRUE)
-
+  
   if (is.null(limits)) {
     limits <- c(min(Y), max(Y))
   }
-
+  
   # using fill = Y because that's the column of extcoef_map with the actual data
   p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
   p <- p + geom_polygon(colour = "grey", aes(fill = Y))
@@ -391,10 +404,10 @@ map.sc.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
             plot = FALSE)
   subregion <- sapply(strsplit(sc$names, ","), function(x) x[2])
   county_map <- map_data(map = "county", region = "south carolina")
-
+  
   basis <- data.frame(Y, subregion)
   extcoef_map <- merge(county_map, basis, all.x = TRUE)
-
+  
   # using fill = Y because that's the column of extcoef_map with the actual data
   p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
   p <- p + geom_polygon(colour = "grey", aes(fill = Y))
@@ -417,34 +430,34 @@ map.sc.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
 #   score(nprobs): a single quantile score per quantile
 ################################################################
 QuantScore <- function(preds, probs, validate) {
-
-#   nt <- ncol(validate)  # number of prediction days
-#   np <- nrow(validate)  # number of prediction sites
+  
+  #   nt <- ncol(validate)  # number of prediction days
+  #   np <- nrow(validate)  # number of prediction sites
   npreds <- length(validate)
   nprobs <- length(probs)  # number of quantiles to find quantile score
-
+  
   # we need to know the predicted quantiles for each site and day in the
   # validation set.
   # nprobs x npreds
   pred.quants <- apply(preds, 2, quantile, probs=probs, na.rm=T)
-
+  
   scores.sites <- matrix(NA, nprobs, npreds)
-
+  
   for (q in 1:nprobs) {
     diff <- pred.quants[q, ] - validate
     i <- diff >= 0  # diff >= 0 means qhat is larger
     scores.sites[q, ] <- 2 * (i - probs[q]) * diff
   }
-
+  
   scores <- apply(scores.sites, 1, mean, na.rm=T)
-
+  
   return(scores)
 }
 
 BrierScore <- function(preds, validate, thresh) {
   # iters <- nrow(post.prob)
   # np    <- ncol(post.prob)
-
+  
   # scores <- rep(NA, iters)
   # for (i in 1:iters) {
   #   scores[i] <- mean((validate - post.prob[i, ])^2)
@@ -454,7 +467,7 @@ BrierScore <- function(preds, validate, thresh) {
     probs[i] <- mean(preds[, i] > thresh[i])
   }
   score <- mean(((validate >= thresh) - probs)^2)
-
+  
   return(score)
 }
 
@@ -475,9 +488,9 @@ BrierScore <- function(preds, validate, thresh) {
 ################################################################
 Score <- function(preds, probs, validate, thresh) {
   these.qs <- validate > thresh
-
+  
   # find the Brier scores for all sites
-
+  
   # only get the quantile scores for these.qs
 }
 
@@ -487,27 +500,27 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
   # get the pairwise chi as an average over nq quantiles
   # between qlim[1] and qlim[2]
   # if qlim[2] == 1, then we'll set it to the max quantile for the two sites
-
+  
   if (site.idx == 2) {  # each column represents a site
     Y <- t(Y)  # transform to rows
   }
-
+  
   ns <- nrow(Y)
   nt <- ncol(Y)
-
+  
   if (is.null(update)) {
     update <- floor(ns / 4)
   }
-
+  
   ec <- matrix(0, ns, ns)
   eps <- .Machine$double.eps^0.5
-
+  
   qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   qlim.idx <- 1
   these <- ns
   for (i in 1:ns) {
     for (j in i:ns) {
-
+      
       # only want to include years which have both observations
       these.ij   <- which(colSums(is.na(Y[c(i, j), ])) == 0)
       U <- Y[c(i, j), these.ij]
@@ -530,13 +543,13 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
         qhat[q] <- mean(U[1, ] < quantiles[q])
         Q.ij[q] <- mean(colmax.ij < quantiles[q])
       }
-
+      
       # we're using qhat here because we want to make sure that the quantile by
       # which we divide is only as precise as the data will allow.
       ec[i, j] <- ec[j, i] <- mean(log(Q.ij) / log(qhat))
       ec[i, j] <- ec[j, i] <- min(ec[i, j], 2)  # keep it within the range
       ec[i, j] <- ec[j, i] <- max(ec[i, j], 1)  # keep it within the range
-
+      
       qlims[qlim.idx, ] <- c(min.ij, max.ij)
       qlim.idx <- qlim.idx + 1
     }
@@ -544,21 +557,21 @@ get.pw.ec <- function(Y, nq = 100, qlim = c(0, 1), site.idx = 1,
       cat("  Finished i =", i, "\n")
     }
   }
-
+  
   return(list(ec = ec, qlims = qlims))
 }
 
 
 get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
                             qlim = c(0, 1), site.idx = 1) {
-
+  
   if (site.idx == 2) {  # each column represents a site
     Y <- t(Y)  # transform to rows
   }
-
+  
   ns <- nrow(Y)
   nt <- ncol(Y)
-
+  
   # we want a way to handle POT and max-stable in the same funciton.
   # if the data are max-stable, we can just set the threshold at -Inf
   # for all sites.
@@ -570,57 +583,57 @@ get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
   } else if (length(thresh) != ns) {
     stop("If defined, thresh must be of length: 1, or length: ns.")
   }
-
+  
   if (!thresh.quant) {  # find empirical cdf at threshold values
     for (i in 1:ns) {
       thresh[i] <- mean(Y[i, ] < thresh[i], na.rm = TRUE)
     }
   }
-
+  
   # get values of empirical cdf for Y
   # need t(apply) because apply gives back nt x ns
   Y <- t(apply(Y, 1, rank, na.last = "keep")) / (rowSums(is.finite(Y)) + 1)
-
+  
   # shift and scale to account for threshold
   Y <- (Y - thresh) / (1 - thresh)
   Y[Y <= 0] <- 0
-
+  
   if (is.null(update)) {
     update <- floor(ns / 4)
   }
-
+  
   # qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   # qlim.idx <- 1
   fmado <- madogramCPP(data = Y)
   fmado <- ifelse(fmado >= 1 / 6, 1 / 6, fmado)
   ec <- (1 + 2 * fmado) / (1 - 2 * fmado)
-
+  
   return(list(ec = ec, fmadogram = fmado))
 }
 
 bspline.2d <- function(s, scale = TRUE, df.x, df.y) {
   ns <- nrow(s)
-
+  
   if (scale) {
     s.scale <- min(diff(range(s[, 1])), diff(range(s[, 2])))
     s[, 1] <- (s[, 1] - min(s[, 1])) / s.scale
     s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
   }
-
+  
   B.x <- bs(s[, 1], df = df.x, Boundary.knots = c(-0.1, 1.1))
   B.y <- bs(s[, 2], df = df.y, Boundary.knots = c(-0.1, 1.1))
-
+  
   B <- matrix(NA, nrow = ns, ncol = df.x * df.y)
   for (i in 1:ncol(B.x)) {
     for (j in 1:ncol(B.y)) {
       B[, (i - 1) * df.y + j] <- B.x[, i] * B.y[, j]
     }
   }
-
+  
   # if the basis has no weight for any sites, remove from group
   keep.bases <- which(colSums(B) > 0)
   B <- B[, keep.bases]
-
+  
   return(B)
 }
 
@@ -637,7 +650,7 @@ mrl.plot <- function (data, umin = min(data), umax = max(data) - 0.1,
     xu[i] <- x[i] + (qnorm((1 + conf)/2) * sdev)/sqrt(n)
     xl[i] <- x[i] - (qnorm((1 + conf)/2) * sdev)/sqrt(n)
   }
-
+  
   if (is.null(xlab)) {
     xlab <- "u"
   }

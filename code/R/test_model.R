@@ -162,7 +162,7 @@ tau <- rep(1, nt)
 tau.keep <- matrix(0, niters, nt)
 set.seed(3366)  # demo
 for (iter in 1:niters) {
-  this.update <- updateGPTau(tau = tau, SS = SS, tau.a = 0.1, tau.b = 0.1,
+  this.update <- updateGPTau(SS = SS, tau.a = 0.1, tau.b = 0.1,
                              ns = ns)
   tau <- this.update$tau
 
@@ -198,15 +198,12 @@ d <- rdist(s)
 Sigma.t <- exp(-d / phi.t)
 tau.t   <- rgamma(nt, 0.5, 0.5)
 Qb.t    <- chol2inv(chol(Sigma.t))
-Xb      <- getXBeta(X = X, beta = beta.t)
+Xb.t    <- getXBeta(X = X, beta = beta.t)
 
-if (nt == 1) {
-  Xb <- matrix(Xb, ns, nt)
-}
 
 mu <- matrix(0, ns, nt)
 for (t in 1:nt) {
-  mu[, t] <- Xb[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+  mu[, t] <- Xb.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
 }
 
 # initialize values
@@ -241,7 +238,7 @@ for (iter in 1:niters) {
 
   beta.sd.keep[iter] <- beta.sd
 
-  this.update <- updateGPTau(tau = tau, SS = SS, tau.a = 0.1, tau.b = 0.1,
+  this.update <- updateGPTau(SS = SS, tau.a = 0.1, tau.b = 0.1,
                              ns = ns)
   tau <- this.update$tau
 
@@ -280,7 +277,7 @@ for (iter in 1:niters) {
   }
 }
 
-# test tau, phi, and beta
+# test mu
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
@@ -302,45 +299,29 @@ tau.t   <- rgamma(nt, 0.5, 0.5)
 Qb.t    <- chol2inv(chol(Sigma.t))
 Xb.t    <- getXBeta(X = X, beta = beta.t)
 
-if (nt == 1) {
-  Xb <- matrix(Xb, ns, nt)
-}
-
 mu.t <- matrix(0, ns, nt)
 for (t in 1:nt) {
   mu.t[, t] <- Xb.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
 }
 
-y <- rgev(n = ns * nt, loc = mu.t, 1, 0.1)
+y.t <- rgev(n = ns * nt, loc = mu.t, 1, 0.1)
 
 # initialize values
-beta <- rep(0, np)
-Xb   <- getXBeta(X = X, beta = beta)
 mu <- matrix(mu.t + rnorm(ns * nt), ns, nt)
-tau <- rep(1, nt)
-phi <- 0.05
-Qb <- chol2inv(chol(exp(-d / phi)))
-SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
+SS <- getGPSS(Qb = Qb.t, param = mu, Xb = Xb.t)
 curll <- matrix(0, ns, nt)
 for (t in 1:nt) {
-  curll[, t] <- dgev(x = y[, t], loc = mu[, t], 1, 0.1, log = TRUE)
+  curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], 1, 0.1, log = TRUE)
 }
 
 niters <- 10000
 mu.keep <- array(0, dim = c(niters, ns, nt))
 acc.mu <- att.mu <- MH.mu <- matrix(0.5, ns, nt)
-beta.sd <- 100
-beta <- rep(0, np)
-beta.keep <- matrix(0, niters, np)
-beta.sd.keep <- rep(0, niters)
-tau <- rep(1, nt)
-tau.keep <- matrix(0, niters, nt)
-phi.keep <- rep(0, niters)
-acc.phi <- att.phi <- MH.phi <- 0.1
+
 set.seed(3366)  # demo
 for (iter in 1:niters) {
-  this.update <- updateMuTest(mu = mu, Qb = Qb.t, tau = tau, Xb = Xb.t,
-                              y = y, SS = SS, curll = curll, acc = acc.mu,
+  this.update <- updateMuTest(mu = mu, Qb = Qb.t, tau = tau.t, Xb = Xb.t,
+                              y = y.t, SS = SS, curll = curll, acc = acc.mu,
                               att = att.mu, MH = MH.mu)
   mu <- this.update$mu
   SS <- this.update$SS
@@ -354,26 +335,15 @@ for (iter in 1:niters) {
   att.mu <- this.update$att
   MH.mu  <- this.update$MH
 
-  this.update <- updateGPTau(tau = tau, SS = SS, tau.a = 0.1, tau.b = 0.1,
-                             ns = ns)
-  tau <- this.update$tau
-
-  tau.keep[iter, ] <- tau
-
-
   if (iter %% 100 == 0) {
     par(mfrow = c(5, 3))
-    for (i in 1:3) {
+    for (i in 1:5) {
       for (j in 1:3) {
         plot(mu.keep[1:iter, i, j], type = "l",
              main = paste("mu: ", round(mu.t[i, j], 3)),
              ylab = round(acc.mu[i, j] / att.mu[i, j], 3),
              xlab = MH.mu[i, j])
       }
-    }
-    for(i in 1:6) {
-      plot(tau.keep[1:iter, i], type = "l",
-           main = paste("tau: ", round(tau.t[i], 3)))
     }
   }
 }

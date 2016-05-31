@@ -131,7 +131,8 @@ updateMuTest <- function(mu, Qb, tau, Xb, y, SS, curll, acc, att, MH) {
 
     R <- sum(canll - curll[, t]) -
       0.5 * tau[t] * canSS +
-      0.5 * tau[t] * SS[t]
+      # 0.5 * tau[t] * SS[t]
+      0.5 * tau[t] * quad.form(Qb, mu[, t] - Xb[, t])
 
     if (!is.na(exp(R))) { if (log(runif(1)) < R) {
       mu[, t]    <- canmu
@@ -304,7 +305,7 @@ updateGPBetaSD <- function(beta, tau.a, tau.b) {
   return(results)
 }
 
-updateGPTau <- function(tau, SS, tau.a, tau.b, ns) {
+updateGPTau <- function(SS, tau.a, tau.b, ns) {
   # update the variance parameters for the GPs
   nt <- length(SS)
 

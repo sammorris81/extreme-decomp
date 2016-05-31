@@ -316,6 +316,16 @@ getXBeta <- function(X, beta) {
 
 getGPSS <- function(Qb, param, Xb) {
   # get the sum of squares for a gaussian process with prec matrix Qb
+  if (is.matrix(Xb)) {  # this takes less time than the slower version
+    SS <- diag(quad.form(Qb, param - Xb))
+  } else {
+    SS <- quad.form(Qb, param - Xb)
+  }
+  return(SS)
+}
+
+getGPSS.slow <- function(Qb, param, Xb) {
+  # get the sum of squares for a gaussian process with prec matrix Qb
   if (is.matrix(Xb)) {
     nt <- ncol(Xb)
     SS <- rep(0, nt)

@@ -44,11 +44,15 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   bw.star <- transform$logit(bw, bw.min, bw.max)
   canbw.star <- rnorm(1, bw.star, MH)
   canbw <- transform$inv.logit(canbw.star, bw.min, bw.max)
+  # bw.star <- log(bw)
+  # canbw.star <- rnorm(1, bw.star, MH)
+  # canbw <- exp(canbw.star)
 
   canB <- makeW(dw2 = dw2, rho = canbw)
+  # canB <- getW(rho  = canbw, dw2 = dw2)
+  # print(canbw.star)
   canX.mu  <- rep.basis.X(X = X.mu, newB = canB, time.interact = time.interact)
   canX.sig <- rep.basis.X(X = X.sig, newB = canB, time.interact = time.interact)
-
   canXb1 <- getXBeta(X = canX.mu, beta = beta1)
   canXb2 <- getXBeta(X = canX.sig, beta = beta2)
 
@@ -73,12 +77,27 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   # print(canSS1)
   # print(paste("SS1: ", sum(SS1)))
   # print(paste("SS2: ", sum(SS2)))
+
+  # debug
+  # X.mu <<- X.mu
+  # canX.mu <<- canX.mu
+  # canB  <<- canB
+  # tau1 <<- tau1
+  # beta1 <<- beta1
+  # Xb1   <<- Xb1
+  # canXb1 <<- canXb1
+  # SS1    <<- SS1
+  # canSS1 <<- canSS1
+  # stop()
+
   R <- -0.5 * sum(tau1 * (canSS1 - SS1)) - 0.5 * sum(tau2 * (canSS2 - SS2)) +
     log(canbw - bw.min) + log(bw.max - canbw) -  # Jacobian of the prior
     log(bw - bw.min) - log(bw.max - bw)
+    # dnorm(canbw, bw.mn, bw.sd, log = TRUE) + log(canbw) -
+    # dnorm(bw, bw.mn, bw.sd, log = TRUE) - log(bw)
   # print(sum(canSS1))
   # print(sum(SS1))
-
+  # print(R)
   if (!is.na(R)) { if (log(runif(1)) < R) {
     acc <- acc + 1
     bw <- canbw
@@ -93,6 +112,36 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   results <- list(bw = bw, X.mu = X.mu, Xb1 = Xb1, SS1 = SS1,
                   X.sig = X.sig, Xb2 = Xb2, SS2 = SS2,
                   acc = acc, att = att)
+  return(results)
+}
+
+updateMuTest <- function(mu, Qb, tau, Xb, y, SS, curll, acc, att, MH) {
+  # update mu(s, t)
+  ns <- nrow(mu)
+  nt <- ncol(mu)
+
+  for (t in 1:nt) {
+    att[, t] <- att[, t] + 1
+    # print(ns)
+    # print(mu[, t])
+    # print(MH[, t])
+    canmu <- rnorm(ns, mu[, t], MH[, t])
+    canll <- dgev(x = y[, t], loc = mu[, t], 1, 0.1)
+    canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
+
+    R <- sum(canll - curll[, t]) -
+      0.5 * tau[t] * canSS +
+      0.5 * tau[t] * SS[t]
+
+    if (!is.na(exp(R))) { if (log(runif(1)) < R) {
+      mu[, t]    <- canmu
+      SS[t]      <- canSS
+      curll[, t] <- canll
+      acc[, t]   <- acc[, t] + 1
+    }}
+  }
+
+  results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
   return(results)
 }
 
@@ -233,12 +282,8 @@ updateGPBeta <- function(beta, beta.sd, Qb, param, X, SS, tau) {
     tXQ  <- t(X.t) %*% Qb
     tXQX <- tXQ %*% X.t
     VVV  <- VVV + tau[t] * tXQX
-    MMM  <- tau[t] * tXQ %*% param[, t]
+    MMM  <- MMM + tau[t] * tXQ %*% param[, t]
   }
-  # tau <<- tau
-  # X <<- X
-  # Qb <<- Qb
-  # VVV <<- VVV
   VVV <- chol2inv(chol(VVV))
   beta <- VVV %*% MMM + t(chol(VVV)) %*% rnorm(np)
 

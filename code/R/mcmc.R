@@ -67,15 +67,16 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   # if (bw.basis.random) {
     # initialize basis functions
     if (is.null(bw.basis.init)) {
-      bw.basis <- quantile(dw2, 0.3)
+      bw.basis <- quantile(dw2, 0.1)
     } else {
       bw.basis <- bw.basis.init
     }
 
-    bw.basis.min <- quantile(dw2, 0.05)
-    bw.basis.max <- quantile(dw2, 0.95)
+    bw.basis.min <- quantile(dw2, 0.025)
+    bw.basis.max <- quantile(dw2, 0.975)
 
-    B.X <- makeW(dw2 = dw2, rho = bw.basis)
+    # B.X <- makeW(dw2 = dw2, rho = bw.basis)
+    B.X  <- getW(rho = bw.basis, dw2 = dw2)
     X.mu <- add.basis.X(X = X.mu, B = B.X, time.interact = time.interact)
     X.sig <- add.basis.X(X = X.sig, B = B.X, time.interact = time.interact)
   # }
@@ -109,7 +110,6 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   # set the initial mu and logsig to the mean
   mu <- Xb1 <- getXBeta(X = X.mu, beta = beta1)
   logsig <- Xb2 <- getXBeta(X = X.sig, beta = beta2)
-  Xb1 <- Xb2 <- matrix(0, ns, nt)
 
   # get the initial covariance matrix for the gaussian process
   d <- rdist(s)
@@ -167,25 +167,25 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   # initial values for loglikelihood and gradients
   curll <- loglike(y, theta, mu, logsig, xi, thresh, alpha)
 
-  beta1.grad.cur <- grad_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
-                                        beta.sd = beta1.sd, X.mu = X.mu, y = y,
-                                        theta = theta, logsig = logsig, xi = xi,
-                                        thresh = thresh, alpha = alpha)
-
-  beta2.grad.cur <- grad_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
-                                         beta.sd = beta2.sd, X.sig = X.sig,
-                                         y = y, theta = theta, mu = mu, xi = xi,
-                                         thresh = thresh, alpha = alpha)
-
-  beta1.hess.cur <- hess_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
-                                        beta.sd = beta1.sd, X.mu = X.mu, y = y,
-                                        theta = theta, logsig = logsig,
-                                        xi = xi, thresh = thresh, alpha = alpha)
-
-  beta2.hess.cur <- hess_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
-                                         beta.sd = beta2.sd, X.sig = X.sig, y = y,
-                                         theta = theta, mu = mu, xi = xi,
-                                         thresh = thresh, alpha = alpha)
+  # beta1.grad.cur <- grad_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
+  #                                       beta.sd = beta1.sd, X.mu = X.mu, y = y,
+  #                                       theta = theta, logsig = logsig, xi = xi,
+  #                                       thresh = thresh, alpha = alpha)
+  #
+  # beta2.grad.cur <- grad_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
+  #                                        beta.sd = beta2.sd, X.sig = X.sig,
+  #                                        y = y, theta = theta, mu = mu, xi = xi,
+  #                                        thresh = thresh, alpha = alpha)
+  #
+  # beta1.hess.cur <- hess_logpost_betamu(beta1 = beta1, beta.mu = beta1.mu,
+  #                                       beta.sd = beta1.sd, X.mu = X.mu, y = y,
+  #                                       theta = theta, logsig = logsig,
+  #                                       xi = xi, thresh = thresh, alpha = alpha)
+  #
+  # beta2.hess.cur <- hess_logpost_betasig(beta2 = beta2, beta.mu = beta2.mu,
+  #                                        beta.sd = beta2.sd, X.sig = X.sig, y = y,
+  #                                        theta = theta, mu = mu, xi = xi,
+  #                                        thresh = thresh, alpha = alpha)
 
   # STORAGE:
   keep.beta1   <- matrix(0, iters, p.mu)
@@ -215,11 +215,11 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
   cuts <- exp(c(-1, 0, 1, 2, 5, 10))
   MH.a  <- rep(1, 100)
   att.a <- acc.a <- 0 * MH.a
-  att.mu     <- acc.mu     <- MH.mu     <- matrix(0.5, ns, nt)
+  att.mu     <- acc.mu     <- MH.mu     <- matrix(0.1, ns, nt)
   att.logsig <- acc.logsig <- MH.logsig <- matrix(0.1, ns, nt)
   att.xi    <- acc.xi    <- MH.xi    <- 0.1
-  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- 0.1
-  att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- 0.1
+  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- 0.001
+  att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- 0.05
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
@@ -227,6 +227,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     ##############      Random effects A    ############
     ####################################################
     oldA  <- A
+    # print(mean(A))
     this.update <- updateA(A = A, cuts = cuts, bins = bins, Ba = Ba,
                            theta = theta, y = y, mu = mu, logsig = logsig,
                            xi = xi, thresh = thresh, alpha = alpha,
@@ -236,7 +237,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     l1    <- this.update$l1
     theta <- this.update$theta
     curll <- this.update$curll
-
+    # print(mean(A))
     ####################################################
     ##########      bandwidth for kernels      #########
     ####################################################
@@ -313,14 +314,12 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     beta1 <- this.update$beta
     Xb1   <- this.update$Xb
     SS1   <- this.update$SS
-    # print(paste("SS1: ", sum(SS1)))
 
     this.update <- updateGPBeta(beta = beta2, beta.sd = beta2.sd, Qb = Qb,
                                 param = logsig, X = X.sig, SS = SS2, tau = tau2)
     beta2 <- this.update$beta
     Xb2   <- this.update$Xb
     SS2   <- this.update$SS
-    # print(paste("SS2: ", sum(SS2)))
 
     # beta sd
     this.update <- updateGPBetaSD(beta = beta1, tau.a = beta1.tau.a,
@@ -341,7 +340,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     tau2 <- this.update$tau
 
     # spatial range
-    if (iter> 100) {
+    # if (iter> 100) {
     this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
                               bw.mn = -2, bw.sd = 1, bw.max = bw.gp.max,
                               Qb = Qb, d = d, mu = mu, Xb1 = Xb1, tau1 = tau1,
@@ -354,7 +353,7 @@ ReShMCMC<-function(y, X, X.mu = NULL, X.sig = NULL, s, knots, thresh, B, alpha,
     SS2       <- this.update$SS2
     acc.bw.gp <- this.update$acc
     att.bw.gp <- this.update$att
-    }
+    # }
 
 
     # ####################################################

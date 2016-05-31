@@ -200,7 +200,8 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta2.sd = 1, # beta2.sd.fix = FALSE,
                 beta1.block = FALSE, beta2.block = FALSE,
                 mu1.sd = 50, mu2.sd = 5, bw.basis.attempts = 50,
-                bw.basis.init = 0.5, bw.basis.random = FALSE,
+                bw.basis.init = 0.2,
+                # bw.basis.random = TRUE,
                 time.interact = TRUE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
                iters = iters, burn = burn, update = update, iterplot = TRUE)

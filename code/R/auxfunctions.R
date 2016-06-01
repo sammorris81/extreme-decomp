@@ -372,6 +372,37 @@ dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
   return(results)
 }
 
+#### Logposterior - needs to be done for each timepoint
+logpost.mu <- function(mu, Xb, tau, Qb, y, logsig, xi) {
+
+  lp1 <- -0.5 * tau * quad.form(Qb, mu - Xb)
+  # lp1 <- 0
+
+  t.y <- (1 + xi * (y - mu) / exp(logsig))^(-1 / xi)
+  lp2 <- (xi + 1) * log(t.y) - t.y
+  # lp2 <- 0
+
+  logpost <- lp1 + lp2
+
+  return(logpost)
+}
+
+
+logpost.mu.grad <- function(mu, Xb, tau, Qb, y, logsig, xi) {
+  sig <- exp(logsig)
+  d1dmu <- as.vector(-tau * Qb %*% (mu - Xb))
+  # d1dmu <- 0
+
+  t.y <- 1 + xi * (y - mu) / sig
+  d2dmu <- (xi + 1) / (sig * t.y) - t.y^(-1 / xi - 1) / sig
+  # d2dmu <- 0
+
+  grad <- d1dmu + d2dmu
+  return(grad)
+}
+
+
+
 #### Plotting
 
 theme_clean <- function(base_size = 12) {

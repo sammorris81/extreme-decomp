@@ -4,6 +4,7 @@ library(Rcpp)
 library(emulator)
 library(microbenchmark)
 library(SpatialExtremes)
+library(numDeriv)
 
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
@@ -306,6 +307,8 @@ for (t in 1:nt) {
 
 y.t <- rgev(n = ns * nt, loc = mu.t, 1, 0.1)
 
+Sigma <- solve(Qb.t * tau.t[t])
+
 # initialize values
 mu <- matrix(mu.t + rnorm(ns * nt), ns, nt)
 SS <- getGPSS(Qb = Qb.t, param = mu, Xb = Xb.t)
@@ -313,6 +316,73 @@ curll <- matrix(0, ns, nt)
 for (t in 1:nt) {
   curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], 1, 0.1, log = TRUE)
 }
+
+# test logpost.mu and logpost.mu.grad
+t <- 1
+lpmu <- logpost.mu(mu.t[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
+mean(grad(func = logpost.mu, x = mu.t[, 1], Xb = Xb.t[, 1], tau = tau.t[1],
+     Qb = Qb.t, y = y.t[, 1], logsig = log(1), xi = 0.1) /
+  logpost.mu.grad(mu.t[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1))
+
+lpmu.1 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
+lpmu.2 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
+lpmu.3 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
+
+y.1 <- logpost.mu(mu = mu[, 1], Xb = Xb.t[, 1], tau = tau.t[1], Qb = Qb.t,
+                  y = y.t[, 1], logsig = log(1), xi = 0.1)
+y.2 <- logpost.mu(mu = (mu[, 1]+0.001), Xb = Xb.t[, 1], tau = tau.t[1],
+                  Qb = Qb.t, y = y.t[, 1], logsig = log(1), xi = 0.1)
+logpost.mu.grad(mu = mu[, 1], Xb = Xb.t[, 1], tau = tau.t[1], Qb = Qb.t,
+                y = y.t[, 1], logsig = log(1), xi = 0.1)
+
+grad1 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
+
+grad2 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
+
+grad3 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
+
+logdmv <- function(y, xb, Qb, tau) {
+  return(-0.5 * tau * quad.form(Qb, y - xb))
+}
+
+logdmv.grad <- function(y, xb, Qb, tau) {
+  return(-tau * Qb %*% (y - xb))
+}
+
+sd(
+  grad(func = logdmv, x = mu[, t], xb = Xb.t[, t], Qb = Qb.t, tau = tau.t[t]) /
+    logdmv.grad(y = mu[, t], xb = Xb.t[, t], Qb = Qb.t, tau = tau.t[t])
+)
+
+
+ty <- function(y, mu, logsig, xi) {
+  return((1 + xi * (y - mu) / exp(logsig))^(-1 / xi))
+}
+
+fy <- function(y, mu, logsig, xi) {
+  y.t <- ty(y, mu, logsig, xi)
+  return((xi + 1) * log(y.t) - y.t)
+}
+
+dty <- function(y, mu, logsig, xi) {
+  sig <- exp(logsig)
+  return((1 + xi * (y - mu) / sig)^(-1/xi - 1) / sig)
+}
+
+dfy <- function(y, mu, logsig, xi) {
+  sig <- exp(logsig)
+  t.y <- 1 + xi * (y - mu) / sig
+  return((xi + 1) / (sig * t.y) - t.y^(-1 / xi - 1) / sig)
+}
+
+mean(grad(func = fy, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
+  dfy(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
+
+sd(grad(func = ty, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
+  dty(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
+
+mean(grad(func = ty, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
+     dty(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
 
 niters <- 10000
 mu.keep <- array(0, dim = c(niters, ns, nt))

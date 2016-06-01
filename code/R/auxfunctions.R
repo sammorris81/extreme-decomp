@@ -96,8 +96,8 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
 }
 
 rX <- function(ns, nt, np) {
-  X.sp <- matrix(rnorm(ns * (np - 2)), ns, np - 2)
-  X.t <- rnorm(nt)
+  X.sp <- matrix(rnorm(ns * (np - 2), 0, 0.3), ns, np - 2)
+  X.t <- rnorm(nt, 0, 0.3)
   X <- array(1, dim = c(ns, nt, np))
   for (t in 1:nt) {
     X[, t, 2:np] <- cbind(rep(X.t[t], ns), X.sp)
@@ -383,12 +383,15 @@ dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
 
 #### Logposterior - needs to be done for each timepoint
 logpost.mu <- function(mu, Xb, tau, Qb, y, logsig, xi) {
-
+  sig <- exp(logsig)
   lp1 <- -0.5 * tau * quad.form(Qb, mu - Xb)
   # lp1 <- 0
 
-  t.y <- (1 + xi * (y - mu) / exp(logsig))^(-1 / xi)
-  lp2 <- (xi + 1) * log(t.y) - t.y
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+  lp2 <- (xi.star + 1) * log(t.y) - t.y
   # lp2 <- 0
 
   logpost <- lp1 + sum(lp2)
@@ -401,15 +404,50 @@ logpost.mu.grad <- function(mu, Xb, tau, Qb, y, logsig, xi) {
   d1dmu <- as.vector(-tau * Qb %*% (mu - Xb))
   # d1dmu <- 0
 
-  t.y <- 1 + xi * (y - mu) / sig
-  d2dmu <- (xi + 1) / (sig * t.y) - t.y^(-1 / xi - 1) / sig
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  t.y <- 1 + xi.star * (y - mu.star) / sig.star
+  d2dmu <- (xi.star + 1) / (sig.star * t.y) - t.y^(-1 / xi.star - 1) / sig.star
   # d2dmu <- 0
 
   grad <- d1dmu + d2dmu
   return(grad)
 }
 
+#### Logposterior - needs to be done for each timepoint
+logpost.logsig <- function(mu, Xb, tau, Qb, y, logsig, xi) {
+  sig <- exp(logsig)
+  lp1 <- -0.5 * tau * quad.form(Qb, logsig - Xb)
+  # lp1 <- 0
 
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+  lp2 <- -log(sig.star) + (xi.star + 1) * log(t.y) - t.y
+  # lp2 <- 0
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.logsig.grad <- function(mu, Xb, tau, Qb, y, logsig, xi) {
+  sig <- exp(logsig)
+  d1dlogsig <- as.vector(-tau * Qb %*% (logsig - Xb))
+  # d1dlogsig <- 0
+
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  y.star <- (y - mu.star) / sig.star
+  t.y <- 1 + xi.star * y.star
+  d2dlogsig <- -1 + y.star * ((xi.star + 1) / t.y - t.y^(-1 / xi.star - 1))
+
+  grad <- d1dlogsig + d2dlogsig
+  return(grad)
+}
 
 #### Plotting
 

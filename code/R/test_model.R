@@ -564,3 +564,68 @@ for (iter in 1:niters) {
   }
 }
 
+#### Verify gradients ####
+rm(list=ls())
+source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
+source("auxfunctions.R", chdir = TRUE)
+source("updatemodel.R", chdir = TRUE)
+
+set.seed(2000)
+ns <- 10
+nt <- 3
+np <- 6
+X.mu <- rX(ns, nt, np)
+X.logsig <- rX(ns, nt, np)
+beta.mu.t <- rnorm(np, 0, 1)
+beta.logsig.t <- rnorm(np, 0, 0.1)
+
+phi.t <- 0.2
+s <- cbind(runif(ns), runif(ns))
+d <- rdist(s)
+Sigma.t <- exp(-d / phi.t)
+tau.t   <- rgamma(nt, 1, 1)
+Qb.t    <- chol2inv(chol(Sigma.t))
+
+Xb.mu.t <- getXBeta(X = X.mu, beta = beta.mu.t)
+Xb.logsig.t <- getXBeta(X = X.logsig, beta = beta.logsig.t)
+
+mu.t <- logsig.t <- matrix(0, ns, nt)
+for (t in 1:nt) {
+  mu.t[, t] <- Xb.mu.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+  logsig.t[, t] <- Xb.logsig.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+}
+
+xi.t <- 0.1
+y.t <- rgev(n = ns * nt, loc = mu.t, scale = exp(logsig.t), xi.t)
+
+lp.mu <- logpost.mu(mu = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+                    Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t], xi = xi.t)
+
+mean(grad(func = logpost.mu, x = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+          Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t], xi = xi.t) /
+       logpost.mu.grad(mu = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+                       Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t],
+                       xi = xi.t))
+
+sd(grad(func = logpost.mu, x = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+        Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t], xi = xi.t) /
+     logpost.mu.grad(mu = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+                     Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t],
+                     xi = xi.t))
+
+lp.logsig <- logpost.logsig(mu = mu.t[, t], Xb = Xb.mu.t[, t], tau = tau.t[t],
+                            Qb = Qb.t, y = y.t[, t], logsig = logsig.t[, t],
+                            xi = xi.t)
+
+mean(grad(func = logpost.logsig, x = logsig.t[, t], Xb = Xb.logsig.t[, t],
+          mu = mu.t[, t], tau = tau.t[t], Qb = Qb.t, y = y.t[, t], xi = xi.t) /
+       logpost.logsig.grad(mu = mu.t[, t], Xb = Xb.logsig.t[, t],
+                           tau = tau.t[t], Qb = Qb.t, y = y.t[, t],
+                           logsig = logsig.t[, t], xi = xi.t))
+
+sd(grad(func = logpost.logsig, x = logsig.t[, t], Xb = Xb.logsig.t[, t],
+        mu = mu.t[, t], tau = tau.t[t], Qb = Qb.t, y = y.t[, t], xi = xi.t) /
+     logpost.logsig.grad(mu = mu.t[, t], Xb = Xb.logsig.t[, t],
+                         tau = tau.t[t], Qb = Qb.t, y = y.t[, t],
+                         logsig = logsig.t[, t], xi = xi.t))
+

@@ -6,16 +6,16 @@ library(microbenchmark)
 library(SpatialExtremes)
 library(numDeriv)
 
+#### testing beta ####
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 2
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi <- 0.2
@@ -43,7 +43,7 @@ beta.keep <- matrix(0, niters, np)
 beta <- rep(0, np)
 set.seed(3366)  # demo
 for (iter in 1:niters) {
-  this.update <- updateGPBeta(beta = beta, beta.sd = 100, Qb = Qb,
+  this.update <- updateGPBeta(beta.sd = 100, Qb = Qb,
                               param = mu, X = X, SS = SS, tau = tau)
   beta <- this.update$beta
   Xb   <- this.update$Xb
@@ -60,17 +60,17 @@ for (iter in 1:niters) {
   }
 }
 
+#### testing phi ####
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 10
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi.t <- 0.2
@@ -124,18 +124,17 @@ for (iter in 1:niters) {
   }
 }
 
-
+#### testing tau ####
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 12
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi.t <- 0.2
@@ -178,26 +177,24 @@ for (iter in 1:niters) {
   }
 }
 
-
-# test tau, phi, and beta
+#### testing tau, phi, and beta ####
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 12
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi.t <- 0.2
 s <- cbind(runif(ns), runif(ns))
 d <- rdist(s)
 Sigma.t <- exp(-d / phi.t)
-tau.t   <- rgamma(nt, 0.5, 0.5)
+tau.t   <- rgamma(nt, 1, 1)
 Qb.t    <- chol2inv(chol(Sigma.t))
 Xb.t    <- getXBeta(X = X, beta = beta.t)
 
@@ -215,8 +212,8 @@ phi <- 0.05
 Qb <- chol2inv(chol(exp(-d / phi)))
 SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
 
-
-niters <- 10000
+niters <- 2000
+burn   <- 1500
 beta.sd <- 100
 beta <- rep(0, np)
 beta.keep <- matrix(0, niters, np)
@@ -227,7 +224,7 @@ phi.keep <- rep(0, niters)
 acc.phi <- att.phi <- MH.phi <- 0.1
 set.seed(3366)  # demo
 for (iter in 1:niters) {
-  this.update <- updateGPBeta(beta = beta, beta.sd = beta.sd, Qb = Qb,
+  this.update <- updateGPBeta(beta.sd = beta.sd, Qb = Qb,
                               param = mu, X = X, SS = SS, tau = tau)
   beta <- this.update$beta
   Xb   <- this.update$Xb
@@ -255,13 +252,14 @@ for (iter in 1:niters) {
   SS      <- this.update$SS1
   acc.phi <- this.update$acc
   att.phi <- this.update$att
-
-  this.update <- mhUpdate(acc = acc.phi, att = att.phi, MH = MH.phi)
-  acc.phi <- this.update$acc
-  att.phi <- this.update$att
-  MH.phi  <- this.update$MH
-
   phi.keep[iter] <- phi
+
+  if (iter < burn / 2) {
+    this.update <- mhUpdate(acc = acc.phi, att = att.phi, MH = MH.phi)
+    acc.phi <- this.update$acc
+    att.phi <- this.update$att
+    MH.phi  <- this.update$MH
+  }
 
   if (iter %% 100 == 0) {
     par(mfrow = c(5, 3))
@@ -278,18 +276,17 @@ for (iter in 1:niters) {
   }
 }
 
-# test mu
+#### testing mu ####
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 12
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi.t <- 0.2
@@ -305,7 +302,9 @@ for (t in 1:nt) {
   mu.t[, t] <- Xb.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
 }
 
-y.t <- rgev(n = ns * nt, loc = mu.t, 1, 0.1)
+logsig.t <- matrix(0, ns, nt)
+xi.t <- 0.01
+y.t <- rgev(n = ns * nt, loc = mu.t, exp(logsig.t), xi.t)
 
 Sigma <- solve(Qb.t * tau.t[t])
 
@@ -314,84 +313,20 @@ mu <- matrix(mu.t + rnorm(ns * nt), ns, nt)
 SS <- getGPSS(Qb = Qb.t, param = mu, Xb = Xb.t)
 curll <- matrix(0, ns, nt)
 for (t in 1:nt) {
-  curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], 1, 0.1, log = TRUE)
+  curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], exp(logsig.t[, t]), xi.t,
+                     log = TRUE)
 }
-
-# test logpost.mu and logpost.mu.grad
-t <- 1
-lpmu <- logpost.mu(mu.t[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
-mean(grad(func = logpost.mu, x = mu.t[, 1], Xb = Xb.t[, 1], tau = tau.t[1],
-     Qb = Qb.t, y = y.t[, 1], logsig = log(1), xi = 0.1) /
-  logpost.mu.grad(mu.t[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1))
-
-lpmu.1 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
-lpmu.2 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
-lpmu.3 <- logpost.mu(mu[, 1], Xb.t[, 1], tau.t[1], Qb.t, y.t[, 1], log(1), 0.1)
-
-y.1 <- logpost.mu(mu = mu[, 1], Xb = Xb.t[, 1], tau = tau.t[1], Qb = Qb.t,
-                  y = y.t[, 1], logsig = log(1), xi = 0.1)
-y.2 <- logpost.mu(mu = (mu[, 1]+0.001), Xb = Xb.t[, 1], tau = tau.t[1],
-                  Qb = Qb.t, y = y.t[, 1], logsig = log(1), xi = 0.1)
-logpost.mu.grad(mu = mu[, 1], Xb = Xb.t[, 1], tau = tau.t[1], Qb = Qb.t,
-                y = y.t[, 1], logsig = log(1), xi = 0.1)
-
-grad1 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
-
-grad2 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
-
-grad3 <- logpost.mu.grad(mu[, t], Xb.t[, t], tau.t[t], Qb.t, y.t[, t], log(1), 0.1)
-
-logdmv <- function(y, xb, Qb, tau) {
-  return(-0.5 * tau * quad.form(Qb, y - xb))
-}
-
-logdmv.grad <- function(y, xb, Qb, tau) {
-  return(-tau * Qb %*% (y - xb))
-}
-
-sd(
-  grad(func = logdmv, x = mu[, t], xb = Xb.t[, t], Qb = Qb.t, tau = tau.t[t]) /
-    logdmv.grad(y = mu[, t], xb = Xb.t[, t], Qb = Qb.t, tau = tau.t[t])
-)
-
-
-ty <- function(y, mu, logsig, xi) {
-  return((1 + xi * (y - mu) / exp(logsig))^(-1 / xi))
-}
-
-fy <- function(y, mu, logsig, xi) {
-  y.t <- ty(y, mu, logsig, xi)
-  return((xi + 1) * log(y.t) - y.t)
-}
-
-dty <- function(y, mu, logsig, xi) {
-  sig <- exp(logsig)
-  return((1 + xi * (y - mu) / sig)^(-1/xi - 1) / sig)
-}
-
-dfy <- function(y, mu, logsig, xi) {
-  sig <- exp(logsig)
-  t.y <- 1 + xi * (y - mu) / sig
-  return((xi + 1) / (sig * t.y) - t.y^(-1 / xi - 1) / sig)
-}
-
-mean(grad(func = fy, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
-  dfy(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
-
-sd(grad(func = ty, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
-  dty(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
-
-mean(grad(func = ty, x = mu[, t], y = y.t[, t], logsig = log(1), xi = 0.1) /
-     dty(y = y.t[, t], mu = mu[, t], logsig = log(1), xi = 0.1))
 
 niters <- 10000
+burn   <- 8000
 mu.keep <- array(0, dim = c(niters, ns, nt))
-acc.mu <- att.mu <- MH.mu <- matrix(0.5, ns, nt)
+acc.mu <- att.mu <- MH.mu <- matrix(0.2, ns, nt)
 
 set.seed(3366)  # demo
 for (iter in 1:niters) {
   this.update <- updateMuTest(mu = mu, Qb = Qb.t, tau = tau.t, Xb = Xb.t,
-                              y = y.t, SS = SS, curll = curll, acc = acc.mu,
+                              y = y.t, logsig = logsig.t, xi = xi.t,
+                              SS = SS, curll = curll, acc = acc.mu,
                               att = att.mu, MH = MH.mu)
   mu <- this.update$mu
   SS <- this.update$SS
@@ -400,16 +335,21 @@ for (iter in 1:niters) {
   att.mu <- this.update$att
   mu.keep[iter, , ] <- mu
 
-  this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu)
-  acc.mu <- this.update$acc
-  att.mu <- this.update$att
-  MH.mu  <- this.update$MH
+  if (iter < burn / 2) {
+    this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu,
+                            target.min = 0.4, target.max = 0.7,
+                            nattempts = 400)
+    acc.mu <- this.update$acc
+    att.mu <- this.update$att
+    MH.mu  <- this.update$MH
+  }
 
-  if (iter %% 100 == 0) {
-    par(mfrow = c(5, 3))
-    for (i in 1:5) {
+  if (iter %% 500 == 0) {
+    par(mfrow = c(3, 3))
+    start <- max(1, iter - 20000)
+    for (i in 1:3) {
       for (j in 1:3) {
-        plot(mu.keep[1:iter, i, j], type = "l",
+        plot(mu.keep[start:iter, i, j], type = "l",
              main = paste("mu: ", round(mu.t[i, j], 3)),
              ylab = round(acc.mu[i, j] / att.mu[i, j], 3),
              xlab = MH.mu[i, j])
@@ -419,44 +359,17 @@ for (iter in 1:niters) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# test tau, phi, and beta
+#### testing mu and tau ####
 rm(list=ls())
 source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source("auxfunctions.R", chdir = TRUE)
 source("updatemodel.R", chdir = TRUE)
 
-# testing to see that parameter updates are working properly
 set.seed(2000)
 ns <- 400
 nt <- 12
 np <- 6
-X <- array(rnorm(ns * nt * np), dim = c(ns, nt, np))
+X <- rX(ns, nt, np)
 beta.t <- rnorm(np, 0, 10)
 
 phi.t <- 0.2
@@ -465,47 +378,38 @@ d <- rdist(s)
 Sigma.t <- exp(-d / phi.t)
 tau.t   <- rgamma(nt, 0.5, 0.5)
 Qb.t    <- chol2inv(chol(Sigma.t))
-Xb      <- getXBeta(X = X, beta = beta.t)
-
-if (nt == 1) {
-  Xb <- matrix(Xb, ns, nt)
-}
+Xb.t    <- getXBeta(X = X, beta = beta.t)
 
 mu.t <- matrix(0, ns, nt)
 for (t in 1:nt) {
-  mu.t[, t] <- Xb[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+  mu.t[, t] <- Xb.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
 }
 
-y <- rgev(n = ns * nt, loc = mu.t, 1, 0.1)
+logsig.t <- matrix(0, ns, nt)
+xi.t <- 0.01
+y.t <- rgev(n = ns * nt, loc = mu.t, exp(logsig.t), xi.t)
 
 # initialize values
-beta <- rep(0, np)
-Xb   <- getXBeta(X = X, beta = beta)
 mu <- matrix(mu.t + rnorm(ns * nt), ns, nt)
-tau <- rep(1, nt)
-phi <- 0.05
-Qb <- chol2inv(chol(exp(-d / phi)))
-SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
+SS <- getGPSS(Qb = Qb.t, param = mu, Xb = Xb.t)
 curll <- matrix(0, ns, nt)
 for (t in 1:nt) {
-  curll[, t] <- dgev(x = y[, t], loc = mu[, t], 1, 0.1, log = TRUE)
+  curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], exp(logsig.t[, t]), xi.t,
+                     log = TRUE)
 }
 
-niters <- 10000
+niters <- 60000
+burn   <- 50000
 mu.keep <- array(0, dim = c(niters, ns, nt))
-acc.mu <- att.mu <- MH.mu <- matrix(0.5, ns, nt)
-beta.sd <- 100
-beta <- rep(0, np)
-beta.keep <- matrix(0, niters, np)
-beta.sd.keep <- rep(0, niters)
 tau <- rep(1, nt)
 tau.keep <- matrix(0, niters, nt)
-phi.keep <- rep(0, niters)
-acc.phi <- att.phi <- MH.phi <- 0.1
+acc.mu <- att.mu <- MH.mu <- matrix(0.1, ns, nt)
+
 set.seed(3366)  # demo
 for (iter in 1:niters) {
-  this.update <- updateMuTest(mu = mu, Qb = Qb, tau = tau, Xb = Xb,
-                              y = y, SS = SS, curll = curll, acc = acc.mu,
+  this.update <- updateMuTest(mu = mu, Qb = Qb.t, tau = tau, Xb = Xb.t,
+                              y = y.t, logsig = logsig.t, xi = xi.t,
+                              SS = SS, curll = curll, acc = acc.mu,
                               att = att.mu, MH = MH.mu)
   mu <- this.update$mu
   SS <- this.update$SS
@@ -514,64 +418,149 @@ for (iter in 1:niters) {
   att.mu <- this.update$att
   mu.keep[iter, , ] <- mu
 
-  this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu)
-  acc.mu <- this.update$acc
-  att.mu <- this.update$att
-  MH.mu  <- this.update$MH
+  this.update <- updateGPTau(SS = SS, tau.a = 0.1, tau.b = 0.1,
+                             ns = ns)
+  tau <- this.update$tau
+  tau.keep[iter, ] <- tau
 
-  this.update <- updateGPBeta(beta = beta, beta.sd = beta.sd, Qb = Qb,
+  if (iter < burn / 2) {
+    this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu,
+                            target.min = 0.5, target.max = 0.7,
+                            nattempts = 200)
+    acc.mu <- this.update$acc
+    att.mu <- this.update$att
+    MH.mu  <- this.update$MH
+  }
+
+  if (iter %% 1000 == 0) {
+    par(mfrow = c(4, 3))
+    start <- max(1, iter - 20000)
+    for (i in 1:3) {
+      for (j in 1:3) {
+        plot(mu.keep[start:iter, i, j], type = "l",
+             main = paste("mu: ", round(mu.t[i, j], 3)),
+             ylab = round(acc.mu[i, j] / att.mu[i, j], 3),
+             xlab = MH.mu[i, j])
+      }
+    }
+    for (i in 1:3) {
+      plot(tau.keep[start:iter, i], type = "l",
+           main = paste("tau: ", round(tau.t[i], 3)))
+    }
+  }
+}
+
+
+#### testing mu, tau, and beta ####
+rm(list=ls())
+source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
+source("auxfunctions.R", chdir = TRUE)
+source("updatemodel.R", chdir = TRUE)
+
+set.seed(2000)
+ns <- 400
+nt <- 12
+np <- 6
+X <- rX(ns, nt, np)
+beta.t <- rnorm(np, 0, 10)
+
+phi.t <- 0.2
+s <- cbind(runif(ns), runif(ns))
+d <- rdist(s)
+Sigma.t <- exp(-d / phi.t)
+tau.t   <- rgamma(nt, 0.5, 0.5)
+Qb.t    <- chol2inv(chol(Sigma.t))
+Xb.t    <- getXBeta(X = X, beta = beta.t)
+
+mu.t <- matrix(0, ns, nt)
+for (t in 1:nt) {
+  mu.t[, t] <- Xb.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+}
+
+logsig.t <- matrix(0, ns, nt)
+xi.t <- 0.01
+y.t <- rgev(n = ns * nt, loc = mu.t, exp(logsig.t), xi.t)
+
+# initialize values
+mu <- matrix(mu.t + rnorm(ns * nt), ns, nt)
+SS <- getGPSS(Qb = Qb.t, param = mu, Xb = Xb.t)
+curll <- matrix(0, ns, nt)
+for (t in 1:nt) {
+  curll[, t] <- dgev(x = y.t[, t], loc = mu[, t], exp(logsig.t[, t]), xi.t,
+                     log = TRUE)
+}
+
+niters <- 20000
+burn   <- 15000
+beta.sd <- 100
+beta <- rep(0, np)
+beta.keep <- matrix(0, niters, np)
+beta.sd.keep <- rep(0, niters)
+mu.keep <- array(0, dim = c(niters, ns, nt))
+tau <- rep(1, nt)
+tau.keep <- matrix(0, niters, nt)
+acc.mu <- att.mu <- MH.mu <- matrix(0.1, ns, nt)
+
+set.seed(3366)  # demo
+for (iter in 1:niters) {
+  this.update <- updateGPBeta(beta.sd = beta.sd, Qb = Qb.t,
                               param = mu, X = X, SS = SS, tau = tau)
   beta <- this.update$beta
   Xb   <- this.update$Xb
   SS   <- this.update$SS
   beta.keep[iter, ] <- beta
 
-  this.update <- updateGPBetaSD(beta = beta, tau.a = 0.1, tau.b = 0.1)
+  this.update <- updateGPBetaSD(beta = beta, tau.a = 0.1, tau.b = 1)
   beta.sd <- this.update$beta.sd
 
   beta.sd.keep[iter] <- beta.sd
 
-  this.update <- updateGPTau(tau = tau, SS = SS, tau.a = 0.1, tau.b = 0.1,
+  this.update <- updateMuTest(mu = mu, Qb = Qb.t, tau = tau.t, Xb = Xb,
+                              y = y.t, logsig = logsig.t, xi = xi.t,
+                              SS = SS, curll = curll, acc = acc.mu,
+                              att = att.mu, MH = MH.mu)
+  mu <- this.update$mu
+  SS <- this.update$SS
+  curll <- this.update$curll
+  acc.mu <- this.update$acc
+  att.mu <- this.update$att
+  mu.keep[iter, , ] <- mu
+
+  this.update <- updateGPTau(SS = SS, tau.a = 0.1, tau.b = 0.1,
                              ns = ns)
   tau <- this.update$tau
-
   tau.keep[iter, ] <- tau
 
-  this.update <- updateGPBW(bw = phi, bw.min = 0.01, bw.max = 1.2,
-                            bw.mn = 0, bw.sd = 1, Qb = Qb, d = d,
-                            mu = mu, Xb1 = Xb, tau1 = tau, SS1 = SS,
-                            logsig = mu, Xb2 = Xb, tau2 = tau, SS2 = SS,
-                            acc = acc.phi, att = att.phi, MH = MH.phi)
-  phi     <- this.update$bw
-  Qb      <- this.update$Qb
-  SS      <- this.update$SS1
-  acc.phi <- this.update$acc
-  att.phi <- this.update$att
+  if (iter < burn / 2) {
+    this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu,
+                            target.min = 0.5, target.max = 0.7,
+                            nattempts = 200)
+    acc.mu <- this.update$acc
+    att.mu <- this.update$att
+    MH.mu  <- this.update$MH
+  }
 
-  this.update <- mhUpdate(acc = acc.phi, att = att.phi, MH = MH.phi)
-  acc.phi <- this.update$acc
-  att.phi <- this.update$att
-  MH.phi  <- this.update$MH
+  if (iter %% 1000 == 0) {
+    par(mfrow = c(4, 3))
+    start <- max(1, iter - 20000)
+    for (i in 1:2) {
+      for (j in 1:3) {
+        plot(mu.keep[start:iter, i, j], type = "l",
+             main = paste("mu: ", round(mu.t[i, j], 3)),
+             ylab = round(acc.mu[i, j] / att.mu[i, j], 3),
+             xlab = MH.mu[i, j])
+      }
+    }
 
-  phi.keep[iter] <- phi
-
-  if (iter %% 100 == 0) {
-    par(mfrow = c(5, 3))
     for (i in 1:3) {
-      plot(beta.keep[1:iter, i], type = "l",
+      plot(beta.keep[start:iter, i], type = "l",
            main = paste("beta: ", round(beta.t[i], 3)))
     }
+
     for (i in 1:3) {
-      plot(mu.keep[1:iter, i, i], type = "l",
-           main = paste("mu: ", round(mu.t[i, i], 3)),
-           ylab = round(acc.mu[i, i] / att.mu[i, i], 3),
-           xlab = MH.mu[i, i])
-    }
-    plot(beta.sd.keep[1:iter], type = "l", main = "beta sd")
-    plot(phi.keep[1:iter], type = "l", main = paste("phi: ", phi.t))
-    for(i in 1:7) {
-      plot(tau.keep[1:iter, i], type = "l",
+      plot(tau.keep[start:iter, i], type = "l",
            main = paste("tau: ", round(tau.t[i], 3)))
     }
   }
 }
+

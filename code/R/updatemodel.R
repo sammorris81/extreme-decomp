@@ -115,7 +115,8 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   return(results)
 }
 
-updateMuTest <- function(mu, Qb, tau, Xb, y, SS, curll, acc, att, MH) {
+updateMuTest <- function(mu, Qb, tau, Xb, y, logsig, xi, SS, curll, acc, att,
+                         MH) {
   # update mu(s, t)
   ns <- nrow(mu)
   nt <- ncol(mu)
@@ -125,22 +126,48 @@ updateMuTest <- function(mu, Qb, tau, Xb, y, SS, curll, acc, att, MH) {
     # print(ns)
     # print(mu[, t])
     # print(MH[, t])
-    canmu <- rnorm(ns, mu[, t], MH[, t])
-    canll <- dgev(x = y[, t], loc = mu[, t], 1, 0.1)
-    canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
+    canmu.mn <- mu[, t] + MH[, t]^2 / 2 *
+      logpost.mu.grad(mu = mu[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                      y = y[, t], logsig = logsig[, t], xi = xi)
+    canmu <- rnorm(ns, canmu.mn, MH[, t])
+    if (xi < 0 & any(y[, t] - canmu > -exp(logsig[, t]) / xi, na.rm = TRUE)) {
+      R <- -Inf
+    } else if (xi > 0 & any(y[, t] - canmu < -exp(logsig[, t]) / xi,
+                            na.rm = TRUE)) {
+      R <- -Inf
+    } else {
+      canll <- dgev(x = y[, t], loc = mu[, t], exp(logsig[, t]), xi)
+      canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
 
-    R <- sum(canll - curll[, t]) -
-      0.5 * tau[t] * canSS +
-      # 0.5 * tau[t] * SS[t]
-      0.5 * tau[t] * quad.form(Qb, mu[, t] - Xb[, t])
+      curmu.mn <- canmu + MH[, t]^2 / 2 *
+        logpost.mu.grad(mu = canmu, Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                        y = y[, t], logsig = logsig[, t], xi = xi)
 
-    if (!is.na(exp(R))) { if (log(runif(1)) < R) {
-      mu[, t]    <- canmu
-      SS[t]      <- canSS
-      curll[, t] <- canll
-      acc[, t]   <- acc[, t] + 1
-    }}
+      R <- canll - curll[, t] -
+        0.5 * tau[t] * canSS +
+        0.5 * tau[t] * SS[t] +
+        dnorm(mu[, t], curmu.mn, MH[, t], log = TRUE) -
+        dnorm(canmu, canmu.mn, MH[, t], log = TRUE)
+      # 0.5 * tau[t] * quad.form(Qb, mu[, t] - Xb[, t])
+
+      # if (!is.na(exp(R))) { if (log(runif(1)) < R) {
+      #   mu[, t]    <- canmu
+      #   SS[t]      <- canSS
+      #   curll[, t] <- canll
+      #   acc[, t]   <- acc[, t] + 1
+      # }}
+
+      if (!any(is.na(exp(R)))) {
+        keep <- log(runif(ns)) < R
+        mu[keep, t] <- canmu[keep]
+        curll[keep, t] <- canll[keep]
+        acc[keep, t]   <- acc[keep, t] + 1
+      }
+    }
   }
+
+  SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
+
 
   results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
   return(results)
@@ -271,10 +298,10 @@ updateLS <- function(logsig, Qb, tau, Xb, y, theta, mu, xi, thresh, alpha,
   return(results)
 }
 
-updateGPBeta <- function(beta, beta.sd, Qb, param, X, SS, tau) {
+updateGPBeta <- function(beta.sd, Qb, param, X, SS, tau) {
   # update the beta parameters for the mean of the GPs
   nt <- dim(X)[2]
-  np <- length(beta)
+  np <- dim(X)[3]
 
   VVV <- diag(1 / (beta.sd^2), np)
   MMM <- rep(0, np)

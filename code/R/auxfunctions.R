@@ -95,6 +95,15 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
   return(y)
 }
 
+rX <- function(ns, nt, np) {
+  X.sp <- matrix(rnorm(ns * (np - 2)), ns, np - 2)
+  X.t <- rnorm(nt)
+  X <- array(1, dim = c(ns, nt, np))
+  for (t in 1:nt) {
+    X[, t, 2:np] <- cbind(rep(X.t[t], ns), X.sp)
+  }
+  return(X)
+}
 
 ll.ind <- function(beta, X, y, xi = -0.1) {
   # nt <- dim(X)[2]
@@ -382,11 +391,10 @@ logpost.mu <- function(mu, Xb, tau, Qb, y, logsig, xi) {
   lp2 <- (xi + 1) * log(t.y) - t.y
   # lp2 <- 0
 
-  logpost <- lp1 + lp2
+  logpost <- lp1 + sum(lp2)
 
   return(logpost)
 }
-
 
 logpost.mu.grad <- function(mu, Xb, tau, Qb, y, logsig, xi) {
   sig <- exp(logsig)

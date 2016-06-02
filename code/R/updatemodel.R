@@ -136,7 +136,7 @@ updateMuTest <- function(mu, Qb, tau, Xb, y, logsig, xi, SS, curll, acc, att,
                             na.rm = TRUE)) {
       R <- -Inf
     } else {
-      canll <- dgev(x = y[, t], loc = mu[, t], exp(logsig[, t]), xi)
+      canll <- dgev(x = y[, t], loc = canmu, exp(logsig[, t]), xi, log = TRUE)
       canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
 
       curmu.mn <- canmu + MH[, t]^2 / 2 *
@@ -237,6 +237,64 @@ updateMu <- function(mu, Qb, tau, Xb, y, theta, logsig, xi, thresh, alpha,
   }
 
   results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
+  return(results)
+}
+
+updateLSTest <- function(mu, Qb, tau, Xb, y, logsig, xi, SS, curll, acc, att,
+                         MH) {
+  # update mu(s, t)
+  ns <- nrow(mu)
+  nt <- ncol(mu)
+
+  for (t in 1:nt) {
+    att[, t] <- att[, t] + 1
+    # print(ns)
+    # print(mu[, t])
+    # print(MH[, t])
+    canlogs.mn <- logsig[, t] + MH[, t]^2 / 2 *
+      logpost.logsig.grad(mu = mu[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                          y = y[, t], logsig = logsig[, t], xi = xi)
+    canlogs <- rnorm(ns, canlogs.mn, MH[, t])
+    if (xi < 0 & any(y[, t] - mu[, t] > -exp(canlogs) / xi, na.rm = TRUE)) {
+      R <- -Inf
+    } else if (xi > 0 & any(y[, t] - mu[, t] < -exp(canlogs) / xi,
+                            na.rm = TRUE)) {
+      R <- -Inf
+    } else {
+      canll <- dgev(x = y[, t], loc = mu[, t], exp(canlogs), xi, log = TRUE)
+      canSS <- getGPSS(Qb = Qb, param = canlogs, Xb = Xb[, t])
+
+      curlogs.mn <- canlogs + MH[, t]^2 / 2 *
+        logpost.logsig.grad(mu = mu[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                            y = y[, t], logsig = canlogs, xi = xi)
+
+      R <- canll - curll[, t] -
+        0.5 * tau[t] * canSS +
+        0.5 * tau[t] * SS[t] +
+        dnorm(logsig[, t], curlogs.mn, MH[, t], log = TRUE) -
+        dnorm(canlogs, canlogs.mn, MH[, t], log = TRUE)
+      # 0.5 * tau[t] * quad.form(Qb, mu[, t] - Xb[, t])
+
+      # if (!is.na(exp(R))) { if (log(runif(1)) < R) {
+      #   mu[, t]    <- canmu
+      #   SS[t]      <- canSS
+      #   curll[, t] <- canll
+      #   acc[, t]   <- acc[, t] + 1
+      # }}
+
+      if (!any(is.na(exp(R)))) {
+        keep <- log(runif(ns)) < R
+        logsig[keep, t] <- canlogs[keep]
+        curll[keep, t]  <- canll[keep]
+        acc[keep, t]    <- acc[keep, t] + 1
+      }
+    }
+  }
+
+  SS <- getGPSS(Qb = Qb, param = logsig, Xb = Xb)
+
+
+  results <- list(logsig = logsig, SS = SS, curll = curll, acc = acc, att = att)
   return(results)
 }
 

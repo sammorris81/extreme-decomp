@@ -424,8 +424,10 @@ logpost.logsig <- function(mu, Xb, tau, Qb, y, logsig, xi) {
   mu.star  <- mu
   sig.star <- sig
   xi.star  <- xi
-  t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
-  lp2 <- -log(sig.star) + (xi.star + 1) * log(t.y) - t.y
+  # t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+  # lp2 <- -log(sig.star) + (xi.star + 1) * log(t.y) - t.y
+  lp2 <- dgev(x = y, loc = mu.star, scale = sig.star, shape = xi.star,
+              log = TRUE)
   # lp2 <- 0
 
   logpost <- lp1 + sum(lp2)

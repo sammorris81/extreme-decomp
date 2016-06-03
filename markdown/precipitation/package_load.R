@@ -18,7 +18,6 @@ source(file = "../../code/R/mcmc.R", chdir = TRUE)
 source(file = "../../code/R/updatemodel.R", chdir = TRUE)
 
 if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
-  # setMKLthreads(1)
   openblas.set.num.threads(1)
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Darwin") {

@@ -4,9 +4,9 @@ updateA <- function(A, cuts, bins, Ba, theta, y, mu, ls, xi, thresh, alpha,
   nt <- ncol(A)
   L  <- nrow(A)
 
-  l1    <- getLevelCPP(a = A, cuts = cuts)
+  l1    <- get.level(logs = A, cuts = cuts)
   CANA  <- A * exp(MH[l1] * rnorm(nt * L))
-  l2    <- get.level(CANA, cuts)
+  l2    <- get.level(logs = CANA, cuts = cuts)
   q     <- dPS.Rcpp(CANA, alpha, bins) - dPS.Rcpp(A, alpha, bins) +
     dlognormal(A, CANA, matrix(MH[l2], L, nt)) -
     dlognormal(CANA, A, matrix(MH[l1], L, nt))
@@ -15,7 +15,8 @@ updateA <- function(A, cuts, bins, Ba, theta, y, mu, ls, xi, thresh, alpha,
     canA      <- A
     canA[l, ] <- CANA[l, ]
     cantheta  <- (Ba %*% canA)^alpha
-    canll     <- loglike(y, cantheta, mu, ls, xi, thresh, alpha)
+    canll     <- loglike(y = y, mu = mu, ls = ls, xi = xi,
+                         theta = cantheta, thresh = thresh, alpha = alpha)
 
     R    <- colSums(canll - curll) + q[l, ]
     if (all(!is.na(R))) {
@@ -31,10 +32,10 @@ updateA <- function(A, cuts, bins, Ba, theta, y, mu, ls, xi, thresh, alpha,
   return(results)
 }
 
-updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
-                           X1, beta1, Xb1, mu, tau1, SS1,
-                           X2, beta2, Xb2, ls, tau2, SS2,
-                           Qb, dw2, time.interact, acc, att, MH) {
+updateXBasisBW <- function(bw, bw.min, bw.max,
+                           beta1, Xb1, mu, tau1, SS1,
+                           beta2, Xb2, ls, tau2, SS2,
+                           Qb, X, dw2, time.interact, acc, att, MH) {
   # update bandwidth to get the basis functions for X
   # TODO: adjust for uniform prior
   # does not impact likelihood
@@ -44,10 +45,11 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   canbw <- transform$inv.logit(canbw.star, bw.min, bw.max)
 
   canB <- makeW(dw2 = dw2, rho = canbw)
-  canX1  <- rep.basis.X(X = X1, newB = canB, time.interact = time.interact)
-  canX2  <- rep.basis.X(X = X2, newB = canB, time.interact = time.interact)
-  canXb1 <- getXBeta(X = canX1, beta = beta1)
-  canXb2 <- getXBeta(X = canX2, beta = beta2)
+  # canX1  <- rep.basis.X(X = X1, newB = canB, time.interact = time.interact)
+  # canX2  <- rep.basis.X(X = X2, newB = canB, time.interact = time.interact)
+  canX   <- rep.basis.X(X = X, newB = canB, time.interact = time.interact)
+  canXb1 <- getXBeta(X = canX, beta = beta1)
+  canXb2 <- getXBeta(X = canX, beta = beta2)
 
   # bw.basis only impacts GP prior NOT the likelihood
   canSS1 <- getGPSS(Qb = Qb, param = mu, Xb = canXb1)
@@ -60,17 +62,119 @@ updateXBasisBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd,
   if (!is.na(R)) { if (log(runif(1)) < R) {
     acc <- acc + 1
     bw  <- canbw
-    X1  <- canX1
     Xb1 <- canXb1
     SS1 <- canSS1
-    X2  <- canX2
     Xb2 <- canXb2
     SS2 <- canSS2
+    X   <- canX
   }}
 
-  results <- list(bw = bw, X1 = X1, Xb1 = Xb1, SS1 = SS1,
-                  X2 = X2, Xb2 = Xb2, SS2 = SS2,
+  results <- list(bw = bw, X = X,
+                  Xb1 = Xb1, SS1 = SS1,
+                  Xb2 = Xb2, SS2 = SS2,
                   acc = acc, att = att)
+  return(results)
+}
+
+updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
+                     Qb, curll, acc, att, MH) {
+  # update mu(s, t)
+  ns <- nrow(mu)
+  nt <- ncol(mu)
+
+  for (t in 1:nt) {
+    att[, t] <- att[, t] + 1
+    canmu.mn <- mu[, t] + MH[, t]^2 / 2 *
+      logpost.mu.grad(mu = mu[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                      y = y[, t], ls = ls[, t], xi = xi, theta = theta[, t],
+                      thresh = thresh[, t], alpha = alpha)
+
+    canmu <- rnorm(ns, canmu.mn, MH[, t])
+    if (xi < 0 & any(y[, t] - canmu > -exp(ls[, t]) / xi, na.rm = TRUE)) {
+      R <- -Inf
+    } else if (xi > 0 & any(y[, t] - canmu < -exp(ls[, t]) / xi,
+                            na.rm = TRUE)) {
+      R <- -Inf
+    } else {
+      canll <- loglike(y = y[, t], theta = theta[, t], mu = canmu,
+                       ls = ls[, t], xi = xi, thresh = thresh[, t],
+                       alpha = alpha)
+      canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
+
+      curmu.mn <- canmu + MH[, t]^2 / 2 *
+        logpost.mu.grad(mu = canmu, Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                        y = y[, t], ls = ls[, t], xi = xi, theta = theta[, t],
+                        thresh = thresh[, t], alpha = alpha)
+
+      R <- canll - curll[, t] -
+        0.5 * tau[t] * canSS +
+        0.5 * tau[t] * SS[t] +
+        dnorm(mu[, t], curmu.mn, MH[, t], log = TRUE) -
+        dnorm(canmu, canmu.mn, MH[, t], log = TRUE)
+
+      if (!any(is.na(exp(R)))) {
+        keep <- log(runif(ns)) < R
+        mu[keep, t] <- canmu[keep]
+        curll[keep, t] <- canll[keep]
+        acc[keep, t]   <- acc[keep, t] + 1
+      }
+    }
+  }
+
+  SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
+
+  results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
+  return(results)
+}
+
+updateLS <- function(ls, tau, Xb, SS, y, theta, mu, xi, thresh, alpha,
+                     Qb, curll, acc, att, MH) {
+  # update logsig(s, t)
+  ns <- nrow(ls)
+  nt <- ncol(ls)
+
+  for (t in 1:nt) {
+    att[, t] <- att[, t] + 1
+    canls.mn <- ls[, t] + MH[, t]^2 / 2 *
+      logpost.logsig.grad(ls = ls[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                          y = y[, t], mu = mu[, t], xi = xi, theta = theta[, t],
+                          thresh = thresh[, t], alpha = alpha)
+    canls <- rnorm(ns, canls.mn, MH[, t])
+    if (xi < 0 & any(y[, t] - mu[, t] > -exp(canls) / xi, na.rm = TRUE)) {
+      R <- -Inf
+    } else if (xi > 0 & any(y[, t] - mu[, t] < -exp(canls) / xi,
+                            na.rm = TRUE)) {
+      R <- -Inf
+    } else {
+      canll <- loglike(y = y[, t], theta = theta[, t], mu = mu[, t],
+                       ls = canls, xi = xi, thresh = thresh[, t],
+                       alpha = alpha)
+      canSS <- getGPSS(Qb = Qb, param = canls, Xb = Xb[, t])
+
+      curls.mn <- canls + MH[, t]^2 / 2 *
+        logpost.logsig.grad(ls = canls, Xb = Xb[, t], tau = tau[t], Qb = Qb,
+                            y = y[, t], mu = mu[, t], xi = xi,
+                            theta = theta[, t], thresh = thresh[, t],
+                            alpha = alpha)
+
+      R <- canll - curll[, t] -
+        0.5 * tau[t] * canSS +
+        0.5 * tau[t] * SS[t] +
+        dnorm(ls[, t], curls.mn, MH[, t], log = TRUE) -
+        dnorm(canls, canls.mn, MH[, t], log = TRUE)
+
+      if (!any(is.na(exp(R)))) {
+        keep           <- log(runif(ns)) < R
+        ls[keep, t]    <- canls[keep]
+        curll[keep, t] <- canll[keep]
+        acc[keep, t]   <- acc[keep, t] + 1
+      }
+    }
+  }
+
+  SS <- getGPSS(Qb = Qb, param = ls, Xb = Xb)
+
+  results <- list(ls = ls, SS = SS, curll = curll, acc = acc, att = att)
   return(results)
 }
 
@@ -115,36 +219,6 @@ updateMuTest <- function(mu, tau, Xb, SS, y, ls, xi, Qb, curll, acc, att,
   }
 
   SS <- getGPSS(Qb = Qb, param = mu, Xb = Xb)
-
-  results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
-  return(results)
-}
-
-updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
-                     Qb, curll, acc, att, MH) {
-  # update mu(s, t)
-  ns <- nrow(mu)
-  nt <- ncol(mu)
-
-  for (t in 1:nt) {
-    att[, t] <- att[, t] + 1
-    canmu <- rnorm(ns, mu[, t], MH[, t])
-    canll <- loglike(y = y[, t], theta = theta[, t], mu = canmu,
-                     ls = ls[, t], xi = xi, thresh = thresh[, t],
-                     alpha = alpha)
-    canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
-
-    R <- sum(canll - curll[, t]) -
-      0.5 * tau[t] * canSS +
-      0.5 * tau[t] * SS[t]
-
-    if (!is.na(exp(R))) { if (log(runif(1)) < R) {
-      mu[, t]    <- canmu
-      SS[t]      <- canSS
-      curll[, t] <- canll
-      acc[, t]   <- acc[, t] + 1
-    }}
-  }
 
   results <- list(mu = mu, SS = SS, curll = curll, acc = acc, att = att)
   return(results)
@@ -196,58 +270,37 @@ updateLSTest <- function(ls, tau, Xb, SS, y, mu, xi, Qb, curll, acc, att,
   return(results)
 }
 
-updateLS <- function(ls, tau, Xb, SS, y, theta, mu, xi, thresh, alpha,
-                     Qb, curll, acc, att, MH) {
-  # update logsig(s, t)
-  ns <- nrow(ls)
-  nt <- ncol(ls)
-
-  for (t in 1:nt) {
-    att[, t] <- att[, t] + 1
-
-    canls <- rnorm(ns, ls[, t], MH[, t])
-    canll <- loglike(y = y[, t], theta = theta[, t], mu = mu[, t],
-                     ls = canls, xi = xi, thresh = thresh[, t],
-                     alpha = alpha)
-    canSS <- getGPSS(Qb = Qb, param = canls, Xb = Xb[, t])
-
-    R <- sum(canll - curll[, t]) -
-      0.5 * tau[t] * canSS +
-      0.5 * tau[t] * SS[t]
-
-    if (!is.na(exp(R))) { if (log(runif(1)) < R) {
-      ls[, t] <- canls
-      SS[t]   <- canSS
-      curll[, t] <- canll
-      acc[, t] <- acc[, t] + 1
-    }}
-  }
-
-  results <- list(ls = ls, SS = SS, curll = curll, acc = acc, att = att)
-  return(results)
-}
-
-updateGPBeta <- function(beta.sd, Qb, param, X, SS, tau) {
+updateGPBeta <- function(mu, beta1.sd, SS1, tau1,
+                         ls, beta2.sd, SS2, tau2, X, Qb) {
   # update the beta parameters for the mean of the GPs
   nt <- dim(X)[2]
   np <- dim(X)[3]
 
-  VVV <- diag(1 / (beta.sd^2), np)
-  MMM <- rep(0, np)
+  VVV1 <- diag(1 / (beta1.sd^2), np)
+  VVV2 <- diag(1 / (beta1.sd^2), np)
+  MMM1 <- MMM2 <- rep(0, np)
   for (t in 1:nt) {
     X.t  <- X[, t, ]
-    tXQ  <- t(X.t) %*% Qb
+    tXQ  <- crossprod(X.t, Qb)  # t(X.t) %*% Qb
     tXQX <- tXQ %*% X.t
-    VVV  <- VVV + tau[t] * tXQX
-    MMM  <- MMM + tau[t] * tXQ %*% param[, t]
+    VVV1 <- VVV1 + tau1[t] * tXQX
+    VVV2 <- VVV2 + tau2[t] * tXQX
+    MMM1 <- MMM1 + tau1[t] * tXQ %*% mu[, t]
+    MMM2 <- MMM2 + tau2[t] * tXQ %*% ls[, t]
   }
-  VVV <- chol2inv(chol(VVV))
-  beta <- VVV %*% MMM + t(chol(VVV)) %*% rnorm(np)
+  VVV1 <- chol2inv(chol(VVV1))
+  VVV2 <- chol2inv(chol(VVV2))
+  # beta1 and beta2 are not faster with crossprod
+  beta1 <- VVV1 %*% MMM1 + t(chol(VVV1)) %*% rnorm(np)
+  beta2 <- VVV2 %*% MMM2 + t(chol(VVV2)) %*% rnorm(np)
 
-  Xb <- getXBeta(X = X, beta = beta)
-  SS <- getGPSS(Qb = Qb, param = param, Xb = Xb)
+  Xb1 <- getXBeta(X = X, beta = beta1)
+  SS1 <- getGPSS(Qb = Qb, param = mu, Xb = Xb1)
+  Xb2 <- getXBeta(X = X, beta = beta2)
+  SS2 <- getGPSS(Qb = Qb, param = ls, Xb = Xb2)
 
-  results <- list(beta = beta, Xb = Xb, SS = SS)
+  results <- list(beta1 = beta1, Xb1 = Xb1, SS1 = SS1,
+                  beta2 = beta2, Xb2 = Xb2, SS2 = SS2)
   return(results)
 }
 
@@ -265,6 +318,7 @@ updateGPTau <- function(SS, tau.a, tau.b, ns) {
   # update the variance parameters for the GPs
   nt <- length(SS)
 
+  tau <- rep(0, nt)
   for (t in 1:nt) {
     tau[t] <- rgamma(1, ns / 2 + tau.a, SS[t] / 2 + tau.b)
   }
@@ -273,11 +327,10 @@ updateGPTau <- function(SS, tau.a, tau.b, ns) {
   return(results)
 }
 
-updateGPBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd, Qb, d,
+updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
                        mu, Xb1, tau1, SS1, ls, Xb2, tau2, SS2,
                        acc, att, MH) {
   # update the bandwidth term for the gaussian process
-  # TODO: adjust for uniform prior
   ns <- nrow(Xb1)
   nt <- ncol(Xb1)
   att <- att + 1
@@ -286,13 +339,14 @@ updateGPBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd, Qb, d,
   canbw <- transform$inv.logit(canbw.star, bw.min, bw.max)
 
   canQb <- chol2inv(chol(exp(-d / canbw)))
+  canlogdetQb <- logdet(canQb)
 
   canSS1 <- getGPSS(Qb = canQb, param = mu, Xb = Xb1)
   canSS2 <- getGPSS(Qb = canQb, param = ls, Xb = Xb2)
 
   # For R, multiply nt * 2 for 2 spatially varying terms
   R <- - 0.5 * sum(tau1 * (canSS1 - SS1)) - 0.5 * sum(tau2 * (canSS2 - SS2)) +
-    0.5 * (nt * 2) * (logdet(canQb) - logdet(Qb)) +
+    0.5 * (nt * 2) * (canlogdetQb - logdetQb) +
     log(canbw - bw.min) + log(bw.max - canbw) -  # Jacobian of the prior
     log(bw - bw.min) - log(bw.max - bw)
 
@@ -304,13 +358,15 @@ updateGPBW <- function(bw, bw.min, bw.max, bw.mn, bw.sd, Qb, d,
     SS2 <- canSS2
     bw <- canbw
     Qb <- canQb
+    logdetQb <- canlogdetQb
   }}
 
-  results <- list(bw = bw, Qb = Qb, SS1 = SS1, SS2 = SS2, acc = acc, att = att)
+  results <- list(bw = bw, Qb = Qb, logdetQb = logdetQb, SS1 = SS1, SS2 = SS2,
+                  acc = acc, att = att)
   return(results)
 }
 
-updateXi <- function(xi, y, mu, ls, curll, theta, thresh, alpha,
+updateXi <- function(xi, xi.mn, xi.sd, y, mu, ls, curll, theta, thresh, alpha,
                      acc, att, MH) {
   # update xi term
   att <- att + 1
@@ -320,10 +376,11 @@ updateXi <- function(xi, y, mu, ls, curll, theta, thresh, alpha,
   } else if (canxi > 0 & any(y - mu < -exp(ls) / canxi, na.rm = TRUE)) {
     R <- -Inf
   } else {
-    canll  <- loglike(y, theta, mu, ls, canxi, thresh, alpha)
+    canll  <- loglike(y = y, mu = mu, ls = ls, xi = canxi,
+                      theta = theta, thresh = thresh, alpha = alpha)
     R      <- sum(canll - curll) +
-      dnorm(canxi, 0, 0.5, log = TRUE) -
-      dnorm(xi, 0, 0.5, log = TRUE)
+      dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
+      dnorm(xi, xi.mn, xi.sd, log = TRUE)
   }
 
   if (!is.na(R)) { if (log(runif(1)) < R) {

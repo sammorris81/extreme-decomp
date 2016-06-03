@@ -1334,41 +1334,48 @@ y.t <- rgev(n = ns * nt, loc = mu.t, scale = exp(ls.t), xi.t)
 nknots <- 4
 theta.t <- matrix(abs(rnorm(ns * nt)), ns, nt)
 alpha.t <- 0.4
+thresh.t <- matrix(median(y.t), ns, nt)
 
 lp.mu <- logpost.mu(mu = mu.t[, t], Xb = Xb1.t[, t], tau = tau.t[t],
                     Qb = Qb.t, y = y.t[, t], ls = ls.t[, t], xi = xi.t,
-                    theta = theta.t[, t], alpha = alpha.t)
+                    theta = theta.t[, t], thresh = thresh.t[, t],
+                    alpha = alpha.t)
 
 mean(grad(func = logpost.mu, x = mu.t[, t], Xb = Xb1.t[, t], tau = tau.t[t],
           Qb = Qb.t, y = y.t[, t], ls = ls.t[, t], xi = xi.t,
-          theta = theta.t[, t], alpha = alpha.t) /
+          theta = theta.t[, t], thresh = thresh.t[, t], alpha = alpha.t) /
        logpost.mu.grad(mu = mu.t[, t], Xb = Xb1.t[, t], tau = tau.t[t],
                        Qb = Qb.t, y = y.t[, t], ls = ls.t[, t],
-                       xi = xi.t, theta = theta.t[, t], alpha = alpha.t))
+                       xi = xi.t, theta = theta.t[, t], thresh = thresh.t[, t],
+                       alpha = alpha.t))
 
 sd(grad(func = logpost.mu, x = mu.t[, t], Xb = Xb1.t[, t], tau = tau.t[t],
         Qb = Qb.t, y = y.t[, t], ls = ls.t[, t], xi = xi.t,
-        theta = theta.t[, t], alpha = alpha.t) /
+        theta = theta.t[, t], thresh = thresh.t[, t], alpha = alpha.t) /
      logpost.mu.grad(mu = mu.t[, t], Xb = Xb1.t[, t], tau = tau.t[t],
                      Qb = Qb.t, y = y.t[, t], ls = ls.t[, t],
-                     xi = xi.t, theta = theta.t[, t], alpha = alpha.t))
+                     xi = xi.t, theta = theta.t[, t], thresh = thresh.t[, t],
+                     alpha = alpha.t))
 
 lp.logsig <- logpost.logsig(ls = ls.t[, t], Xb = Xb2.t[, t], tau = tau.t[t],
                             Qb = Qb.t, y = y.t[, t], mu = mu.t[, t],
-                            xi = xi.t, theta = theta.t[, t], alpha = alpha.t)
+                            xi = xi.t, theta = theta.t[, t],
+                            thresh = thresh.t[, t], alpha = alpha.t)
 
 mean(grad(func = logpost.logsig, x = ls.t[, t], Xb = Xb2.t[, t],
           tau = tau.t[t], Qb = Qb.t, y = y.t[, t], mu = mu.t[, t], xi = xi.t,
-          theta = theta.t[, t], alpha = alpha.t) /
+          theta = theta.t[, t], thresh = thresh.t[, t], alpha = alpha.t) /
        logpost.logsig.grad(ls = ls.t[, t], Xb = Xb2.t[, t],
                            tau = tau.t[t], Qb = Qb.t, y = y.t[, t],
                            mu = mu.t[, t], xi = xi.t,
-                           theta = theta.t[, t], alpha = alpha.t))
+                           theta = theta.t[, t], thresh = thresh.t[, t],
+                           alpha = alpha.t))
 
 sd(grad(func = logpost.logsig, x = ls.t[, t], Xb = Xb2.t[, t],
         tau = tau.t[t], Qb = Qb.t, y = y.t[, t], mu = mu.t[, t], xi = xi.t,
-        theta = theta.t[, t], alpha = alpha.t) /
+        theta = theta.t[, t], thresh = thresh.t[, t], alpha = alpha.t) /
      logpost.logsig.grad(ls = ls.t[, t], Xb = Xb2.t[, t],
                          tau = tau.t[t], Qb = Qb.t, y = y.t[, t],
                          mu = mu.t[, t], xi = xi.t,
-                         theta = theta.t[, t], alpha = alpha.t))
+                         theta = theta.t[, t], thresh = thresh.t[, t],
+                         alpha = alpha.t))

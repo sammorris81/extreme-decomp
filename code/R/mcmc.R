@@ -411,7 +411,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
         y.tmp <- y
         for (t in missing.times) {
           # calculate mu and sigma
-          miss.t     <- miss[, t]
+          miss.t     <- miss[, t]  # logical vector of whether it's missing
           theta.xi.t <- theta[miss.t, t]^xi
           mu.t       <- mu[miss.t, t]
           sig.t      <- exp(ls[miss.t, t])
@@ -419,7 +419,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
           sig.star.t <- alpha * sig.t * theta.xi.t
           xi.star    <- alpha * xi
           # get unit frechet
-          these.miss <- - 1 / log(runif(length(miss.t)))
+          these.miss <- - 1 / log(runif(sum(miss.t)))
           # transform to correct marginals
           y.tmp[miss.t, t] <- mu.star.t + sig.star.t *
             (these.miss^xi.star - 1) / xi.star

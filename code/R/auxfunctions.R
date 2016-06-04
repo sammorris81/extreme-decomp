@@ -39,18 +39,18 @@ h1 <- function(logs, u, alpha, log = TRUE){
 ######################################################
 ##########     Densities and posteriors    ###########
 ######################################################
-loglike <- function(y, mu, ls, xi, theta, thresh, alpha){
+loglike <- function(y, mu, ls, xi, theta, theta.xi, thresh, alpha){
   sigma    <- exp(ls)
 
   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
   if (abs(xi) <= 1e-4) {
-    theta.xi  <- theta^xi
-    sig.star <- alpha * sigma * (theta.xi)
+    # theta.xi  <- theta^xi
+    sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
     t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
     ll <- -t.y
     ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
   } else {
-    theta.xi  <- theta^xi
+    # theta.xi  <- theta^xi
     mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
     sig.star <- alpha * sigma * (theta.xi)
     xi.star  <- alpha * xi
@@ -157,31 +157,36 @@ ll.ind.xi <- function(beta, X, y) {
 
 
 #### Logposteriors and gradients - needs to be done for each timepoint
-logpost.mu <- function(mu, Xb, tau, Qb, y, ls, xi, theta, thresh, alpha) {
+logpost.mu <- function(mu, Xb, tau, Qb, y, ls, xi, theta, theta.xi, thresh,
+                       alpha) {
   sig <- exp(ls)
   lp1 <- -0.5 * tau * quad.form(Qb, mu - Xb)
 
+  # lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+  #                thresh = thresh, alpha = alpha)
   lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
-                 thresh = thresh, alpha = alpha)
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
 
   logpost <- lp1 + sum(lp2)
 
   return(logpost)
 }
 
-logpost.mu.grad <- function(mu, Xb, tau, Qb, y, ls, xi, theta, thresh, alpha) {
+logpost.mu.grad <- function(mu, Xb, tau, Qb, y, ls, xi, theta, theta.xi,
+                            thresh, alpha) {
   sig <- exp(ls)
   d1dmu <- -tau * crossprod(Qb, (mu - Xb))  # crossprod is actually a bit faster
 
   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
   if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
     t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
-    d2dmu <- -t.y / (alpha * sig)
-    d2dmu[these] <- d2dmu[these] + 1 / (alpha * sig[these])
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
   } else {
-    theta.star <- theta^xi
-    mu.star  <- mu + sig * ((theta.star) - 1) / xi
-    sig.star <- alpha * sig * (theta.star)
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
     xi.star  <- alpha * xi
     t.y <- 1 + xi.star * (y - mu.star) / sig.star
     d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
@@ -196,40 +201,43 @@ logpost.mu.grad <- function(mu, Xb, tau, Qb, y, ls, xi, theta, thresh, alpha) {
   return(grad)
 }
 
-logpost.logsig <- function(ls, Xb, tau, Qb, y, mu, xi, theta, thresh, alpha) {
+logpost.logsig <- function(ls, Xb, tau, Qb, y, mu, xi, theta, theta.xi, thresh,
+                           alpha)
+  {
   sig <- exp(ls)
   lp1 <- -0.5 * tau * quad.form(Qb, ls - Xb)
 
   lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
-                 thresh = thresh, alpha = alpha)
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
 
   logpost <- lp1 + sum(lp2)
 
   return(logpost)
 }
 
-logpost.logsig.grad <- function(ls, Xb, tau, Qb, y, mu, xi, theta, thresh,
-                                alpha) {
+logpost.logsig.grad <- function(ls, Xb, tau, Qb, y, mu, xi, theta, theta.xi,
+                                thresh, alpha) {
   sig <- exp(ls)
   d1dls <- -tau * crossprod(Qb, (ls - Xb))  # crossprod is actually a bit faster
 
   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
   if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
     t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
-    d2dls <- -t.y * (y - mu) / (alpha * sig)
+    d2dls <- -t.y * (y - mu) / (sig.star)
     d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
-      (alpha * sig[these])
+      (sig.star[these])
   } else {
-    theta.star <- theta^xi
-    mu.star  <- mu + sig * ((theta.star) - 1) / xi
-    sig.star <- alpha * sig * (theta.star)
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
     xi.star  <- alpha * xi
     y.star <- (y - mu) / sig
-    t.y <- (1 + xi * y.star) / theta.star
-    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.star)
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
 
     d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
-      (t.y[these] * alpha * theta.star[these])
+      (t.y[these] * alpha * theta.xi[these])
   }
   d2dls[is.na(y)] <- 0
 

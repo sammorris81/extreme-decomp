@@ -202,7 +202,8 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 A = A.init, bw.basis.init = 0.3,
                 time.interact = TRUE,
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)
-               iters = iters, burn = burn, update = update, iterplot = TRUE)
+               iters = iters, burn = burn, update = update, keep.burn = TRUE,
+               iterplot = TRUE)
 cat("Finished fit and predict \n")
 # Rprof(filename = NULL)
 # summaryRprof(filename = "Rprof.out", lines = "show")

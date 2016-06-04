@@ -1,5 +1,5 @@
-updateA <- function(A, cuts, bins, Ba, theta, y, mu, ls, xi, thresh, alpha,
-                    curll, MH) {
+updateA <- function(A, cuts, bins, Ba, theta, theta.xi, y, mu, ls, xi, thresh,
+                    alpha, curll, MH) {
   # update positive stable random effects
   nt <- ncol(A)
   L  <- nrow(A)
@@ -12,23 +12,28 @@ updateA <- function(A, cuts, bins, Ba, theta, y, mu, ls, xi, thresh, alpha,
     dlognormal(CANA, A, matrix(MH[l1], L, nt))
 
   for (l in 1:L) {
-    canA      <- A
-    canA[l, ] <- CANA[l, ]
-    cantheta  <- (Ba %*% canA)^alpha
-    canll     <- loglike(y = y, mu = mu, ls = ls, xi = xi,
-                         theta = cantheta, thresh = thresh, alpha = alpha)
+    canA        <- A
+    canA[l, ]   <- CANA[l, ]
+    cantheta    <- (Ba %*% canA)^alpha
+    cantheta.xi <- cantheta^xi
+    # canll     <- loglike(y = y, mu = mu, ls = ls, xi = xi,
+    #                      theta = cantheta, thresh = thresh, alpha = alpha)
+    canll     <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = cantheta,
+                         theta.xi = cantheta.xi, thresh = thresh, alpha = alpha)
 
     R    <- colSums(canll - curll) + q[l, ]
     if (all(!is.na(R))) {
       keep <- log(runif(nt)) < R
-
       A[l, keep]     <- canA[l, keep]
-      theta[, keep]  <- cantheta[, keep]
+      # theta[, keep]  <- cantheta[, keep]
+      theta.xi[, keep] <- cantheta.xi[, keep]
+      theta[, keep]  <- theta.xi[, keep]^(1 / xi)
       curll[, keep]  <- canll[, keep]
     }
   }
 
-  results <- list(A = A, l1 = l1, theta = theta, curll = curll)
+  results <- list(A = A, l1 = l1, theta = theta, theta.xi = theta.xi,
+                  curll = curll)
   return(results)
 }
 
@@ -76,7 +81,7 @@ updateXBasisBW <- function(bw, bw.min, bw.max,
   return(results)
 }
 
-updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
+updateMu <- function(mu, tau, Xb, SS, y, theta, theta.xi, ls, xi, thresh, alpha,
                      Qb, curll, acc, att, MH) {
   # update mu(s, t)
   ns <- nrow(mu)
@@ -87,7 +92,8 @@ updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
     canmu.mn <- mu[, t] + MH[, t]^2 / 2 *
       logpost.mu.grad(mu = mu[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
                       y = y[, t], ls = ls[, t], xi = xi, theta = theta[, t],
-                      thresh = thresh[, t], alpha = alpha)
+                      theta.xi = theta.xi[, t], thresh = thresh[, t],
+                      alpha = alpha)
 
     canmu <- rnorm(ns, canmu.mn, MH[, t])
     if (xi < 0 & any(y[, t] - canmu > -exp(ls[, t]) / xi, na.rm = TRUE)) {
@@ -96,15 +102,16 @@ updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
                             na.rm = TRUE)) {
       R <- -Inf
     } else {
-      canll <- loglike(y = y[, t], theta = theta[, t], mu = canmu,
-                       ls = ls[, t], xi = xi, thresh = thresh[, t],
+      canll <- loglike(y = y[, t], theta = theta[, t], theta.xi = theta.xi[, t],
+                       mu = canmu, ls = ls[, t], xi = xi, thresh = thresh[, t],
                        alpha = alpha)
       canSS <- getGPSS(Qb = Qb, param = canmu, Xb = Xb[, t])
 
       curmu.mn <- canmu + MH[, t]^2 / 2 *
         logpost.mu.grad(mu = canmu, Xb = Xb[, t], tau = tau[t], Qb = Qb,
                         y = y[, t], ls = ls[, t], xi = xi, theta = theta[, t],
-                        thresh = thresh[, t], alpha = alpha)
+                        theta.xi = theta.xi[, t], thresh = thresh[, t],
+                        alpha = alpha)
 
       R <- canll - curll[, t] -
         0.5 * tau[t] * canSS +
@@ -127,7 +134,7 @@ updateMu <- function(mu, tau, Xb, SS, y, theta, ls, xi, thresh, alpha,
   return(results)
 }
 
-updateLS <- function(ls, tau, Xb, SS, y, theta, mu, xi, thresh, alpha,
+updateLS <- function(ls, tau, Xb, SS, y, theta, theta.xi, mu, xi, thresh, alpha,
                      Qb, curll, acc, att, MH) {
   # update logsig(s, t)
   ns <- nrow(ls)
@@ -138,7 +145,8 @@ updateLS <- function(ls, tau, Xb, SS, y, theta, mu, xi, thresh, alpha,
     canls.mn <- ls[, t] + MH[, t]^2 / 2 *
       logpost.logsig.grad(ls = ls[, t], Xb = Xb[, t], tau = tau[t], Qb = Qb,
                           y = y[, t], mu = mu[, t], xi = xi, theta = theta[, t],
-                          thresh = thresh[, t], alpha = alpha)
+                          theta.xi = theta.xi[, t], thresh = thresh[, t],
+                          alpha = alpha)
     canls <- rnorm(ns, canls.mn, MH[, t])
     if (xi < 0 & any(y[, t] - mu[, t] > -exp(canls) / xi, na.rm = TRUE)) {
       R <- -Inf
@@ -146,15 +154,16 @@ updateLS <- function(ls, tau, Xb, SS, y, theta, mu, xi, thresh, alpha,
                             na.rm = TRUE)) {
       R <- -Inf
     } else {
-      canll <- loglike(y = y[, t], theta = theta[, t], mu = mu[, t],
-                       ls = canls, xi = xi, thresh = thresh[, t],
+      canll <- loglike(y = y[, t], theta = theta[, t], theta.xi = theta.xi[, t],
+                       mu = mu[, t], ls = canls, xi = xi, thresh = thresh[, t],
                        alpha = alpha)
       canSS <- getGPSS(Qb = Qb, param = canls, Xb = Xb[, t])
 
       curls.mn <- canls + MH[, t]^2 / 2 *
         logpost.logsig.grad(ls = canls, Xb = Xb[, t], tau = tau[t], Qb = Qb,
                             y = y[, t], mu = mu[, t], xi = xi,
-                            theta = theta[, t], thresh = thresh[, t],
+                            theta = theta[, t], theta.xi = theta.xi[, t],
+                            thresh = thresh[, t],
                             alpha = alpha)
 
       R <- canll - curll[, t] -
@@ -367,7 +376,7 @@ updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
 }
 
 updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
-                     thresh, alpha, acc, att, MH) {
+                     theta.xi, thresh, alpha, acc, att, MH) {
   # update xi term
   # using a slightly more complicated update with truncated normals
   # prior := TN(xi.mn, xi.sd, lower = xi.min, upper = xi.max)
@@ -394,6 +403,7 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
 
   curlog.cand <- dnorm(xi, canxi, MH, log = TRUE) -
     log(canupper.U - canlower.U)
+  cantheta.xi <- theta^canxi
   # xi.star <- transform$logit(xi, xi.min, xi.max)
   # canxi  <- rnorm(1, xi, MH)
   # canxi.star <- rnorm(1, xi.star, MH)
@@ -403,8 +413,8 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
   # } else if (canxi > 0 & any(y - mu < -exp(ls) / canxi, na.rm = TRUE)) {
   #   R <- -Inf
   # } else {
-    canll  <- loglike(y = y, mu = mu, ls = ls, xi = canxi,
-                      theta = theta, thresh = thresh, alpha = alpha)
+    canll  <- loglike(y = y, mu = mu, ls = ls, xi = canxi, theta = theta,
+                      theta.xi = cantheta.xi, thresh = thresh, alpha = alpha)
     # We do not need to account for truncation in prior because the
     # scaling cancels out in R, but we do need to account for asymmetrical
     # candidate distribution
@@ -419,11 +429,13 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
   # }
 
   if (!is.na(R)) { if (log(runif(1)) < R) {
-    acc   <- acc + 1
-    xi    <- canxi
-    curll <- canll
+    acc      <- acc + 1
+    xi       <- canxi
+    theta.xi <- cantheta.xi
+    curll    <- canll
   }}
 
-  results <- list(xi = xi, curll = curll, acc = acc, att = att)
+  results <- list(xi = xi, theta.xi = theta.xi, curll = curll,
+                  acc = acc, att = att)
   return(results)
 }

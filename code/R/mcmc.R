@@ -50,7 +50,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                    time.interact = FALSE,
                    # how many sites, days, and knots to keep. default is all
                    keep.sites = NULL, keep.days = NULL, keep.knots = NULL,
-                   keep.burn = FALSE, iters = 5000, burn = 1000, update = 10,
+                   iters = 5000, burn = 1000, update = 10, keep.burn = FALSE,
                    iterplot = FALSE){
   require(extRemes)
   require(fields)
@@ -223,14 +223,15 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     ####################################################
     oldA  <- A
     this.update <- updateA(A = A, cuts = cuts, bins = bins, Ba = Ba,
-                           theta = theta, y = y, mu = mu, ls = ls,
-                           xi = xi, thresh = thresh, alpha = alpha,
-                           curll = curll, MH = MH.a)
+                           theta = theta, theta.xi = theta.xi,
+                           y = y, mu = mu, ls = ls, xi = xi, thresh = thresh,
+                           alpha = alpha, curll = curll, MH = MH.a)
 
-    A     <- this.update$A
-    l1    <- this.update$l1
-    theta <- this.update$theta
-    curll <- this.update$curll
+    A        <- this.update$A
+    l1       <- this.update$l1
+    theta    <- this.update$theta
+    theta.xi <- this.update$theta.xi
+    curll    <- this.update$curll
 
     ####################################################
     ##########      bandwidth for kernels      #########
@@ -263,9 +264,9 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     # am trying a Gaussian process here
     # mu
     this.update <- updateMu(mu = mu, tau = tau1, Xb = Xb1, SS = SS1,
-                            y = y, theta = theta, ls = ls, xi = xi,
-                            thresh = thresh, alpha = alpha, Qb = Qb,
-                            curll = curll, acc = acc.mu, att = att.mu,
+                            y = y, theta = theta, theta.xi = theta.xi,
+                            ls = ls, xi = xi, thresh = thresh, alpha = alpha,
+                            Qb = Qb, curll = curll, acc = acc.mu, att = att.mu,
                             MH = MH.mu)
     mu     <- this.update$mu
     SS1    <- this.update$SS
@@ -275,9 +276,9 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
 
     # logsig
     this.update <- updateLS(ls = ls, tau = tau2, Xb = Xb2, SS = SS2,
-                            y = y, theta = theta, mu = mu, xi = xi,
-                            thresh = thresh, alpha = alpha, Qb = Qb,
-                            curll = curll, acc = acc.ls, att = att.ls,
+                            y = y, theta = theta, theta.xi = theta.xi,
+                            mu = mu, xi = xi, thresh = thresh, alpha = alpha,
+                            Qb = Qb, curll = curll, acc = acc.ls, att = att.ls,
                             MH = MH.ls)
     ls     <- this.update$ls
     SS2    <- this.update$SS
@@ -289,13 +290,14 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     this.update <- updateXi(xi = xi, xi.min = xi.min, xi.max = xi.max,
                             xi.mn = xi.mn, xi.sd = xi.sd,
                             y = y, mu = mu, ls = ls, curll = curll,
-                            theta = theta, thresh = thresh,
+                            theta = theta, theta.xi = theta.xi, thresh = thresh,
                             alpha = alpha, acc = acc.xi, att = att.xi,
                             MH = MH.xi)
-    xi     <- this.update$xi
-    curll  <- this.update$curll
-    acc.xi <- this.update$acc
-    att.xi <- this.update$att
+    xi       <- this.update$xi
+    theta.xi <- this.update$theta.xi
+    curll    <- this.update$curll
+    acc.xi   <- this.update$acc
+    att.xi   <- this.update$att
 
     ####################################################
     ###########      GEV hyper parameters      #########

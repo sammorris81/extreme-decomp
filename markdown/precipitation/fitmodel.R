@@ -4,7 +4,7 @@
 # cv     := which cross-validation testing set to use
 # L      := the number of basis functions to use
 library(compiler)
-enableJIT(0)
+enableJIT(3)
 
 #### load in the data ####
 load(file = "precip_preprocess.RData")
@@ -180,7 +180,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-iters <- 10000; burn <- 7000; update <- 100  # for testing
+# iters <- 20000; burn <- 15000; update <- 500  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")
@@ -197,7 +197,7 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 beta1.tau.a = 0.1, beta1.tau.b = 0.1,
                 beta2 = beta2.init, beta2.sd = 1,
                 beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                xi = 0, xi.mn = 0, xi.sd = 0.3,
+                xi = 0, xi.min = xi.mn = 0, xi.sd = 0.5,
                 bw.gp.init = 0.3,
                 A = A.init, bw.basis.init = 0.3,
                 time.interact = TRUE,

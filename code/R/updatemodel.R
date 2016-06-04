@@ -366,11 +366,14 @@ updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
   return(results)
 }
 
-updateXi <- function(xi, xi.mn, xi.sd, y, mu, ls, curll, theta, thresh, alpha,
-                     acc, att, MH) {
+updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
+                     thresh, alpha, acc, att, MH) {
   # update xi term
   att <- att + 1
-  canxi  <- rnorm(1, xi, MH)
+  xi.star <- transform$logit(xi, xi.min, xi.max)
+  # canxi  <- rnorm(1, xi, MH)
+  canxi.star <- rnorm(1, xi.star, MH)
+  canxi   <- transform$inv.logit(canxi.star, xi.min, xi.max)
   if (canxi < 0 & any(y - mu > -exp(ls) / canxi, na.rm = TRUE)) {
     R <- -Inf
   } else if (canxi > 0 & any(y - mu < -exp(ls) / canxi, na.rm = TRUE)) {
@@ -379,8 +382,10 @@ updateXi <- function(xi, xi.mn, xi.sd, y, mu, ls, curll, theta, thresh, alpha,
     canll  <- loglike(y = y, mu = mu, ls = ls, xi = canxi,
                       theta = theta, thresh = thresh, alpha = alpha)
     R      <- sum(canll - curll) +
-      dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
-      dnorm(xi, xi.mn, xi.sd, log = TRUE)
+      log(canxi - xi.min) + log(xi.max - canxi) -  # Jacobian of the prior
+      log(xi - xi.min) - log(xi.max - xi)
+      # dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
+      # dnorm(xi, xi.mn, xi.sd, log = TRUE)
   }
 
   if (!is.na(R)) { if (log(runif(1)) < R) {

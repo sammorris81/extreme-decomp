@@ -39,7 +39,8 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                    beta1.tau.a = 0.1, beta1.tau.b = 0.1,  # for priors on sd
                    beta2 = NULL, beta2.sd = 1,
                    beta2.tau.a = 0.1, beta2.tau.b = 0.1,  # for priors on sd
-                   xi = 0.001, xi.mn = 0, xi.sd = 0.5, xi.attempts = 50,
+                   xi = 0.001, xi.min = -1, xi.max = 1,
+                   xi.mn = 0, xi.sd = 0.5, xi.attempts = 50,
                    bw.gp.init = NULL, bw.gp.attempts = 50,
                    # starting value for PS
                    A = NULL,
@@ -284,7 +285,8 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     att.ls <- this.update$att
 
     # xi
-    this.update <- updateXi(xi = xi, xi.mn = xi.mn, xi.sd = xi.sd,
+    this.update <- updateXi(xi = xi, xi.min = xi.min, xi.max = xi.max,
+                            xi.mn = xi.mn, xi.sd = xi.sd,
                             y = y, mu = mu, ls = ls, curll = curll,
                             theta = theta, thresh = thresh,
                             alpha = alpha, acc = acc.xi, att = att.xi,

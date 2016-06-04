@@ -1380,3 +1380,83 @@ sd(grad(func = logpost.logsig, x = ls.t[, t], Xb = Xb2.t[, t],
                          mu = mu.t[, t], xi = xi.t,
                          theta = theta.t[, t], thresh = thresh.t[, t],
                          alpha = alpha.t))
+
+
+#### testing xi ####
+rm(list=ls())
+source("../../../usefulR/usefulfunctions.R", chdir = TRUE)
+source("auxfunctions.R", chdir = TRUE)
+source("updatemodel.R", chdir = TRUE)
+
+set.seed(2000)
+ns <- 400
+nt <- 12
+np <- 6
+X1.t <- rX(ns, nt, np)
+X2.t <- rX(ns, nt, np)
+beta1.t <- rnorm(np, 0, 10)
+beta2.t <- rnorm(np, 0, 5)
+
+phi.t <- 0.2
+s <- cbind(runif(ns), runif(ns))
+d <- rdist(s)
+Sigma.t <- exp(-d / phi.t)
+tau.t   <- rgamma(nt, 1, 1)
+Qb.t    <- chol2inv(chol(Sigma.t))
+Xb1.t   <- getXBeta(X = X1.t, beta = beta1.t)
+Xb2.t   <- getXBeta(X = X2.t, beta = beta2.t)
+
+mu.t <- ls.t <- matrix(0, ns, nt)
+for (t in 1:nt) {
+  mu.t[, t] <- Xb1.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+  ls.t[, t] <- Xb2.t[, t] + t(chol(Sigma.t)) %*% rnorm(ns) / sqrt(tau.t[t])
+}
+
+xi.t <- -0.7
+y.t <- rgev(n = ns * nt, loc = mu.t, exp(ls.t), xi.t)
+
+# initialize values
+xi <- 0.1
+
+thresh.t <- matrix(-Inf, ns, nt)
+theta.t <- matrix(1, ns, nt)
+alpha.t <- 1
+curll <- loglike(y = y.t, mu = mu.t, ls = ls.t, xi = xi,
+                 theta = theta.t, thresh = thresh.t, alpha = alpha.t)
+
+
+niters <- 10000
+burn   <- 8000
+xi.keep <- rep(0, niters)
+acc.xi <- att.xi <- MH.xi <- 0.01
+
+
+set.seed(3366)  # demo
+for (iter in 1:niters) {
+  this.update <- updateXi(xi = xi, xi.min = -2, xi.max = 2,
+                          xi.mn = 0, xi.sd = 0.5, y = y.t, mu = mu.t,
+                          ls = ls.t, curll = curll, theta = theta.t,
+                          thresh = thresh.t, alpha = alpha.t, acc = acc.xi,
+                          att = att.xi, MH = MH.xi)
+  xi <- this.update$xi
+  curll <- this.update$curll
+  acc.xi <- this.update$acc
+  att.xi <- this.update$att
+  xi.keep[iter] <- xi
+
+  if (iter < burn / 2) {
+    this.update <- mhUpdate(acc = acc.xi, att = att.xi, MH = MH.xi,
+                            target.min = 0.3, target.max = 0.6,
+                            nattempts = 400)
+    acc.xi <- this.update$acc
+    att.xi <- this.update$att
+    MH.xi  <- this.update$MH
+  }
+
+  if (iter %% 500 == 0) {
+    start <- max(1, iter - 20000)
+    plot(xi.keep[start:iter], type = "l", main = paste("xi: ", xi.t),
+         ylab = round(acc.xi / att.xi, 3),
+         xlab = MH.xi)
+  }
+}

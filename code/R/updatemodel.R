@@ -369,24 +369,54 @@ updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
 updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
                      thresh, alpha, acc, att, MH) {
   # update xi term
+  # using a slightly more complicated update with truncated normals
+  # prior := TN(xi.mn, xi.sd, lower = xi.min, upper = xi.max)
+  # cand  := TN(xi, MH, lower = xi.min, upper = xi.max)
   att <- att + 1
-  xi.star <- transform$logit(xi, xi.min, xi.max)
+  # xi.star <- transform$logit(xi, xi.min, xi.max)
+
+  # random walk from truncated normal distribution within bounds
+  res <- y - mu
+  this.min <- max(xi.min, max(-exp(ls[res > 0]) / res[res > 0], na.rm = TRUE))
+  this.max <- min(xi.max, min(-exp(ls[res < 0]) / res[res < 0], na.rm = TRUE))
+  curlower.U <- pnorm(q = this.min, mean = xi, sd = MH)
+  curupper.U <- pnorm(q = this.max, mean = xi, sd = MH)
+  if (curlower.U < 1e-6) { curlower.U <- 0 }
+  if (curupper.U > 0.999999) { curupper.U < 1 }
+  canxi.star <- runif(1, curlower.U + 1e-6, curupper.U - 1e-6)
+  canxi   <- qnorm(canxi.star, xi, MH)
+
+  canlog.cand <- dnorm(canxi, xi, MH, log = TRUE) -
+    log(curupper.U - curlower.U)  # adjustment for truncation
+
+  canlower.U <- pnorm(q = this.min, mean = canxi, sd = MH)
+  canupper.U <- pnorm(q = this.max, mean = canxi, sd = MH)
+
+  curlog.cand <- dnorm(xi, canxi, MH, log = TRUE) -
+    log(canupper.U - canlower.U)
+  # xi.star <- transform$logit(xi, xi.min, xi.max)
   # canxi  <- rnorm(1, xi, MH)
-  canxi.star <- rnorm(1, xi.star, MH)
-  canxi   <- transform$inv.logit(canxi.star, xi.min, xi.max)
-  if (canxi < 0 & any(y - mu > -exp(ls) / canxi, na.rm = TRUE)) {
-    R <- -Inf
-  } else if (canxi > 0 & any(y - mu < -exp(ls) / canxi, na.rm = TRUE)) {
-    R <- -Inf
-  } else {
+  # canxi.star <- rnorm(1, xi.star, MH)
+  # canxi   <- transform$inv.logit(canxi.star, xi.min, xi.max)
+  # if (canxi < 0 & any(y - mu > -exp(ls) / canxi, na.rm = TRUE)) {
+  #   R <- -Inf
+  # } else if (canxi > 0 & any(y - mu < -exp(ls) / canxi, na.rm = TRUE)) {
+  #   R <- -Inf
+  # } else {
     canll  <- loglike(y = y, mu = mu, ls = ls, xi = canxi,
                       theta = theta, thresh = thresh, alpha = alpha)
+    # We do not need to account for truncation in prior because the
+    # scaling cancels out in R, but we do need to account for asymmetrical
+    # candidate distribution
     R      <- sum(canll - curll) +
-      log(canxi - xi.min) + log(xi.max - canxi) -  # Jacobian of the prior
-      log(xi - xi.min) - log(xi.max - xi)
+      dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
+      dnorm(xi, xi.mn, xi.sd, log = TRUE) +
+      curlog.cand - canlog.cand  # adjust for asymmetrical candidate
+      # log(canxi - xi.min) + log(xi.max - canxi) -  # Jacobian of the prior
+      # log(xi - xi.min) - log(xi.max - xi)
       # dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
       # dnorm(xi, xi.mn, xi.sd, log = TRUE)
-  }
+  # }
 
   if (!is.na(R)) { if (log(runif(1)) < R) {
     acc   <- acc + 1

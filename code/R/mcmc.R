@@ -39,7 +39,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                    beta1.tau.a = 0.1, beta1.tau.b = 0.1,  # for priors on sd
                    beta2 = NULL, beta2.sd = 1,
                    beta2.tau.a = 0.1, beta2.tau.b = 0.1,  # for priors on sd
-                   xi = 0.001, xi.min = -1, xi.max = 1,
+                   xi = 0.001, xi.min = -0.5, xi.max = 0.5,
                    xi.mn = 0, xi.sd = 0.5, xi.attempts = 50,
                    bw.gp.init = NULL, bw.gp.attempts = 50,
                    # starting value for PS
@@ -333,22 +333,20 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                                ns = ns)
     tau2 <- this.update$tau
 
-    if (iter > 1000) {  # Let the MCMC run for a little bit
-      # spatial range for GP
-      this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
-                                bw.max = bw.gp.max,
-                                Qb = Qb, logdetQb = logdetQb, d = d,
-                                mu = mu, Xb1 = Xb1, tau1 = tau1, SS1 = SS1,
-                                ls = ls, Xb2 = Xb2, tau2 = tau2, SS2 = SS2,
-                                acc = acc.bw.gp, att = att.bw.gp, MH = MH.bw.gp)
-      bw.gp     <- this.update$bw
-      Qb        <- this.update$Qb
-      logdetQb  <- this.update$logdetQb
-      SS1       <- this.update$SS1
-      SS2       <- this.update$SS2
-      acc.bw.gp <- this.update$acc
-      att.bw.gp <- this.update$att
-    }
+    # spatial range for GP
+    this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
+                              bw.max = bw.gp.max,
+                              Qb = Qb, logdetQb = logdetQb, d = d,
+                              mu = mu, Xb1 = Xb1, tau1 = tau1, SS1 = SS1,
+                              ls = ls, Xb2 = Xb2, tau2 = tau2, SS2 = SS2,
+                              acc = acc.bw.gp, att = att.bw.gp, MH = MH.bw.gp)
+    bw.gp     <- this.update$bw
+    Qb        <- this.update$Qb
+    logdetQb  <- this.update$logdetQb
+    SS1       <- this.update$SS1
+    SS2       <- this.update$SS2
+    acc.bw.gp <- this.update$acc
+    att.bw.gp <- this.update$att
 
     # TUNING
     if (iter < burn / 2) {

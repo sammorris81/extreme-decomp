@@ -98,11 +98,11 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   p1 <- p2 <- dim(X)[3]
   # p2 <- dim(X2)[3]
 
-  miss  <- is.na(y)
+  miss <- is.na(y)
   if (length(thresh) == 1) {
     thresh <- matrix(thresh, ns, nt)
   }
-  y     <- ifelse(y < thresh, thresh, y)
+  y <- ifelse(y < thresh, thresh, y)
 
   # initial missing values to be set at threshold
   # looping over time because threshold is a vector of ns length
@@ -199,7 +199,8 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   keep.bw.gp    <- rep(0, iters)  # bandwidth for GP
   keep.A        <- array(0, dim = c(iters, keep.knots, keep.days))
   if (any(miss)) {
-    keep.y <- matrix(0, iters, sum(miss))  # only record the missing data
+    # only record the missing data after burnin finishes
+    keep.y <- matrix(0, iters - burn, sum(miss))
   } else {
     keep.y <- NULL
   }
@@ -405,20 +406,28 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     ####################################################
     ##############      Impute missing      ############
     ####################################################
-    # if (any(miss)) {
-    #   y.tmp <- y
-    #   for (t in missing.times) {
-    #     # calculate mu and sigma
-    #     miss.t   <- miss[, t]
-    #     sigma    <- exp(logsig[miss.t, t])
-    #     mu_star  <- mu[miss.t, t] + sigma * (theta[miss.t, t]^xi - 1) / xi
-    #     sig_star <- alpha * sigma * theta[miss.t, t]^xi
-    #     xi_star  <- alpha * xi
-    #     y.tmp[miss.t, t] <- revd(n = sum(miss.t), loc = mu_star,
-    #                              scale = sig_star, shape = xi_star,
-    #                              type = "GEV")
-    #   }
-    # }
+    if (iter > burn) {
+      if (any(miss)) {
+        y.tmp <- y
+        for (t in missing.times) {
+          # calculate mu and sigma
+          miss.t     <- miss[, t]
+          theta.xi.t <- theta[miss.t, t]^xi
+          mu.t       <- mu[miss.t, t]
+          sig.t      <- exp(ls[miss.t, t])
+          mu.star.t  <- mu.t + sig.t * (theta.xi.t - 1) / xi
+          sig.star.t <- alpha * sig.t * theta.xi.t
+          xi.star    <- alpha * xi
+          # get unit frechet
+          these.miss <- - 1 / log(runif(length(miss.t)))
+          # transform to correct marginals
+          y.tmp[miss.t, t] <- mu.star.t + sig.star.t *
+            (these.miss^xi.star - 1) / xi.star
+        }
+        keep.y[(iter - burn), ] <- y.tmp[miss]
+      }
+
+    }
 
     #KEEP TRACK OF STUFF:
     keep.beta1[iter, ]   <- beta1
@@ -432,9 +441,6 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     keep.bw.basis[iter]  <- bw.basis
     keep.bw.gp[iter]     <- bw.gp
     keep.A[iter, , ]     <- A[these.knots, these.days]
-    # if (any(miss)) {
-    #   keep.y[iter, ]     <- y.tmp[miss]
-    # }
 
     #DISPLAY CURRENT VALUE:
 
@@ -524,25 +530,6 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     return.iters <- (burn + 1):iters
   }
 
-  if (any(miss)) {
-    keep.y <- keep.y[return.iters, , drop = FALSE]
-  }
-
-  keep.beta1[iter, ]   <- beta1
-  keep.beta2[iter, ]   <- beta2
-  keep.xi[iter]        <- xi
-  keep.beta.sd[iter, ] <- c(beta1.sd, beta2.sd)
-  keep.tau1[iter, ]    <- tau1
-  keep.tau2[iter, ]    <- tau2
-  keep.mu[iter, , ]    <- mu[these.sites, these.days]
-  keep.ls[iter, , ]    <- ls[these.sites, these.days]
-  keep.bw.basis[iter]  <- bw.basis
-  keep.bw.gp[iter]     <- bw.gp
-  keep.A[iter, , ]     <- A[these.knots, these.days]
-  # if (any(miss)) {
-  #   keep.y[iter, ]     <- y.tmp[miss]
-  # }
-
   list(beta1   = keep.beta1[return.iters, , drop = FALSE],
        beta2   = keep.beta2[return.iters, , drop = FALSE],
        xi      = keep.xi[return.iters],
@@ -554,7 +541,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
        bw.basis = keep.bw.basis[return.iters],
        bw.gp = keep.bw.gp[return.iters],
        A = keep.A[return.iters, , , drop = FALSE],
-       # y.pred = keep.y,
+       y.pred = keep.y,  # only stores for post-burnin
        timing = toc - tic)
 }
 

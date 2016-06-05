@@ -118,7 +118,7 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <-2000; burn <- 500; update <- 10  # for testing
+# iters <-200; burn <- 50; update <- 10  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -126,12 +126,16 @@ set.seed(6262)  # mcmc
 # s is scaled locations
 fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 thresh = thresh95, B = B.sp, alpha = alpha,
+                can.mu.sd = 0.05, can.ls.sd = 0.01,
+                tau1.a = 0.1, tau1.b = 0.1,
+                tau2.a = 0.1, tau2.b = 0.1,
+                beta1.sd = 10, beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                beta2.sd = 1, beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                xi = 0, xi.min = -0.5, xi.max = 0.5, xi.mn = 0, xi.sd = 0.5,
+                bw.gp.init = 0.3, bw.basis.init = 0.3,
                 time.interact = TRUE,
-                # beta1 = beta1.init,
-                beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = TRUE)
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+                iters = iters, burn = burn, update = update, iterplot = TRUE)
+                # iters = iters, burn = burn, update = update, iterplot = FALSE)
 cat("Finished fit and predict \n")
 
 # mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))

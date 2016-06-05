@@ -386,8 +386,15 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
 
   # random walk from truncated normal distribution within bounds
   res <- y - mu
-  this.min <- max(xi.min, max(-exp(ls[res > 0]) / res[res > 0], na.rm = TRUE))
-  this.max <- min(xi.max, min(-exp(ls[res < 0]) / res[res < 0], na.rm = TRUE))
+  this.min <- xi.min
+  this.max <- xi.max
+  if (any(res > 0, na.rm = TRUE)) {
+    this.min <- max(xi.min, max(-exp(ls[res > 0]) / res[res > 0], na.rm = TRUE))
+  }
+  if (any(res < 0, na.rm = TRUE)) {
+    this.max <- min(xi.max, min(-exp(ls[res < 0]) / res[res < 0], na.rm = TRUE))
+  }
+
   curlower.U <- pnorm(q = this.min, mean = xi, sd = MH)
   curupper.U <- pnorm(q = this.max, mean = xi, sd = MH)
   if (curlower.U < 1e-6) { curlower.U <- 0 }

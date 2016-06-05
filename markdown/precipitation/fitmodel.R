@@ -176,8 +176,8 @@ thresh99.tst <- thresh99[this.cv]
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
+iters  <- 20000
+burn   <- 15000
 update <- 1000
 
 # iters <- 100; burn <- 10; update <- 10  # for testing
@@ -201,9 +201,10 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 bw.gp.init = 0.3,
                 A = A.init, bw.basis.init = 0.3,
                 time.interact = TRUE,
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-               iters = iters, burn = burn, update = update, keep.burn = TRUE,
-               iterplot = TRUE)
+                keep.sites = 5, keep.days = 5, keep.knots = 10,
+                iters = iters, burn = burn, update = update, iterplot = FALSE)
+               # iters = iters, burn = burn, update = update, keep.burn = TRUE,
+               # iterplot = TRUE)
 cat("Finished fit and predict \n")
 # Rprof(filename = NULL)
 # summaryRprof(filename = "Rprof.out", lines = "show")

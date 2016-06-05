@@ -414,7 +414,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
         for (t in missing.times) {
           # calculate mu and sigma
           miss.t     <- miss[, t]  # logical vector of whether it's missing
-          theta.xi.t <- theta[miss.t, t]^xi
+          theta.xi.t <- theta.xi[miss.t, t]
           mu.t       <- mu[miss.t, t]
           sig.t      <- exp(ls[miss.t, t])
           mu.star.t  <- mu.t + sig.t * (theta.xi.t - 1) / xi

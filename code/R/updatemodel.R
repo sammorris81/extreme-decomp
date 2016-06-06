@@ -379,7 +379,7 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
                      theta.xi, thresh, alpha, acc, att, MH) {
   # update xi term
   # using a slightly more complicated update with truncated normals
-  # prior := TN(xi.mn, xi.sd, lower = xi.min, upper = xi.max)
+  # prior := N(xi.mn, xi.sd)
   # cand  := TN(xi, MH, lower = xi.min, upper = xi.max)
   att <- att + 1
   # xi.star <- transform$logit(xi, xi.min, xi.max)
@@ -425,7 +425,7 @@ updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
     # We do not need to account for truncation in prior because the
     # scaling cancels out in R, but we do need to account for asymmetrical
     # candidate distribution
-    R      <- sum(canll - curll) +
+    R <- sum(canll - curll) +
       dnorm(canxi, xi.mn, xi.sd, log = TRUE) -
       dnorm(xi, xi.mn, xi.sd, log = TRUE) +
       curlog.cand - canlog.cand  # adjust for asymmetrical candidate

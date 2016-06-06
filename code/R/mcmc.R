@@ -41,12 +41,12 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                    beta2.tau.a = 0.1, beta2.tau.b = 0.1,  # for priors on sd
                    xi = 0.001, xi.min = -0.5, xi.max = 0.5,
                    xi.mn = 0, xi.sd = 0.5, xi.attempts = 50,
-                   bw.gp.init = NULL, bw.gp.attempts = 50,
+                   bw.gp.init = NULL, can.bw.gp.sd = 0.05, bw.gp.attempts = 50,
                    # starting value for PS
                    A = NULL,
                    # bw for basis functions
                    bw.basis.init = NULL, bw.basis.random = TRUE,
-                   bw.basis.attempts = 50,
+                   can.bw.basis.sd = 0.001, bw.basis.attempts = 50,
                    time.interact = FALSE,
                    # how many sites, days, and knots to keep. default is all
                    keep.sites = NULL, keep.days = NULL, keep.knots = NULL,
@@ -82,14 +82,15 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   dw2 <- rdist(s, knots)^2
   dw2[dw2 < 1e-4] <- 0
 
+  bw.basis.min <- max(apply(dw2, 1, min)) + 1e-4
+  bw.basis.max <- quantile(dw2, 0.75)
+
   if (is.null(bw.basis.init)) {
-    bw.basis <- quantile(dw2, 0.1)
+    bw.basis <- quantile(dw2, 0.5)
   } else {
     bw.basis <- bw.basis.init
   }
-
-  bw.basis.min <- quantile(dw2, 0.005)
-  bw.basis.max <- quantile(dw2, 0.995)
+  bw.basis <- max(bw.basis.min, bw.basis)  # make sure it's large enough
 
   B.X <- makeW(dw2 = dw2, rho = bw.basis)
   X <- add.basis.X(X = X, B = B.X, time.interact = time.interact)
@@ -128,12 +129,12 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   # get the initial covariance matrix for the gaussian process
   d <- rdist(s)
   diag(d) <- 0
-  bw.gp.min <- quantile(d[upper.tri(d)], 0.001)
-  bw.gp.max <- quantile(d[upper.tri(d)], 0.999)
+  bw.gp.min <- 1e-4
+  bw.gp.max <- max(d[upper.tri(d)])
   if (!is.null(bw.gp.init)) {
     bw.gp <- bw.gp.init
   } else {
-    bw.gp <- min(d[upper.tri(d)]) * 4
+    bw.gp <- (median(d[upper.tri(d)]) - bw.gp.min) / 2
     # bw.gp <- 0.7
   }
   Sigma <- exp(-d / bw.gp)
@@ -213,8 +214,8 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   att.mu <- acc.mu <- MH.mu <- matrix(can.mu.sd, ns, nt)
   att.ls <- acc.ls <- MH.ls <- matrix(can.ls.sd, ns, nt)
   att.xi <- acc.xi    <- MH.xi    <- 0.1
-  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- 0.001
-  att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- 0.05
+  att.bw.basis <- acc.bw.basis <- MH.bw.basis <- can.bw.basis.sd
+  att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- can.bw.gp.sd
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
@@ -373,16 +374,16 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
       MH.bw.basis  <- this.update$MH
 
       this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu,
-                              nattempts = 50,
-                              target.min = 0.3, target.max = 0.6,
+                              nattempts = mu.attempts,
+                              target.min = 0.5, target.max = 0.8,
                               lower = 0.8, higher = 1.2)
       acc.mu <- this.update$acc
       att.mu <- this.update$att
       MH.mu  <- this.update$MH
 
       this.update <- mhUpdate(acc = acc.ls, att = att.ls, MH = MH.ls,
-                              nattempts = 50,
-                              target.min = 0.3, target.max = 0.6,
+                              nattempts = ls.attempts,
+                              target.min = 0.5, target.max = 0.5,
                               lower = 0.8, higher = 1.2)
       acc.ls <- this.update$acc
       att.ls <- this.update$att

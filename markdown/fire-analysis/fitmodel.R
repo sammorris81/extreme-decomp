@@ -118,7 +118,8 @@ iters  <- 30000
 burn   <- 20000
 update <- 1000
 
-# iters <-200; burn <- 50; update <- 10  # for testing
+# iters <-200; burn <- 50;
+update <- 500  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -126,13 +127,15 @@ set.seed(6262)  # mcmc
 # s is scaled locations
 fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 thresh = thresh95, B = B.sp, alpha = alpha,
-                can.mu.sd = 0.05, can.ls.sd = 0.01,
-                tau1.a = 0.1, tau1.b = 0.1,
+                can.mu.sd = 1, can.ls.sd = 0.5,
+                mu.attempts = 400, ls.attempts = 400,
+                tau1.a = 1, tau1.b = 1,
                 tau2.a = 0.1, tau2.b = 0.1,
                 beta1.sd = 10, beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta2.sd = 1, beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                xi = 0, xi.min = -0.5, xi.max = 0.5, xi.mn = 0, xi.sd = 0.5,
-                bw.gp.init = 0.3, bw.basis.init = 0.3,
+                beta2.sd = 0.1, beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                xi = 0, xi.min = -1, xi.max = 1, xi.mn = 0, xi.sd = 0.3,
+                bw.gp.init = 0.05, can.bw.gp.sd = 0.1,
+                bw.basis.init = 0.3, can.bw.basis.sd = 0.1,
                 time.interact = TRUE,
                 iters = iters, burn = burn, update = update, iterplot = TRUE)
                 # iters = iters, burn = burn, update = update, iterplot = FALSE)

@@ -92,7 +92,7 @@ for (i in 1:ns) {
 ################################################################################
 #### Spatially smooth threshold ################################################
 ################################################################################
-thresh90 <- thresh95 <- thresh99 <- rep(0, ns)
+thresh85 <- thresh90 <- thresh95 <- thresh99 <- rep(0, ns)
 neighbors <- 5
 d <- rdist(s)
 diag(d) <- 0
@@ -100,16 +100,27 @@ diag(d) <- 0
 # take the 5 closest neighbors when finding the threshold
 for (i in 1:ns) {
   these <- order(d[i, ])[2:(neighbors + 1)]  # the closest is always site i
+  thresh85[i] <- quantile(Y[these, ], probs = 0.85, na.rm = TRUE)
   thresh90[i] <- quantile(Y[these, ], probs = 0.90, na.rm = TRUE)
   thresh95[i] <- quantile(Y[these, ], probs = 0.95, na.rm = TRUE)
   thresh99[i] <- quantile(Y[these, ], probs = 0.99, na.rm = TRUE)
 }
+thresh85 <- matrix(thresh85, nrow(Y), ncol(Y))
 thresh90 <- matrix(thresh90, nrow(Y), ncol(Y))
 thresh95 <- matrix(thresh95, nrow(Y), ncol(Y))
 thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
+thresh85.tst <- thresh85[cv.idx[[cv]]]
 thresh90.tst <- thresh90[cv.idx[[cv]]]
 thresh95.tst <- thresh95[cv.idx[[cv]]]
 thresh99.tst <- thresh99[cv.idx[[cv]]]
+
+# Y.tmp <- Y
+# Y.tmp <- ifelse(Y <= thresh85, thresh85, Y)
+# colSums(Y.tmp - thresh85 != 0, na.rm = TRUE)
+# Y.tmp <- ifelse(Y <= thresh90, thresh90, Y)
+# colSums(Y.tmp - thresh90 != 0, na.rm = TRUE)
+# Y.tmp <- ifelse(Y <= thresh95, thresh95, Y)
+# colSums(Y.tmp - thresh95 != 0, na.rm = TRUE)
 
 ################################################################################
 #### run the MCMC ##############################################################
@@ -126,7 +137,7 @@ set.seed(6262)  # mcmc
 # fit the model using the training data
 # s is scaled locations
 fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
-                thresh = thresh95, B = B.sp, alpha = alpha,
+                thresh = thresh90, B = B.sp, alpha = alpha,
                 can.mu.sd = 1, can.ls.sd = 0.5,
                 mu.attempts = 400, ls.attempts = 400,
                 tau1.a = 1, tau1.b = 1,

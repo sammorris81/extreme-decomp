@@ -9,7 +9,7 @@
 \usepackage{times}
 \usepackage{soul}
 \usepackage{color}
-\usepackage{enumitem}
+\usepackage{enumerate}
 \usepackage{setspace}
 \usepackage{times}
 \usepackage{changepage}
@@ -43,33 +43,33 @@
 \pagestyle{plain}
 \setcounter{page}{1}
 
-\section{Introduction}\label{s:intro}
+\section{Introduction}\label{ebs:intro}
 
-\section{Model}\label{s:model}
+\section{Model}\label{ebs:model}
 
-Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal setting in Section \ref{s:estimation}.
+Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal setting in \sref{ebs:estimation}.
 To focus attention on the extreme values, we emphasize the statistical model for exceedances above a location-specific threshold $T(\bs)$.
-We begin by specifying a spatial model for the complete data $Y(\bs)$ and then use the censored likelihood defined by $T(\bs)$ for inference as described in Section \ref{s:MCMC}.
+We begin by specifying a spatial model for the complete data $Y(\bs)$ and then use the censored likelihood defined by $T(\bs)$ for inference as described in Section \sref{ebs:MCMC}.
 Although the model presented implements a censored likelihood, the model also can fit uncensored data (such as block-maxima) by setting $T(\bs) = -\infty$.
 
 Spatial dependence is captured by modeling $Y(\bs)$ as a max-stable process (ref).
 Max-stable processes have generalized extremal value (GEV; see Appendix A.1) marginal distribution.
 The GEV has three parameters: location $\mu(\bs)$; scale $\sigma(\bs)$; and shape $\xi(\bs)$.
 Spatial dependence is present both in the GEV parameters but also the standardized residual process
-\beq\label{Y2Z}
+\beq\label{ebeq:Y2Z}
  Z(\bs) = \left\{1+\frac{\xi(\bs)}{\sigma(\bs)}\left[Y(\bs) - \mu(\bs)\right]\right\}^{1/\xi(\bs)},
 \eeq which has unit $\Frechet$ (i.e., GEV with location, scale, and shape all equal one) marginal distribution for all $\bs$.
 
 
 Our objective is to identify a low-rank model for the spatial dependence of $Z(\bs)$.
 The spectral representation theorem (ref) states that any max-stable process can be written
-\beq\label{spectral}
+\beq\label{ebeq:spectral}
   Z(\bs) = \mbox{sup}_l B(\bs,\bt_l)A_{l}
 \eeq
 where the function $B$ satisfies $B(\bs,\bt)>0$ for all $(\bs,\bt)$ and $\int B(\bs,\bt)d\bt=1$ for all $\bs$, and $(\bt_l,A_l)$ for $l=1,...,\infty$ are a Poisson process with intensity measure $dA d\bt/A^2$.
 This representation provides a means of truncation.
 Ref propose the max-linear model
-\beq\label{spectral}
+\beq\label{ebeq:maxlinear}
 Z(\bs) = \bigvee_{l=1}^L B_{l}(\bs)A_l
 \eeq
 where $B_{l}(\bs)>0$, $\int B_l(\bs)d\bs=1$ for all $L$, and $A_l$ are independent $\Frechet$ random variables.
@@ -78,50 +78,50 @@ where $B_{l}(\bs)>0$, $\int B_l(\bs)d\bs=1$ for all $L$, and $A_l$ are independe
 The assumption that $Z(\bs)$ equals exactly the maximum of a small number of functions is unrealistic, especially for data measured with error.
 We therefore follow the Reich and Shaby (ref) and decompose  $Z(\bs)$ as $Z(\bs)=\theta(\bs)\varepsilon(\bs)$ where $\theta(\bs)$ is a spatial process and $\varepsilon(\bs)\iid$ GEV$(1,\alpha,\alpha)$ is independent error.
 The spatial component is
-\beq \label{theta}
+\beq \label{ebeq:theta}
   \theta(\bs) = \left(\sum_{l=1}^LB_{l}(\bs)^{1/\alpha}A_{l}\right)^{\alpha}.
 \eeq
 If $B_{l}(\bs)>0$, $\sum_{l=1}^LB_{l}(\bs)=1$ for all $\bs$, and the $A_{l}$ have positive stable (PS; Appendix A.1) distribution $A_{l}\iid$ PS$(\alpha)$, then $Z(\bs)$ is max-stable and has unit $\Frechet$ marginal distributions.
 
 Extremal spatial dependence can be summarized by the extremal coefficient (EC; ref) $\vartheta(\bs,\bt)\in[1,2]$, where
-\beq\label{ECdev}
+\beq\label{ebeq:ECdev}
   \mbox{Prob}[Z(\bs)<c,Z(\bt)<c] = \mbox{Prob}[Z(\bs)<c]^{\vartheta(\bs,\bt)}.
 \eeq
 For the PS random effects model the EC has the form
-\beq\label{EC}
+\beq\label{ebeq:EC}
    \vartheta(\bs,\bt) = \sum_{l=1}^L \left[B_{l}(\bs)^{1/\alpha}+B_{l}(\bs)^{1/\alpha}\right]^\alpha.
 \eeq
 In particular, $\vartheta(\bs,\bs) = 2^{\alpha}$ for all $\bs$.
 
-\section{Estimating the spatial dependence function}\label{s:estimation}
+\section{Estimating the spatial dependence function}\label{ebs:estimation}
 
 To estimate the extremal coefficient function, we consider the process at $n_s$ spatial locations $\bs_1,...,\bs_{n_s}$ and $n_t$ times $t=1,...,n_t$.
 Denote $Y_t(\bs_i) = Y_{it}$, $B_l(\bs_i) = B_{il}$, $T(\bs_i)=T_i$, and $\vartheta(\bs_i,\bs_j) = \vartheta_{ij}$.
 In this section we develop an algorithm to estimate the spatial dependence parameter $\alpha$ and the $n_s\times L$ matrix $\bB = \{B_{il}\}$.
-Given these parameters, we insert them into our model and proceed with Bayesian analysis as described in Section \ref{s:MCMC}.
+Given these parameters, we insert them into our model and proceed with Bayesian analysis as described in \sref{ebs:MCMC}.
 Our algorithm has the following steps:
-\begin{itemize}
-  \item[] (1) Obtain an initial estimate of the extremal coefficient for each pair of locations, ${\hat \vartheta}_{ij}$.
-  \item[] (2) Spatially smooth these initial estimates ${\hat \vartheta}_{ij}$ using kernel smoothing to obtain ${\tilde \vartheta}_{ij}$.
-  \item[] (3) Estimate the spatial dependence parameters by minimizing the difference between model-based coefficients, $\vartheta_{ij}$, and smoothed coefficients, ${\tilde \vartheta}_{ij}$.
-\end{itemize}
+\begin{enumerate}[(1)]
+  \item Obtain an initial estimate of the extremal coefficient for each pair of locations, ${\hat \vartheta}_{ij}$.
+  \item Spatially smooth these initial estimates ${\hat \vartheta}_{ij}$ using kernel smoothing to obtain ${\tilde \vartheta}_{ij}$.
+  \item Estimate the spatial dependence parameters by minimizing the difference between model-based coefficients, $\vartheta_{ij}$, and smoothed coefficients, ${\tilde \vartheta}_{ij}$.
+\end{enumerate}
 
 The first-stage estimates are obtained using the approach of \hl{citation for pairwise estimates}.
 To estimate the spatial dependence we first remove variation in the marginal distribution.
 Let $U_{it} = \sum_{k=1}^{n_t} I[Y_{ik}<Y_{it}]/n_t$, so that the $U_{it}$ are approximately uniform at each location.
-Then for some extreme probability $q\in(0,1)$, solving (\ref{ECdev}) suggests the estimate
-\beq\label{EChat0}
+Then for some extreme probability $q\in(0,1)$, solving \eref{ebeq:ECdev} suggests the estimate
+\beq\label{ebeq:EChat0}
    {\hat \vartheta}_{ij}(q) = \frac{\log[Q_{ij}(q)]}{\log(q)},
 \eeq
 where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less than $q$.
 Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<...<q_{n_q}$
-\beq\label{EChat1}
+\beq\label{ebeq:EChat1}
 {\hat \vartheta}_{ij} = \frac{1}{n_q}\sum_{j=1}^{n_q}{\hat \vartheta}_{ij}(q_j).
 \eeq
 
 Assuming the true EC is smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.
 Let
-\beq\label{EChat2}
+\beq\label{ebeq:EChat2}
   {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
   {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
 \eeq
@@ -134,42 +134,46 @@ The dependence parameters are estimated by comparing estimates ${\tilde \varthet
 For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$.
 Given $\alpha=\alphahat$, it remains to estimate $\bB$.
 The estimate ${\hat \bB}$ is the minimizer of
-\beq\label{Bhat}
+\beq\label{ebeq:Bhat}
 \sum_{i<j} \left({\tilde \vartheta}_{ij} - \vartheta_{ij}\right)^2
   =
   \sum_{i<j} \left({\tilde \vartheta}_{ji} - \sum_{l=1}^L[B_{il}^{1/\alphahat} + B_{jl}^{1/\alphahat}]^{\alphahat}\right)^2
 \eeq
 under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.
-Since the minimizer of (\ref{Bhat}) does not have a closed form, we use block coordinate descent to obtain ${\hat \bB}$.
+Since the minimizer of \eref{ebeq:Bhat} does not have a closed form, we use block coordinate descent to obtain ${\hat \bB}$.
 We cycle through spatial locations and update the vectors $(B_{i1},...,B_{iL})$ conditioned on the values for the other location and repeat until convergence.
 At each step, we use the restricted optimization routine in the {\tt R} (ref) function {\tt optim}.
 This algorithm gives estimates of the $B_{il}$ at the $n_s$ data locations, but is easily extended to all $\bs$ for spatial prediction.
 The kernel smoothing step ensures that the estimates for ${\hat B}_{il}$ are spatially smooth, and thus interpolation of the ${\hat B}_{il}$ gives spatial functions ${\hat B}_l(\bs)$.
 
 The relative contribution of each term can be measured by
-\beq\label{v}
+\beq\label{ebeq:v}
 v_l = \frac{1}{n_s}\sum_{i=1}^{n_s}{\hat B}_{il}.
 \eeq
 Since $\sum_{l=1}^L{\hat B}_{il}=1$ for all $i$, we have $\sum_{l=1}^Lv_l = 1$.
 Therefore, terms with large $v_l$ are the most important.
 The order of the terms is arbitrary, and so we reorder the terms so that $v_1\ge...\ge v_L$.
 
-\section{Bayesian implementation details}\label{s:MCMC}
-For our data analysis in Section \ref{s:analysis} we allow the GEV location and scale parameters, denoted $\mu_{it}$ and scale $\sigma_{it}$ respectively, to vary with space and time.
+\section{Bayesian implementation details}\label{ebs:MCMC}
+For our data analysis in \sref{ebs:analysis} we allow the GEV location and scale parameters, denoted $\mu_t(\bs)$ and scale $\sigma_t (\bs)$ respectively, to vary with space and time.
 The GEV shape parameter $\xi$ is held constant over space and time because this parameter is notoriously difficult to estimate (ref).
-Collectively, let the marginal GEV parameters at location $i$ and time $t$ be $\Theta_{it} = \{\mu_{it},\sigma_{it},\xi\}$.
-The GEV location and scale vary according to covariates $\bX_{it}$ with $\mu_{it} = \bX_{it}^T\bbeta_1$ and
-$\mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2$.
+We place a Gaussian process prior on $\mu_{t}(\bs)$ and $\log[\sigma_t(\bs)]$, with
+\begin{align}\label{ebeq:GPprior}
+  \mu_t(\bs) &\sim MVN\left[\bX_{1t}(\bs)^\top \bbeta_1, \ \sigma_{1t}^2 \bSigma \right]\\
+  \log[\sigma_t(\bs)] &\sim MVN\left[\bX_{2t}(\bs)^\top \bbeta_2, \ \sigma_{2t}^2 \bSigma \right]
+\end{align}
+where $\bX_{\cdot t}(\bs)$ is a $p$-vectors of covariates at site $\bs$ for time $t$, $\bbeta_\cdot^2$ is a $p$-vector of regression coefficients, $\sigma_{\cdot t}^2 \sim IG(a, b)$ is the variance for time $t$, and $\bSigma$ is an exponential spatial correlation matrix obtained from $\rho(h) = \exp\{- \frac{h}{\phi}\}$ where $h = ||\bs_1 - \bs_2||$ is the Euclidean distance between sites $\bs_1$ and $\bs_2$.
+Collectively, let the marginal GEV parameters at location $i$ and time $t$ be $\Theta_{it} = \{\mu_{it},\sigma_{it},\xi\}$ where $\mu_{it} = \mu_t(\bs_i)$ and $\sigma_{it} = \sigma_t(\bs_i)$.
 
-As shown in \hl{Reich and Shaby (ref)}, the uncensored responses $Y_{it}$ are conditionally independent given the spatial random effects, with conditional distribution
-\beq\label{Ycond}
+As shown in \citet{Reich2012}, the uncensored responses $Y_{t}(\bs)$ are conditionally independent given the spatial random effects, with conditional distribution
+\beq\label{ebeq:Ycond}
    Y_{it}|\theta_{it},\Theta_{it}\indep GEV(\mu^*_{it}, \sigma_{it}^*,\xi^*),
 \eeq
-where $\mu_{it}^* = \mu_{it} + \frac{\sigma_{it}}{\xi}(\theta_{it}^\xi-1)$,
+where $\mu_{it}^* = \mu_{it} + \frac{\sigma_{it}}{\xi}(\theta_{it}^\xi - 1)$,
 $\sigma_{it}^* = \alpha\sigma_{it}\theta_{it}^\xi$, and $\xi^* = \alpha\xi$.
 Therefore, the conditional likelihood conveniently factors across observations; marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence.
 To focus on the extreme values above the local threshold $T_i$, we use the censored likelihood
-\beq\label{g}
+\beq\label{ebeq:g}
 d(y;\theta_{it},\Theta_{it}, T_i)  =
 \left\{\begin{array}{ll}
     F(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y \le T_i \\
@@ -180,14 +184,14 @@ where $F$ and $f$ are the GEV distribution and density functions, respectively, 
 
 
 In summary, given the estimates of $\alpha$ and $\bB$, the hierarchical model is
-\beqn \label{bayesmodel}
+\beqn \label{ebeq:bayesmodel}
   Y_{it} |\theta_{ij} & \indep & d(y;\theta_{it},\Theta_{it}, T_i) \\
   \theta_{it} &=& \left(\sum_{l=1}^L{\hat B}_{il}^{1/\alphahat}A_{lt}\right)^{\alphahat}
   \mbox{\ \ \ where \ \ \ }
   A_{lt} \iid PS(\alphahat)\nonumber\\
-  \mu_{it} &=& \bX_{it}^T\bbeta_1
+  \mu_{it} &=& \bX_{it}^\top \bbeta_1
   \mbox{\ \ \ and \ \ \ }
-  \mbox{log}(\sigma_{it}) = \bX_{it}^T\bbeta_2. \nonumber
+  \mbox{log}(\sigma_{it}) = \bX_{it}^\top \bbeta_2. \nonumber
 \eeqn
 To complete the Bayesian model, we select independent normal priors with mean zero and variance $\sigma^2_1$ and $\sigma^2_2$ for the components of $\bbeta_1$ and $\bbeta_2$ respectively, and $\xi\sim \mbox{Normal}(0,0.5^2)$.
 We use InvGamma(1, 1) priors for $\sigma^2_1$ and $\sigma^2_2$.
@@ -197,23 +201,23 @@ The PS density is challenging to evaluate as it does not have a closed form.
 One technique to avoid this complication is to incorporate auxiliary random variables (Stephenson et al, \hl{ref}), but we opt for a numerical approximation to the integral as described in Appendix \hl{which one}.
 
 The first-stage estimate of the extremal coefficients has three tuning parameters: the quantile thresholds $q_1,...,q_{n_q}$, the kernel bandwidth $\phi$, and the number of terms $L$.
-In Section \ref{s:analysis} we explore a few possibilities for $\phi$ and $L$ and discuss sensitivity to these choices.
+In \sref{ebs:analysis} we explore a few possibilities for $\phi$ and $L$ and discuss sensitivity to these choices.
 The second-stage Bayesian analysis requires selecting thresholds $T_i,...,T_{n_s}$.  For this we use spatially smoothed sample quantiles.
 That is, we set $T_i$ to the 0.95 quantile of the $Y_{it}$ and $Y_{jt}$ for sites $j$ with $||\bs_i-\bs_j||<r$, where $r$ is set to XXX?
 
-\section{Data analysis}\label{s:analysis}
+\section{Data analysis}\label{ebs:analysis}
 In this section, we illustrate our method using both points above a threshold and block maxima.
-In Section \ref{s:georgia}, we present an analysis using annual acreage burned due to wildfires in Georgia from 1965 -- 2014.
-This is followed in Section \ref{s:precip} by an analysis of precipitation data in the eastern U.S.
+In \sref{ebs:georgia}, we present an analysis using annual acreage burned due to wildfires in Georgia from 1965 -- 2014.
+This is followed in \sref{ebs:precip} by an analysis of precipitation data in the eastern U.S.
 
-\subsection{Analysis of extreme Georgia fires}\label{s:georgia}
+\subsection{Analysis of extreme Georgia fires}\label{ebs:georgia}
 The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.state.ga.us/FireData/}).
-Figure \ref{fig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
+\fref{ebfig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
 Based on this plot and other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
-For covariates we use the standardized linear time trend $t^* = (t-n_t/2)/n_t$, and $L$ bivariate Gaussian kernel functions $\widetilde{B}_{il}$, and their interactions: $\bX_{it} = (1,t^*,\widetilde{B}_{i1},...,\widetilde{B}_{iL},t^*\widetilde{B}_{i1},...,t^*\widetilde{B}_{iL})^T$.
+For covariates we use the standardized linear time trend $t^* = (t-n_t/2)/n_t$, and $L$ bivariate Gaussian kernel functions $\widetilde{B}_{il}$, and their interactions: $\bX_{it} = (1,t^*,\widetilde{B}_{i1},...,\widetilde{B}_{iL},t^*\widetilde{B}_{i1},...,t^*\widetilde{B}_{iL})^\top$.
 For the bivariate Gaussian kernels, we select $L$ knot locations, $\bv_{1}, \ldots, \bv_{L}$ from the county centroids, using a space-filling design (\hl{ref add to bibtex Johnson, M.E., Moore, L.M., and Ylvisaker, D. ,1990}).
 Then
-\begin{align}
+\begin{align}\label{ebeq:bivGausskern}
   \widetilde{B}_{il} = \exp\left\{-\frac{||\bs_i - \bv_l||^2}{\rho^2}\right\}
 \end{align}
 where $\rho$ is included as an unknown parameter with a U($\rho_l$, $\rho_u$) prior where $\rho_l$ is the 5th quantile of $||\bs_i - \bv_l||^2$ and $\rho_u$ is the 95th quantile of $||\bs_i - \bv_l||^2$ \hl{basically I took the 5th and 95th quantile of the squared distances between the sites and the knots}.
@@ -226,7 +230,7 @@ where $\rho$ is included as an unknown parameter with a U($\rho_l$, $\rho_u$) pr
   \includegraphics[width=0.47\linewidth]{plots/fire-spag-rand-25}
   \includegraphics[width=0.47\linewidth, trim = 0 10em 0 10em]{plots/fire-spatial-q95.pdf}
   \caption{Time series of log acres burned for 25 randomly selected counties with colors coding the county's quadrant (left), and spatially smoothed threshold values, $T_i$ for each county (right).}
-  \label{fig:firets25}
+  \label{ebfig:firets25}
 \end{figure}
 
 We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_1 = 0.90$ and using $n_q = 100$.
@@ -241,7 +245,7 @@ Denote the standardized data by $\widetilde{\bY}_i$.
 % \end{align}
 % where med$(\cdot)$ is the median, and IQR$(\cdot)$ is the inter-quartile range.
 Then we combine all sites together and plot a mean residual plot for $\widetilde{Y}_{it}, i = 1, \ldots, n_s$ and $t = 1, \ldots, n_t$.
-The mean residual plot is given in Figure \ref{fig:mrlthresh}.
+The mean residual plot is given in \fref{ebfig:mrlthresh}.
 Based upon the mean residual plot, we select the 95th percentile for the threshold.
 To calculate $T_i$ for each county, we use the 95th percentile for the combined data for county $i$ and its five closest counties.
 
@@ -249,7 +253,7 @@ To calculate $T_i$ for each county, we use the 95th percentile for the combined 
   \centering
   \includegraphics[width = \linewidth]{plots/fire-mrl-plots.pdf}  % markdown/eda/eda-plotting.R
   \caption{Mean residual plot for the data pooled across counties after standardizing using the county's median and interquartile range. The two panels show different ranges on the x-axis and include a vertical line at the sample 95th percentile.}
-  \label{fig:mrlthresh}
+  \label{ebfig:mrlthresh}
 \end{figure}
 
 %\begin{figure}[htbp]
@@ -259,7 +263,7 @@ To calculate $T_i$ for each county, we use the 95th percentile for the combined 
 %  \label{fig:mrlthresh}
 %\end{figure}
 
-\subsection{Results for fire analysis}\label{s:results-fire}
+\subsection{Results for fire analysis}\label{ebs:results-fire}
 We use 10-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 10\% of sites and years are withheld for testing model predictions.
@@ -267,15 +271,15 @@ To assess the predictions for the test set, we use quantile scores and Brier sco
 The quantile score is given by \hl{give formula}.
 The Brier score is given by \hl{give formula}.
 For both of these methods, we use a negative orientation, so a lower score indicates a better fit.
-The Brier and quantile scores for the fire analysis are given in Table \ref{tbl:firescores}.
+The Brier and quantile scores for the fire analysis are given in \tref{ebtbl:firescores}.
 
 Based on the Brier scores and quantiles scores, we run a full analysis using all of the data with $L = 35$.
-Posterior summaries for each county's $\beta_\text{time}$ coefficient are given in Figures \ref{fig:ebfpost} and \ref{fig:gskpost}.
+Posterior summaries for each county's $\beta_\text{time}$ coefficient are given in \fref{ebfig:ebfpost} and \fref{ebfig:gskpost}.
 These plots both seem to catch similar features with some differences particularly in the posterior distribution of the county-specific $\beta_{\mu, \text{time}}$.
 
 \begin{table}[htbp]
 \caption{Average Brier scores ($\times 100$) for selected thresholds and quantile scores for selected quantiles for fire analysis \hl{Need timings for L = 35, 40 to be added in}}
-\label{tbl:firescores}
+\label{ebtbl:firescores}
 \centering
 \small
   \begin{tabular}{lc|rr|rr|c}
@@ -316,14 +320,14 @@ These plots both seem to catch similar features with some differences particular
   \centering
   \includegraphics[width=\linewidth]{plots/ebf-post-betatime.pdf}
   \caption{Posterior summaries of $\beta_{\text{time}}$ when using EBF for the spatial process with $L = 35$.}
-  \label{fig:ebfpost}
+  \label{ebfig:ebfpost}
 \end{figure}
 
 \begin{figure}  % markdown/fire-analysis/combine-tables.R
   \centering
   \includegraphics[width=\linewidth]{plots/gsk-post-betatime.pdf}
   \caption{Posterior summaries of $\beta_{\text{time}}$ when using GSK for the spatial process with $L = 35$.}
-  \label{fig:gskpost}
+  \label{ebfig:gskpost}
 \end{figure}
 
 % \begin{figure}  % markdown/fire-analysis/combine-tables.R
@@ -353,7 +357,7 @@ Based upon the cross-validation results, we reran the full data analysis using $
 
 \subsection{Model checking and sensitivity analysis}
 
-\subsection{Analysis of annual precipitation}\label{s:precip}
+\subsection{Analysis of annual precipitation}\label{ebs:precip}
 We also conduct an analysis of the precipitation data presented in \citep{Reich2012}.
 The data are climate model output from the North American Regional Climate Change Assessment Program (NARCCAP).
 This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern US, and includes historical data (1969 -- 2000) as well as future conditions (2039 -- 2070).
@@ -362,34 +366,35 @@ This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern
   \centering
   \includegraphics[width=\linewidth]{plots/precip-ts}
   \caption{Time series of yearly max precipitation for current (1969 -- 2000) (left). Time series of yearly max precipitation for future (2039 -- 2070) (right).}
+  \label{ebf:tsprecip}
 \end{figure}
 
 \hl{Include figures of locations of grid cells}
 
-\subsection{Results for precipitation analysis}\label{s:results-precip}
+\subsection{Results for precipitation analysis}\label{ebs:results-precip}
 
 \begin{figure}  % markdown/precipitation/combine-tables.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-bs.pdf}
   \caption{Brier scores for current and future precipitation analysis.}
-  \label{fig:precip-bs}
+  \label{ebfig:precip-bs}
 \end{figure}
 
 \begin{figure}  % markdown/precipitation/combine-tables.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-qs.pdf}
   \caption{Quantile scores for current and future precipitation analysis.}
-  \label{fig:precip-qs}
+  \label{ebfig:precip-qs}
 \end{figure}
 
 \begin{figure}  % markdown/precipitation/combine-tables.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-post-time.pdf}
   \caption{Posterior distributions for $\beta_{\text{time}}$ for $\mu$ (left) and $\log(\sigma)$ (right).}
-  \label{fig:precip-qs}
+  \label{ebfig:precip-qs}
 \end{figure}
 
-\section{Conclusions}\label{s:con}
+\section{Conclusions}\label{ebs:con}
 
 \section*{Acknowledgements}
 

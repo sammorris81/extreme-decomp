@@ -168,7 +168,57 @@ B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
 filename <- paste("gsk-", L, "-all.RData", sep = "")
 save(B.gsk, alpha, knots, file = filename)
 
+#### looks like L = 35 is after things settle down.
+# get pairwise extremal coefficients
+# build ec matrix: ns x ns
+ec <- get.pw.ec.fmado(Y = Y)
+ec.hat <- ec$ec
+L <- 25
 
+# Empirical basis functions
+cat("Starting estimation of empirical basis functions \n")
+out       <- get.factors.EC(ec.hat, L = L, s = s)
+B.ebf     <- out$est
+ec.smooth <- out$EC.smooth
+alpha     <- out$alpha
+
+filename <- paste("ebf-", L, "-all.RData", sep = "")
+save(B.ebf, ec.smooth, alpha, file = filename)
+
+# Gaussian kernel functions
+cat("Starting estimation of Gaussian kernels \n")
+set.seed(5687)
+knots <- cover.design(cents.grid, nd = L)$design
+out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots)
+B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
+
+filename <- paste("gsk-", L, "-all.RData", sep = "")
+save(B.gsk, alpha, knots, file = filename)
+
+# plot cumsum against basis function
+L <- 25
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Fire analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/firev-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
+L <- 35
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Fire analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/firev-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
 
 library(ggplot2)
 library(gridExtra)

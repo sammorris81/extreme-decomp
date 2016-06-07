@@ -183,6 +183,31 @@ B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
 filename <- paste("gsk-", L, "-all.RData", sep = "")
 save(B.gsk, alpha, knots, file = filename)
 
+# plot cumsum against basis function
+L <- 25
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Precipitation analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
+L <- 35
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Precipitation analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
 
 #### plot some of the basis functions ####
 nx <- length(unique(s[, 1]))

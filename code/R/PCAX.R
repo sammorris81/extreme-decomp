@@ -69,8 +69,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
       B.star <- B^(1 / alpha)
       for (i in 1:n) {
         if (!convergence.inner[i]) {
-          fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
-                       B2 = B, B.star = B.star, alpha = alpha,
+          fit <- optim(B[i, ], fn = SSE.B, gr = SSE.B.grad, Y = EC[i, ],
+                       B.star = B.star, alpha = alpha,
                        lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                        method = "L-BFGS-B", control = list(maxit = maxit))
 
@@ -94,8 +94,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     cat("  Start convergence check \n")
     convergence.outer <- rep(FALSE, n)
     for (i in 1:n) {  # double check that everything has converged
-      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
-                   B2 = B, B.star = B.star, alpha = alpha,
+      fit <- optim(B[i, ], fn = SSE.B, gr = SSE.B.grad, Y = EC[i, ],
+                   B.star = B.star, alpha = alpha,
                    lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                    method = "L-BFGS-B", control = list(maxit = 1000))
 

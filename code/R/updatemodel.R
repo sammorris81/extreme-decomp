@@ -456,30 +456,50 @@ updateGPBetaSD <- function(beta, tau.a, tau.b) {
   return(results)
 }
 
-updateGPMean <- function(beta.sd, Qb, tau, beta) {
-  nt <- dim(beta)[2]
+updateGPMean <- function(beta.sd, Qb, beta.int, tau.int, beta.time, tau.time) {
+  nt <- ncol(beta.int)
 
   tXQ  <- colSumsC(Qb)  # at the moment, same across all times
   tXQX <- sum(tXQ)
-  VVV <- tau * tXQX * nt + 1 / beta.sd^2  # same for all times
-  MMM  <- rep(0, 2)
+  VVV.int  <- tau.int * tXQX * nt + 1 / beta.sd^2  # same for all times
+  VVV.time <- tau.time * tXQX * nt + 1 / beta.sd^2  # same for all times
+  MMM.int  <- MMM.time <- 0
+  # VVV.int  <- 1 / beta.sd^2
+  # VVV.time <- 1 / beta.sd^2
   for (t in 1:nt) {
-    MMM[1] <- MMM[1] + tau[1] * tXQ %*% beta[, t, 1]
-    MMM[2] <- MMM[2] + tau[2] * tXQ %*% beta[, t, 2]
+    # X.t <- rep(1, ns)
+    # tXQ <- X.t %*% Qb
+    # tXQX <- tXQ %*% X.t
+    # VVV.int <- VVV.int + tau.int * tXQX
+    # VVV.time <- VVV.time + tau.time * tXQX
+    MMM.int  <- MMM.int + tau.int * tXQ %*% beta.int[, t]
+    MMM.time <- MMM.time + tau.time * tXQ %*% beta.time[, t]
   }
 
-  sd <- 1 / sqrt(VVV)  # should be length 2
-  mn <- MMM / VVV      # should be length 2
+  VVV.int <- 1 / VVV.int
+  VVV.time <- 1 / VVV.time
 
-  beta.mn <- rnorm(2, mn, sd)
-  results <- list(beta.mn = beta.mn)
+  mn.int  <- MMM.int * VVV.int
+  mn.time <- MMM.time * VVV.time
+  sd.int  <- sqrt(VVV.int)
+  sd.time <- sqrt(VVV.time)
+
+  beta.int.mn  <- rnorm(1, mn.int, sd.int)
+  beta.time.mn <- rnorm(1, mn.time, sd.time)
+
+  SS.int <- SS.time <- rep(0, nt)
+  for (t in 1:nt) {
+    SS.int[t]  <- quad.form(Qb, beta.int[, t] - beta.int.mn)
+    SS.time[t] <- quad.form(Qb, beta.time[, t] - beta.time.mn)
+  }
+  results <- list(beta.int.mn = beta.int.mn, SS.int = SS.int,
+                  beta.time.mn = beta.time.mn, SS.time = SS.time)
   return(results)
 }
 
 updateGPTau <- function(SS.int, SS.time, tau.a, tau.b, ns) {
-  nt <- nrow(SS)
+  nt <- length(SS.int)
 
-  tau <- rep(0, 2)
   tau.int  <- rgamma(1, ns * nt / 2 + tau.a, sum(SS.int) / 2 + tau.b)
   tau.time <- rgamma(1, ns * nt / 2 + tau.a, sum(SS.time) / 2 + tau.b)
 

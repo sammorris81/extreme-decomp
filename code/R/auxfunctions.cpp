@@ -158,10 +158,3 @@ NumericMatrix madogramCPP(NumericMatrix data) {
 
   return mado;
 }
-
-// [[Rcpp::export]]
-void matmultCPP(arma::mat X, arma::vec y, arma::vec res) {
-  // Find X %*% y
-
-  res = X * y;
-}

@@ -279,6 +279,139 @@ updateLSTest <- function(ls, tau, Xb, SS, y, mu, xi, Qb, curll, acc, att,
   return(results)
 }
 
+updateBeta1 <- function(beta.int, beta.int.mn, SS.int, tau.int,
+                        beta.time, beta.time.mn, SS.time, tau.time,
+                        mu, time,
+                        y, theta, theta.xi, ls, xi, thresh,
+                        alpha, Qb, curll,
+                        acc, att, MH) {
+  att <- att + 1
+  ns  <- nrow(beta.int)
+  nt  <- ncol(beta.int)
+
+  for (t in 1:nt) {
+    lp.beta1 <- logpost.beta1.grad(beta.int = beta.int[, t],
+                                   beta.int.mn = beta.int.mn, tau.int = tau.int,
+                                   beta.time = beta.time[, t],
+                                   beta.time.mn = beta.time.mn, time = time[t],
+                                   tau.time = tau.time, Qb = Qb, y = y[, t],
+                                   ls = ls[, t], xi = xi, theta = theta[, t],
+                                   theta.xi = theta.xi[, t],
+                                   thresh = thresh[, t], alpha = alpha)
+
+    canbeta.int.mn <- beta.int[, t] + MH[, t]^2 / 2 * lp.beta1$grad.beta.int
+    canbeta.time.mn <- beta.time[, t] + MH[, t]^2 / 2 * lp.beta1$grad.beta.time
+
+    canbeta.int  <- rnorm(ns, canbeta.int.mn, MH[, t])
+    canbeta.time <- rnorm(ns, canbeta.time.mn, MH[, t])
+
+    canmu <- canbeta.int + canbeta.time * time[t]
+
+    if (any(xi * (y[, t] - canmu) / exp(ls[, t]) < -1)) {
+      R <- -Inf
+    } else {
+      canll <- loglike(y = y[, t], theta = theta[, t],
+                       theta.xi = theta.xi[, t], mu = canmu, ls = ls[, t],
+                       xi = xi, thresh = thresh[, t], alpha = alpha)
+
+      canSS.int  <- quad.form(Qb, canbeta.int - beta.int.mn)
+      canSS.time <- quad.form(Qb, canbeta.time - beta.time.mn)
+
+      lp.beta1 <- logpost.beta1.grad(beta.int = canbeta.int,
+                                     beta.int.mn = beta.int.mn,
+                                     tau.int = tau.int,
+                                     beta.time = canbeta.time,
+                                     beta.time.mn = beta.time.mn, time = time[t],
+                                     tau.time = tau.time, Qb = Qb, y = y[, t],
+                                     ls = ls[, t], xi = xi, theta = theta[, t],
+                                     theta.xi = theta.xi[, t],
+                                     thresh = thresh[, t], alpha = alpha)
+
+      curbeta.int.mn <- canbeta.int + MH[, t]^2 / 2 * lp.beta1$grad.beta.int
+      curbeta.time.mn <- canbeta.time + MH[, t]^2 / 2 * lp.beta1$grad.beta.time
+
+      R <- canll - curll[, t] -
+        0.5 * tau.int * (canSS.int  - SS.int[t]) -
+        0.5 * tau.time * (canSS.time - SS.time[t]) +
+        dnorm(beta.int[, t], curbeta.int.mn, MH[, t], log = TRUE) -
+        dnorm(canbeta.int, canbeta.int.mn, MH[, t], log = TRUE) +
+        dnorm(beta.time[, t], curbeta.time.mn, MH[, t], log = TRUE) -
+        dnorm(canbeta.time, canbeta.time.mn, MH[, t], log = TRUE)
+
+      if (all(!is.na(exp(R)))) {
+        keep               <- log(runif(ns)) < R
+        beta.int[keep, t]  <- canbeta.int[keep]
+        beta.time[keep, t] <- canbeta.time[keep]
+        mu[keep, t]        <- canmu[keep]
+        curll[keep, t]     <- canll[keep]
+        acc[keep, t]       <- acc[keep, t] + 1
+      }
+    }
+  }
+
+  for (t in 1:nt) {
+    SS.int[t]  <- quad.form(Qb, beta.int[, t] - beta.int.mn)
+    SS.time[t] <- quad.form(Qb, beta.time[, t] - beta.time.mn)
+  }
+
+  results <- list(beta.int = beta.int, SS.int = SS.int,
+                  beta.time = beta.time, SS.time = SS.time,
+                  mu = mu, curll = curll, acc = acc, att = att)
+  return(results)
+}
+
+updateBeta2 <- function(beta, tau, beta.mn, SS, mu, time,
+                        y, theta, theta.xi, ls, xi, thresh,
+                        alpha, Qb, curll, acc, att, MH) {
+  # beta(ns x nt x 2): spatially varying intercept and time coefficient
+  # tau(2): precision for GPs for beta1 and beta2
+  # mn(2): overall means for GPs for beta1 and beta2
+  # SS(nt x 2): Sum of squares for GP using correlation matrix (no tau)
+  # time(nt): vector of standardized times
+  acc <- acc + 1
+  ns <- dim(beta)[1]
+  nt <- dim(beta)[2]
+
+  for (i in 1:ns) {
+    VVV     <- Qb[i, i] * tau
+    MMM.adj <- Qb[i, -i] / Qb[i, i]
+    for (t in 1:nt) {
+      canbeta1 <- rnorm(1, beta[i, t, 1], MH[i, t])
+      canbeta2 <- rnorm(1, beta[i, t, 2], MH[i, t])
+      canls    <- canbeta1 + canbeta2 * time[t]
+      # using conditional normal prior
+      MMM1 <- beta.mn[1] - MMM.adj %*% (beta[-i, t, 1] - beta.mn[1])
+      MMM2 <- beta.mn[2] - MMM.adj %*% (beta[-i, t, 2] - beta.mn[2])
+
+      canll <- loglike(y = y[i, t], theta = theta[i, t],
+                       theta.xi = theta.xi[i, t], mu = mu[i, t], ls = canls,
+                       xi = xi, thresh = thresh[i, t], alpha = alpha)
+
+      R <- canll - curll[i, t] -
+        dnorm(canbeta1, MMM1, 1 / sqrt(VVV[1]), log = TRUE) -
+        dnorm(beta[i, t, 1], MMM1, 1 / sqrt(VVV[1]), log = TRUE) +
+        dnorm(canbeta2, MMM2, 1 / sqrt(VVV[2]), log = TRUE) -
+        dnorm(beta[i, t, 2], MMM2, 1 / sqrt(VVV[2]), log = TRUE)
+
+      if (!any(is.na(exp(R)))) { if (log(runif(1)) < R) {
+        beta[i, t, 1] <- canbeta1
+        beta[i, t, 2] <- canbeta2
+        ls[i, t]      <- canls
+        curll[i, t]   <- canll
+        acc[i, t]     <- acc[i, t] + 1
+      }}
+    }
+  }
+
+  for (t in 1:nt) {
+    SS[t, 1] <- quad.form(Qb, beta[, t, 1] - beta.mn[1])
+    SS[t, 2] <- quad.form(Qb, beta[, t, 2] - beta.mn[2])
+  }
+
+  results <- list(beta = beta, SS = SS, curll = curll, acc = acc, att = att)
+  return(results)
+}
+
 updateGPBeta <- function(mu, beta1.sd, SS1, tau1,
                          ls, beta2.sd, SS2, tau2, X, Qb) {
   # update the beta parameters for the mean of the GPs
@@ -323,25 +456,57 @@ updateGPBetaSD <- function(beta, tau.a, tau.b) {
   return(results)
 }
 
-updateGPTau <- function(SS, tau.a, tau.b, ns) {
-  # update the variance parameters for the GPs
-  nt <- length(SS)
+updateGPMean <- function(beta.sd, Qb, tau, beta) {
+  nt <- dim(beta)[2]
 
-  tau <- rep(0, nt)
+  tXQ  <- colSumsC(Qb)  # at the moment, same across all times
+  tXQX <- sum(tXQ)
+  VVV <- tau * tXQX * nt + 1 / beta.sd^2  # same for all times
+  MMM  <- rep(0, 2)
   for (t in 1:nt) {
-    tau[t] <- rgamma(1, ns / 2 + tau.a, SS[t] / 2 + tau.b)
+    MMM[1] <- MMM[1] + tau[1] * tXQ %*% beta[, t, 1]
+    MMM[2] <- MMM[2] + tau[2] * tXQ %*% beta[, t, 2]
   }
 
-  results <- list(tau = tau)
+  sd <- 1 / sqrt(VVV)  # should be length 2
+  mn <- MMM / VVV      # should be length 2
+
+  beta.mn <- rnorm(2, mn, sd)
+  results <- list(beta.mn = beta.mn)
   return(results)
 }
 
+updateGPTau <- function(SS.int, SS.time, tau.a, tau.b, ns) {
+  nt <- nrow(SS)
+
+  tau <- rep(0, 2)
+  tau.int  <- rgamma(1, ns * nt / 2 + tau.a, sum(SS.int) / 2 + tau.b)
+  tau.time <- rgamma(1, ns * nt / 2 + tau.a, sum(SS.time) / 2 + tau.b)
+
+  results <- list(tau.int = tau.int, tau.time = tau.time)
+  return(results)
+}
+
+# updateGPTau <- function(SS, tau.a, tau.b, ns) {
+#   # update the variance parameters for the GPs
+#   nt <- length(SS)
+#
+#   tau <- rep(0, nt)
+#   for (t in 1:nt) {
+#     tau[t] <- rgamma(1, ns / 2 + tau.a, SS[t] / 2 + tau.b)
+#   }
+#
+#   results <- list(tau = tau)
+#   return(results)
+# }
+
 updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
-                       mu, Xb1, tau1, SS1, ls, Xb2, tau2, SS2,
+                       beta1, tau1, SS1, beta1.mn,
+                       beta2, tau2, SS2, beta2.mn,
                        acc, att, MH) {
   # update the bandwidth term for the gaussian process
-  ns <- nrow(Xb1)
-  nt <- ncol(Xb1)
+  ns <- dim(beta1)[1]
+  nt <- dim(beta1)[2]
   att <- att + 1
   bw.star <- transform$logit(bw, bw.min, bw.max)
   canbw.star <- rnorm(1, bw.star, MH)
@@ -350,11 +515,21 @@ updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
   canQb <- chol2inv(chol(exp(-d / canbw)))
   canlogdetQb <- logdet(canQb)
 
-  canSS1 <- getGPSS(Qb = canQb, param = mu, Xb = Xb1)
-  canSS2 <- getGPSS(Qb = canQb, param = ls, Xb = Xb2)
+  canSS1 <- canSS2 <- matrix(nt, 2)
+  for (t in 1:nt) {
+    canSS1[t, 1] <- quad.form(canQb, beta1[, t, 1] - beta1.mn[1])
+    canSS1[t, 2] <- quad.form(canQb, beta1[, t, 2] - beta1.mn[2])
+    canSS2[t, 1] <- quad.form(canQb, beta2[, t, 1] - beta2.mn[1])
+    canSS2[t, 2] <- quad.form(canQb, beta2[, t, 2] - beta2.mn[2])
+  }
+  # canSS1 <- getGPSS(Qb = canQb, param = , Xb = Xb1)
+  # canSS2 <- getGPSS(Qb = canQb, param = ls, Xb = Xb2)
 
   # For R, multiply nt * 2 for 2 spatially varying terms
-  R <- - 0.5 * sum(tau1 * (canSS1 - SS1)) - 0.5 * sum(tau2 * (canSS2 - SS2)) +
+  R <- - 0.5 * sum(tau1[1] * (canSS1[, 1] - SS1[, 1])) -
+    0.5 * sum(tau1[2] * (canSS1[, 2] - SS1[, 2])) -
+    0.5 * sum(tau2[1] * (canSS2[, 1] - SS2[, 1])) -
+    0.5 * sum(tau2[2] * (canSS2[, 2] - SS2[, 2])) +
     0.5 * (nt * 2) * (canlogdetQb - logdetQb) +
     log(canbw - bw.min) + log(bw.max - canbw) -  # Jacobian of the prior
     log(bw - bw.min) - log(bw.max - bw)
@@ -374,6 +549,45 @@ updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
                   acc = acc, att = att)
   return(results)
 }
+
+# updateGPBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
+#                        mu, Xb1, tau1, SS1, ls, Xb2, tau2, SS2,
+#                        acc, att, MH) {
+#   # update the bandwidth term for the gaussian process
+#   ns <- nrow(Xb1)
+#   nt <- ncol(Xb1)
+#   att <- att + 1
+#   bw.star <- transform$logit(bw, bw.min, bw.max)
+#   canbw.star <- rnorm(1, bw.star, MH)
+#   canbw <- transform$inv.logit(canbw.star, bw.min, bw.max)
+#
+#   canQb <- chol2inv(chol(exp(-d / canbw)))
+#   canlogdetQb <- logdet(canQb)
+#
+#   canSS1 <- getGPSS(Qb = canQb, param = mu, Xb = Xb1)
+#   canSS2 <- getGPSS(Qb = canQb, param = ls, Xb = Xb2)
+#
+#   # For R, multiply nt * 2 for 2 spatially varying terms
+#   R <- - 0.5 * sum(tau1 * (canSS1 - SS1)) - 0.5 * sum(tau2 * (canSS2 - SS2)) +
+#     0.5 * (nt * 2) * (canlogdetQb - logdetQb) +
+#     log(canbw - bw.min) + log(bw.max - canbw) -  # Jacobian of the prior
+#     log(bw - bw.min) - log(bw.max - bw)
+#
+#   # print(R)
+#
+#   if (!is.na(exp(R))) { if (log(runif(1)) < R) {
+#     acc <- acc + 1
+#     SS1 <- canSS1
+#     SS2 <- canSS2
+#     bw <- canbw
+#     Qb <- canQb
+#     logdetQb <- canlogdetQb
+#   }}
+#
+#   results <- list(bw = bw, Qb = Qb, logdetQb = logdetQb, SS1 = SS1, SS2 = SS2,
+#                   acc = acc, att = att)
+#   return(results)
+# }
 
 updateXi <- function(xi, xi.min, xi.max, xi.mn, xi.sd, y, mu, ls, curll, theta,
                      theta.xi, thresh, alpha, acc, att, MH) {

@@ -130,7 +130,7 @@ burn   <- 20000
 update <- 1000
 
 # iters <-200; burn <- 50;
-update <- 500  # for testing
+update <- 100  # for testing
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
@@ -138,12 +138,12 @@ set.seed(6262)  # mcmc
 # s is scaled locations
 fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
                 thresh = thresh90, B = B.sp, alpha = alpha,
-                can.mu.sd = 1, can.ls.sd = 0.5,
-                mu.attempts = 400, ls.attempts = 400,
                 tau1.a = 1, tau1.b = 1,
                 tau2.a = 0.1, tau2.b = 0.1,
                 beta1.sd = 10, beta1.tau.a = 0.1, beta1.tau.b = 0.1,
+                can.beta1.sd = 1, beta1.attempts = 400,
                 beta2.sd = 0.1, beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                can.beta2.sd = 0.5, beta2.attempts = 400,
                 xi = 0, xi.min = -1, xi.max = 1, xi.mn = 0, xi.sd = 0.3,
                 bw.gp.init = 0.05, can.bw.gp.sd = 0.1,
                 bw.basis.init = 0.3, can.bw.basis.sd = 0.1,

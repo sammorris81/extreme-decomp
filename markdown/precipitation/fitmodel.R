@@ -180,23 +180,24 @@ iters  <- 25000
 burn   <- 15000
 update <- 1000
 
-# iters <- 100; burn <- 10; update <- 10  # for testing
+iters <- 100; burn <- 10; update <- 10  # for testing
 A.init <- exp(6)  # consistent with estimates of alpha
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 #134.94
 # fit the model using the training data
-# Rprof(filename = "Rprof.out", line.profiling = TRUE)
+Rprof(filename = "Rprof.out", line.profiling = TRUE)
 fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                 thresh = -Inf, B = B.sp, alpha = alpha,
-                can.mu.sd = 0.05, can.ls.sd = 0.01,
                 tau1.a = 0.1, tau1.b = 0.1,
                 tau2.a = 0.1, tau2.b = 0.1,
-                beta1 = beta1.init, beta1.sd = 10,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta2 = beta2.init, beta2.sd = 1,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
+                # beta1 = beta1.init,
+                beta1.pri.sd = 10,
+                beta1.tau.a = 0.1, beta1.tau.b = 0.1, can.beta1.sd = 0.05,
+                # beta2 = beta2.init,
+                beta2.pri.sd = 1,
+                beta2.tau.a = 0.1, beta2.tau.b = 0.1, can.beta2.sd = 0.01,
                 xi = 0, xi.min = -0.5, xi.max = 0.5, xi.mn = 0, xi.sd = 0.5,
                 bw.gp.init = 0.3,
                 A = A.init, bw.basis.init = 0.3,
@@ -206,8 +207,8 @@ fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
                # iters = iters, burn = burn, update = update, keep.burn = TRUE,
                # iterplot = TRUE)
 cat("Finished fit and predict \n")
-# Rprof(filename = NULL)
-# summaryRprof(filename = "Rprof.out", lines = "show")
+Rprof(filename = NULL)
+summaryRprof(filename = "Rprof.out", lines = "show")
 
 # par(mfrow = c(7, 5))
 # for (i in 1:np) {

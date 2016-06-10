@@ -157,6 +157,281 @@ ll.ind.xi <- function(beta, X, y) {
 
 
 #### Logposteriors and gradients - needs to be done for each timepoint
+logpost.beta1.int <- function(beta.int, beta.int.mn, tau, Qb,
+                              beta.time, time, y, ls, xi, theta,
+                              theta.xi, thresh, alpha) {
+
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.int - beta.int.mn)
+
+  mu  <- beta.int + beta.time * time
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta1.int.grad <- function(beta.int, beta.int.mn, tau, Qb,
+                                   beta.time, time, y, ls, xi,
+                                   theta, theta.xi, thresh, alpha) {
+
+  d1dmu <- -tau * crossprod(Qb, (beta.int - beta.int.mn))  # crossprod is faster
+  # d1dmu <- -tau * (Qb %*% (beta.int - beta.int.mn))
+
+  mu <- beta.int + beta.time * time
+  sig <- exp(ls)
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad <- d1dmu + d2dmu
+
+  return(grad)
+}
+
+logpost.beta1.time <- function(beta.time, beta.time.mn, time, tau, Qb,
+                               beta.int, y, ls, xi, theta,
+                               theta.xi, thresh, alpha) {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.time.mn)
+
+  mu <- beta.int + beta.time * time
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta1.time.grad <- function(beta.time, beta.time.mn, time, tau, Qb,
+                                    beta.int, y, ls, xi,
+                                    theta, theta.xi, thresh, alpha) {
+  sig <- exp(ls)
+  d1dmu <- -tau * crossprod(Qb, (beta.time - beta.time.mn))  # faster than %*%
+  # d1dmu <- -tau * (Qb %*% (beta.time - beta.time.mn))
+
+  mu <- beta.int + beta.time * time
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad <- d1dmu + d2dmu * time
+
+  return(grad)
+}
+
+logpost.beta1.grad <- function(beta.int, beta.int.mn, tau.int,
+                               beta.time, beta.time.mn, time, tau.time,
+                               Qb, y, ls, xi, theta, theta.xi, thresh,
+                               alpha) {
+  sig <- exp(ls)
+  # crossprod is generally a little faster than %*%
+  d1dbeta.int  <- -tau.int * crossprod(Qb, (beta.int - beta.int.mn))
+  d1dbeta.time <- -tau.time * crossprod(Qb, (beta.time - beta.time.mn))
+  # d1dmu <- -tau * (Qb %*% (beta.time - beta.time.mn))
+
+  mu <- beta.int + beta.time * time
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad.beta.int  <- d1dbeta.int + d2dmu
+  grad.beta.time <- d1dbeta.time + d2dmu * time
+
+  results <- list(grad.beta.int = grad.beta.int,
+                  grad.beta.time = grad.beta.time)
+
+  return(results)
+}
+
+logpost.beta2.int <- function(beta.int, beta.int.mn, tau, beta.time, time,
+                              Qb, y, mu, xi, theta, theta.xi, thresh, alpha) {
+
+
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.int - beta.int.mn)
+
+  ls <- beta.int + beta.time * time
+  sig <- exp(ls)
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta2.int.grad <- function(beta.int, beta.int.mn, tau,
+                                   beta.time, time, Qb, beta, y, mu,
+                                   xi, theta, theta.xi, thresh, alpha) {
+
+  d1dls <- -tau * crossprod(Qb, (beta.int - beta.int.mn))  # faster than %*%
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  grad <- d1dls + d2dls
+  return(grad)
+}
+
+logpost.beta2.time <- function(beta.time, beta.time.mn, time, tau, beta.int,
+                               Qb, y, mu, xi, theta, theta.xi, thresh, alpha) {
+
+
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.time.mn)
+
+  ls <- beta.int + beta.time * time
+  sig <- exp(ls)
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta2.time.grad <- function(beta.time, beta.time.mn, time, tau,
+                                    beta.int, Qb, beta, y, mu,
+                                    xi, theta, theta.xi, thresh, alpha) {
+
+  d1dls <- -tau * crossprod(Qb, (beta.time - beta.time.mn))  # faster than %*%
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  grad <- d1dls + d2dls * time
+  return(grad)
+}
+
+logpost.beta2.grad <- function(beta.time, beta.time.mn, time, tau,
+                                    beta.int, Qb, beta, y, mu,
+                                    xi, theta, theta.xi, thresh, alpha) {
+
+  d1dbeta.int  <- -tau * crossprod(Qb, (beta.int - beta.int.mn))
+  d1dbeta.time <- -tau * crossprod(Qb, (beta.time - beta.time.mn))
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  gradbeta.int  <- d1dbeta.int + d2dls
+  gradbeta.time <- d1dbeta.time + d2dls * time
+  results <- list(grad.beta.int = grad.beta.int,
+                  grad.beta.time = grad.beta.time)
+  return(results)
+}
+
+# if GP prior on mu
 logpost.mu <- function(mu, Xb, tau, Qb, y, ls, xi, theta, theta.xi, thresh,
                        alpha) {
   sig <- exp(ls)

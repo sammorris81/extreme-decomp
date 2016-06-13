@@ -28,28 +28,19 @@
 #
 ################################################################################
 
-ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
+ReShMCMC<-function(y, s, thresh, B, alpha,
                    # details for the GP prior on mu and logsig
-                   # can.mu.sd = 0.1, can.ls.sd = 0.1,
-                   # mu.attempts = 50, ls.attempts = 50,
-                   tau1.a = 0.1, tau1.b = 0.1,
-                   tau2.a = 0.1, tau2.b = 0.1,
-                   # starting values for beta vectors and sds, xi, and bw
-                   beta1 = NULL, beta1.pri.sd = 10,
-                   beta1.tau.a = 0.1, beta1.tau.b = 0.1,  # for priors on sd
-                   can.beta1.sd = 0.1, beta1.attempts = 50,
-                   beta2 = NULL, beta2.pri.sd = 1,
-                   beta2.tau.a = 0.1, beta2.tau.b = 0.1,  # for priors on sd
-                   can.beta2.sd = 0.1, beta2.attempts = 50,
+                   beta.int = NULL, beta.int.mn = NULL,
+                   beta.int.attempts = 100, canbeta.int.sd = 0.1,
+                   beta.time = NULL, beta.time.mn = NULL,
+                   beta.time.attempts = 100, canbeta.time.sd = 0.1,
                    xi = 0.001, xi.min = -0.5, xi.max = 0.5,
-                   xi.mn = 0, xi.sd = 0.5, xi.attempts = 50,
-                   bw.gp.init = NULL, can.bw.gp.sd = 0.05, bw.gp.attempts = 50,
+                   xi.mn = 0, xi.sd = 0.5, xi.attempts = 50, canxi.sd = 0.1,
+                   tau.int = NULL, tau.int.a = 0.1, tau.int.b = 0.1,
+                   tau.time = NULL, tau.time.a = 0.1, tau.time.b = 0.1,
+                   bw.init = NULL, canbw.sd = 0.05, bw.attempts = 50,
                    # starting value for PS
                    A = NULL,
-                   # bw for basis functions
-                   bw.basis.init = NULL, bw.basis.random = TRUE,
-                   can.bw.basis.sd = 0.001, bw.basis.attempts = 50,
-                   time.interact = FALSE,
                    # how many sites, days, and knots to keep. default is all
                    keep.sites = NULL, keep.days = NULL, keep.knots = NULL,
                    iters = 5000, burn = 1000, update = 10, keep.burn = FALSE,
@@ -73,38 +64,10 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     keep.knots <- min(keep.knots, L)
   }
 
-  if (is.null(X1)) {
-    X1 <- X
-  }
-  if (is.null(X2)) {
-    X2 <- X
-  }
-
   time <- rep(0, nt)
   for (t in 1:nt) {
     time <- (t - nt / 2) / nt
   }
-
-  # # initialize distance matrix from site to knot
-  # dw2 <- rdist(s, knots)^2
-  # dw2[dw2 < 1e-4] <- 0
-  #
-  # bw.basis.min <- max(apply(dw2, 1, min)) + 1e-4
-  # bw.basis.max <- quantile(dw2, 0.75)
-  #
-  # if (is.null(bw.basis.init)) {
-  #   bw.basis <- quantile(dw2, 0.5)
-  # } else {
-  #   bw.basis <- bw.basis.init
-  # }
-  # bw.basis <- max(bw.basis.min, bw.basis)  # make sure it's large enough
-
-  # B.X <- makeW(dw2 = dw2, rho = bw.basis)
-  # X <- add.basis.X(X = X, B = B.X, time.interact = time.interact)
-  # X2 <- add.basis.X(X = X2, B = B.X, time.interact = time.interact)
-
-  # p1 <- p2 <- dim(X)[3]
-  # p2 <- dim(X2)[3]
 
   miss <- is.na(y)
   if (length(thresh) == 1) {
@@ -119,26 +82,22 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   }
 
   # INITIAL VALUES:
-  if (is.null(beta2)) {
-    beta2        <- array(0, dim = c(ns, nt, 2))
-    beta2[, , 1] <- log(sqrt(6) * sd(as.vector(y), na.rm = TRUE) / pi)
+  if (is.null(beta.time)) {
+    beta.time <- matrix(0, ns, 2)
+  }
+  if (is.null(beta.int)) {
+    beta.int <- matrix(0, ns, 2)
+    beta.int[, 2] <- log(sqrt(6) * sd(as.vector(y), na.rm = TRUE) / pi)
+    beta.int[, 1] <- -0.5772 * beta.int[, 2]
   }
 
-  if (is.null(beta1)) {
-    beta1 <- -0.57722 * beta2
-  }
-
-  beta1.mn <- beta2.mn <- rep(0, 2)
+  beta.int.mn <- beta.time.mn <- rep(0, 2)
 
   mu <- ls <- matrix(0, ns, nt)
   for (t in 1:nt) {
-    mu[, t] <- beta1[, t, 1] + beta1[, t, 2] * time[t]
-    ls[, t] <- beta2[, t, 1] + beta2[, t, 2] * time[t]
+    mu[, t] <- beta.int[, 1] + beta.time[, 1] * time[t]
+    ls[, t] <- beta.int[, 2] + beta.time[, 2] * time[t]
   }
-
-  # set the initial mu and logsig to the mean
-  # mu <- Xb1 <- getXBeta(X = X, beta = beta1) + rnorm(ns * nt)
-  # ls <- Xb2 <- getXBeta(X = X, beta = beta2) + rnorm(ns * nt)
 
   # get the initial covariance matrix for the gaussian process
   d <- rdist(s)
@@ -155,17 +114,12 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   Qb    <- chol2inv(chol(Sigma))
   logdetQb <- logdet(Qb)
 
-  SS1 <- SS2 <- matrix(0, nt, 2)
-
-  tau1 <- tau2 <- rep(0.1, 2)
+  SS.int  <- SS.time  <- rep(0, 2)
+  tau.int <- tau.time <- rep(1, 2)
 
   # adjust xi until it is valid for all y, mu, and sig
   if (xi < 0) {
-    while (any(y - mu > -exp(ls) / xi, na.rm = TRUE)) {
-      xi <- xi * 0.8
-    }
-  } else if (xi > 0) {
-    while (any(y - mu < -exp(ls) / xi, na.rm = TRUE)) {
+    while (any(xi * (y - mu) / exp(ls) < -1, na.rm = TRUE)) {
       xi <- xi * 0.8
     }
   }
@@ -195,20 +149,16 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
                    thresh = thresh, alpha = alpha)
 
   # STORAGE:
-  these.sites   <- sort(sample(1:ns, keep.sites))  # which sites to keep GP
-  these.days    <- sort(sample(1:nt, keep.days))   # which days to keep GP and A
-  these.knots   <- sort(sample(1:L, keep.knots))   # which knots to keep A
-  keep.beta1    <- array(0, dim = c(iters, ns, nt, 2))
-  keep.beta2    <- array(0, dim = c(iters, ns, nt, 2))
-  keep.xi       <- rep(0, iters)
-  # keep.beta.sd  <- matrix(0, iters, 2)  # sd terms for beta priors
-  keep.tau1     <- matrix(0, iters, nt)
-  keep.tau2     <- matrix(0, iters, nt)
-  # keep.mu       <- array(0, dim = c(iters, keep.sites, keep.days))
-  # keep.ls       <- array(0, dim = c(iters, keep.sites, keep.days))
-  # keep.bw.basis <- rep(0, iters)  # bandwidth term for basis functions
-  keep.bw.gp    <- rep(0, iters)  # bandwidth for GP
-  keep.A        <- array(0, dim = c(iters, keep.knots, keep.days))
+  these.sites    <- sort(sample(1:ns, keep.sites))  # which sites to keep GP
+  these.days     <- sort(sample(1:nt, keep.days))   # which days to keep GP and A
+  these.knots    <- sort(sample(1:L, keep.knots))   # which knots to keep A
+  keep.beta.int  <- array(0, dim = c(iters, ns, 2))
+  keep.beta.time <- array(0, dim = c(iters, ns, 2))
+  keep.xi        <- rep(0, iters)
+  keep.tau.int   <- matrix(0, iters, 2)
+  keep.tau.time  <- matrix(0, iters, 2)
+  keep.bw        <- rep(0, iters)  # bandwidth for GP
+  keep.A         <- array(0, dim = c(iters, keep.knots, keep.days))
   if (any(miss)) {
     # only record the missing data after burnin finishes
     keep.y <- matrix(0, iters - burn, sum(miss))
@@ -221,13 +171,10 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
   cuts <- exp(c(-1, 0, 1, 2, 5, 10))
   MH.a  <- rep(1, 100)
   att.a <- acc.a <- 0 * MH.a
-  att.beta1 <- acc.beta1 <- MH.beta1 <- matrix(can.beta1.sd, ns, nt)
-  att.beta2 <- acc.beta2 <- MH.beta2 <- matrix(can.beta2.sd, ns, nt)
-  # att.mu <- acc.mu <- MH.mu <- matrix(can.mu.sd, ns, nt)
-  # att.ls <- acc.ls <- MH.ls <- matrix(can.ls.sd, ns, nt)
-  att.xi <- acc.xi    <- MH.xi    <- 0.1
-  # att.bw.basis <- acc.bw.basis <- MH.bw.basis <- can.bw.basis.sd
-  att.bw.gp    <- acc.bw.gp    <- MH.bw.gp    <- can.bw.gp.sd
+  att.beta.int <- acc.beta.int <- MH.beta.int <- matrix(canbeta.int.sd, ns, 2)
+  att.beta.time <- acc.beta.time <- MH.beta.time <- matrix(canbeta.time.sd, ns, 2)
+  att.xi <- acc.xi <- MH.xi <- canxi.sd
+  att.bw.gp <- acc.bw.gp <- MH.bw.gp <- canbw.sd
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
@@ -247,83 +194,82 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     curll    <- this.update$curll
 
     ####################################################
-    ##########      bandwidth for kernels      #########
-    ####################################################
-    # if (bw.basis.random) {
-    #   this.update <- updateXBasisBW(bw = bw.basis, bw.min = bw.basis.min,
-    #                                 bw.max = bw.basis.max,
-    #                                 beta1 = beta1, Xb1 = Xb1, mu = mu,
-    #                                 tau1 = tau1, SS1 = SS1,
-    #                                 beta2 = beta2, Xb2 = Xb2, ls = ls,
-    #                                 tau2 = tau2, SS2 = SS2,
-    #                                 Qb = Qb, X = X, dw2 = dw2,
-    #                                 time.interact = time.interact,
-    #                                 acc = acc.bw.basis, att = att.bw.basis,
-    #                                 MH = MH.bw.basis)
-    #
-    #   bw.basis     <- this.update$bw
-    #   X            <- this.update$X
-    #   Xb1          <- this.update$Xb1
-    #   SS1          <- this.update$SS1
-    #   Xb2          <- this.update$Xb2
-    #   SS2          <- this.update$SS2
-    #   acc.bw.basis <- this.update$acc
-    #   att.bw.basis <- this.update$att
-    # }
-
-    ####################################################
     ##############      GEV parameters      ############
     ####################################################
-    # am trying a Gaussian process here
-    # mu
-    # this.update <- updateMu(mu = mu, tau = tau1, Xb = Xb1, SS = SS1,
-    #                         y = y, theta = theta, theta.xi = theta.xi,
-    #                         ls = ls, xi = xi, thresh = thresh, alpha = alpha,
-    #                         Qb = Qb, curll = curll, acc = acc.mu, att = att.mu,
-    #                         MH = MH.mu)
-    # mu     <- this.update$mu
-    # SS1    <- this.update$SS
-    # curll  <- this.update$curll
-    # acc.mu <- this.update$acc
-    # att.mu <- this.update$att
-    this.update <- updateBeta1(beta = beta1, tau = tau1, beta.mn = beta1.mn,
-                               SS = SS1, mu = mu, time = time, y = y,
-                               theta = theta, theta.xi = theta.xi, ls = ls,
-                               xi = xi, thresh = thresh, alpha = alpha,
-                               Qb = Qb, curll = curll, acc = acc.beta1,
-                               att = att.beta1, MH = MH.beta1)
-    beta1     <- this.update$beta
-    SS1       <- this.update$SS
-    curll     <- this.update$curll
-    acc.beta1 <- this.update$acc
-    att.beta1 <- this.update$att
-    mu        <- this.update$mu
+    #### betas for mu ####
+    this.update <- updateBeta1.int(beta.int = beta.int[, 1],
+                                   beta.mn = beta.int.mn[1], SS = SS.int[1],
+                                   tau = tau.int[1], beta.time = beta.time[, 1],
+                                   time = time, y = y, theta = theta,
+                                   theta.xi = theta.xi, mu = mu, ls = ls,
+                                   xi = xi, thresh = thresh, alpha = alpha,
+                                   Qb = Qb, curll = curll,
+                                   acc = acc.beta.int[, 1],
+                                   att = att.beta.int[, 1],
+                                   MH = MH.beta.int[, 1])
+    beta.int[, 1]     <- this.update$beta.int
+    SS.int[1]         <- this.update$SS
+    mu                <- this.update$mu
+    curll             <- this.update$curll
+    acc.beta.int[, 1] <- this.update$acc
+    att.beta.int[, 1] <- this.update$att
 
-    # logsig
-    # this.update <- updateLS(ls = ls, tau = tau2, Xb = Xb2, SS = SS2,
-    #                         y = y, theta = theta, theta.xi = theta.xi,
-    #                         mu = mu, xi = xi, thresh = thresh, alpha = alpha,
-    #                         Qb = Qb, curll = curll, acc = acc.ls, att = att.ls,
-    #                         MH = MH.ls)
-    # ls     <- this.update$ls
-    # SS2    <- this.update$SS
-    # curll  <- this.update$curll
-    # acc.ls <- this.update$acc
-    # att.ls <- this.update$att
+    this.update <- updateBeta1.time(beta.time = beta.time[, 1],
+                                    beta.mn = beta.time.mn[1],
+                                    SS = SS.time[1], tau = tau.time[1],
+                                    beta.int = beta.int[, 1], time = time,
+                                    y = y, theta = theta,
+                                    theta.xi = theta.xi, mu = mu, ls = ls,
+                                    xi = xi, thresh = thresh, alpha = alpha,
+                                    Qb = Qb, curll = curll,
+                                    acc = acc.beta.time[, 1],
+                                    att = att.beta.time[, 1],
+                                    MH = MH.beta.time[, 1])
+    beta.time[, 1]     <- this.update$beta.time
+    SS.time[1]         <- this.update$SS
+    mu                 <- this.update$mu
+    curll              <- this.update$curll
+    acc.beta.time[, 1] <- this.update$acc
+    att.beta.time[, 1] <- this.update$att
 
-    this.update <- updateBeta2(beta = beta2, tau = tau2, beta.mn = beta2.mn,
-                               SS = SS2, mu = mu, time = time, y = y,
-                               theta = theta, theta.xi = theta.xi, ls = ls,
-                               xi = xi, thresh = thresh, alpha = alpha,
-                               Qb = Qb, curll = curll, acc = acc.beta2,
-                               att = att.beta2, MH = MH.beta2)
-    beta2     <- this.update$beta
-    SS2       <- this.update$SS
-    curll     <- this.update$curll
-    acc.beta2 <- this.update$acc
-    att.beta2 <- this.update$att
+    #### betas for ls ####
+    this.update <- updateBeta2.int(beta.int = beta.int[, 2],
+                                   beta.mn = beta.int.mn[2],
+                                   SS = SS.int[2], tau = tau.int[2],
+                                   beta.time = beta.time[, 2], time = time,
+                                   y = y, theta = theta,
+                                   theta.xi = theta.xi, mu = mu, ls = ls,
+                                   xi = xi, thresh = thresh, alpha = alpha,
+                                   Qb = Qb, curll = curll,
+                                   acc = acc.beta.int[, 2],
+                                   att = att.beta.int[, 2],
+                                   MH = MH.beta.int[, 2])
+    beta.int[, 2]     <- this.update$beta.int
+    SS.int[2]         <- this.update$SS
+    ls                <- this.update$ls
+    curll             <- this.update$curll
+    acc.beta.int[, 2] <- this.update$acc
+    att.beta.int[, 2] <- this.update$att
 
-    # xi
+    this.update <- updateBeta2.time(beta.time = beta.time[, 2],
+                                    beta.mn = beta.time.mn[2],
+                                    SS = SS.time[2], tau = tau.time[2],
+                                    beta.int = beta.int[, 2], time = time,
+                                    y = y, theta = theta,
+                                    theta.xi = theta.xi, mu = mu, ls = ls,
+                                    xi = xi, thresh = thresh, alpha = alpha,
+                                    Qb = Qb, curll = curll,
+                                    acc = acc.beta.time[, 2],
+                                    att = att.beta.time[, 2],
+                                    MH = MH.beta.time[, 2])
+    beta.time[, 2]     <- this.update$beta.time
+    SS.time[2]         <- this.update$SS
+    ls                 <- this.update$ls
+    curll              <- this.update$curll
+    acc.beta.time[, 2] <- this.update$acc
+    att.beta.time[, 2] <- this.update$att
+
+    #### xi ####
     this.update <- updateXi(xi = xi, xi.min = xi.min, xi.max = xi.max,
                             xi.mn = xi.mn, xi.sd = xi.sd,
                             y = y, mu = mu, ls = ls, curll = curll,
@@ -339,75 +285,46 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     ####################################################
     ###########      GEV hyper parameters      #########
     ####################################################
-    # None of these terms should impact the log likelihood because they only
-    # impact the gaussian process prior terms for mu and logsig
-
-    # beta terms
-    # this.update <- updateGPBeta(mu = mu, beta1.sd = beta1.sd,
-    #                             SS1 = SS1, tau1 = tau1,
-    #                             ls = ls, beta2.sd = beta2.sd,
-    #                             SS2 = SS2, tau2 = tau2,
-    #                             Qb = Qb, X = X)
-    # beta1 <- this.update$beta1
-    # Xb1   <- this.update$Xb1
-    # SS1   <- this.update$SS1
-    # beta2 <- this.update$beta2
-    # Xb2   <- this.update$Xb2
-    # SS2   <- this.update$SS2
-    #
-    # # beta sd
-    # this.update <- updateGPBetaSD(beta = beta1, tau.a = beta1.tau.a,
-    #                               tau.b = beta1.tau.b)
-    # beta1.sd <- this.update$beta.sd
-    #
-    # this.update <- updateGPBetaSD(beta = beta2, tau.a = beta2.tau.a,
-    #                               tau.b = beta2.tau.b)
-    # beta2.sd <- this.update$beta.sd
-
-    # means
-    this.update <- updateGPMean(beta.sd = beta1.pri.sd, Qb = Qb, tau = tau1,
-                                beta = beta1)
-    beta1.mn <- this.update$beta.mn
-
-    this.update <- updateGPMean(beta.sd = beta2.pri.sd, Qb = Qb, tau = tau2,
-                                beta = beta2)
-    beta2.mn <- this.update$beta.mn
+    #### means ####
+    for (p in 1:2) {
+      this.update <- updateGPMean(beta.sd = beta.pri.sd[p], Qb = Qb,
+                                  beta.int = beta.int[, p],
+                                  tau.int = tau.int[p],
+                                  beta.time = beta.time[, p],
+                                  tau.time = tau.time[p])
+      beta.int.mn[p]  <- this.update$beta.int.mn
+      SS.int[p]       <- this.update$SS.int
+      beta.time.mn[p] <- this.update$beta.time.mn
+      SS.time[p]      <- this.update$SS.time
+    }
 
     # variances
-    this.update <- updateGPTau(SS = SS1, tau.a = tau1.a, tau.b = tau1.b,
-                               ns = ns)
-    tau1 <- this.update$tau
+    for (p in 1:2) {
+      this.update <- updateGPTau(SS.int = SS.int[p],
+                                 SS.time = SS.time[p],
+                                 tau.a = 0.1, tau.b = 0.1, ns = ns)
+      tau.int[p]  <- this.update$tau.int
+      tau.time[p] <- this.update$tau.time
+    }
 
-    this.update <- updateGPTau(SS = SS2, tau.a = tau2.a, tau.b = tau2.b,
-                               ns = ns)
-    tau2 <- this.update$tau
-
-    # spatial range for GP
-    # this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
-    #                           bw.max = bw.gp.max,
-    #                           Qb = Qb, logdetQb = logdetQb, d = d,
-    #                           mu = mu, Xb1 = Xb1, tau1 = tau1, SS1 = SS1,
-    #                           ls = ls, Xb2 = Xb2, tau2 = tau2, SS2 = SS2,
-    #                           acc = acc.bw.gp, att = att.bw.gp, MH = MH.bw.gp)
-    this.update <- updateGPBW(bw = bw.gp, bw.min = bw.gp.min,
-                              bw.max = bw.gp.max,
-                              Qb = Qb, logdetQb = logdetQb, d = d,
-                              beta1 = beta1, tau1 = tau1,
-                              SS1 = SS1, beta1.mn = beta1.mn,
-                              beta2 = beta2, tau2 = tau2,
-                              SS2 = SS2, beta2.mn = beta2.mn,
-                              acc = acc.bw.gp, att = att.bw.gp, MH = MH.bw.gp)
-    bw.gp     <- this.update$bw
+    #### bandwidth for GP ####
+    this.update <- updateBW(bw = bw, bw.min = bw.min, bw.max = bw.max,
+                            Qb = Qb, logdetQb = logdetQb, d = d,
+                            beta1 = beta1, tau1 = tau1,
+                            SS1 = SS1, beta1.mn = beta1.mn,
+                            beta2 = beta2, tau2 = tau2,
+                            SS2 = SS2, beta2.mn = beta2.mn,
+                            acc = acc.bw, att = att.bw, MH = MH.bw)
+    bw        <- this.update$bw
     Qb        <- this.update$Qb
     logdetQb  <- this.update$logdetQb
     SS1       <- this.update$SS1
     SS2       <- this.update$SS2
-    acc.bw.gp <- this.update$acc
-    att.bw.gp <- this.update$att
+    acc.bw    <- this.update$acc
+    att.bw    <- this.update$att
 
     # TUNING
     if (iter < burn / 2) {
-      # if (iter > burn * 0.10) {
       for (j in 1:length(MH.a)) {
         acc.a[j] <- acc.a[j] + sum(oldA[l1 == j] != A[l1 == j])
         att.a[j] <- att.a[j] + sum(l1 == j)
@@ -417,62 +334,34 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
           acc.a[j] <- att.a[j] <- 0
         }
       }
-      # }
-      this.update <- mhUpdate(acc = acc.bw.basis, att = att.bw.basis,
-                              MH = MH.bw.basis, nattempts = bw.basis.attempts,
+      this.update <- mhUpdate(acc = acc.beta.int[, p], att = att.beta.int[, p],
+                              MH = MH.beta.int[, 1], target.min = 0.3,
+                              target.max = 0.6, nattempts = beta.int.attempts)
+      acc.beta.int[, p] <- this.update$acc
+      att.beta.int[, p] <- this.update$att
+      MH.beta.int[, p]  <- this.update$MH
+
+      this.update <- mhUpdate(acc = acc.beta.time[, p],
+                              att = att.beta.time[, p],
+                              MH = MH.beta.time[, p], target.min = 0.3,
+                              target.max = 0.6, nattempts = beta.time.attempts)
+      acc.beta.time[, p] <- this.update$acc
+      att.beta.time[, p] <- this.update$att
+      MH.beta.time[, p]  <- this.update$MH
+
+      this.update <- mhUpdate(acc = acc.xi, att = att.xi, MH = MH.xi,
                               target.min = 0.3, target.max = 0.6,
-                              lower = 0.8, higher = 1.2)
-      acc.bw.basis <- this.update$acc
-      att.bw.basis <- this.update$att
-      MH.bw.basis  <- this.update$MH
-
-      # this.update <- mhUpdate(acc = acc.mu, att = att.mu, MH = MH.mu,
-      #                         nattempts = mu.attempts,
-      #                         target.min = 0.5, target.max = 0.8,
-      #                         lower = 0.8, higher = 1.2)
-      # acc.mu <- this.update$acc
-      # att.mu <- this.update$att
-      # MH.mu  <- this.update$MH
-      #
-      # this.update <- mhUpdate(acc = acc.ls, att = att.ls, MH = MH.ls,
-      #                         nattempts = ls.attempts,
-      #                         target.min = 0.5, target.max = 0.5,
-      #                         lower = 0.8, higher = 1.2)
-      # acc.ls <- this.update$acc
-      # att.ls <- this.update$att
-      # MH.ls  <- this.update$MH
-
-      this.update <- mhUpdate(acc = acc.beta1, att = att.beta1,
-                              nattempts = beta1.attempts,
-                              MH = MH.beta1, target.min = 0.3, target.max = 0.6,
-                              lower = 0.8, higher = 1.2)
-      acc.beta1 <- this.update$acc
-      att.beta1 <- this.update$att
-      MH.beta1  <- this.update$MH
-
-      this.update <- mhUpdate(acc = acc.beta2, att = att.beta2,
-                              nattempts = beta2.attempts,
-                              MH = MH.beta2, target.min = 0.3, target.max = 0.6,
-                              lower = 0.8, higher = 1.2)
-      acc.beta2 <- this.update$acc
-      att.beta2 <- this.update$att
-      MH.beta2  <- this.update$MH
-
-      this.update <- mhUpdate(acc = acc.xi, att = att.xi,
-                              nattempts = xi.attempts,
-                              MH = MH.xi, target.min = 0.3, target.max = 0.6,
-                              lower = 0.8, higher = 1.2)
+                              nattempts = xi.attempts)
       acc.xi <- this.update$acc
       att.xi <- this.update$att
       MH.xi  <- this.update$MH
 
-      this.update <- mhUpdate(acc = acc.bw.gp, att = att.bw.gp,
-                              nattempts = bw.gp.attempts,
-                              MH = MH.bw.gp, target.min = 0.3, target.max = 0.6,
-                              lower = 0.8, higher = 1.2)
-      acc.bw.gp <- this.update$acc
-      att.bw.gp <- this.update$att
-      MH.bw.gp  <- this.update$MH
+      this.update <- mhUpdate(acc = acc.bw, att = att.bw, MH = MH.bw,
+                              target.min = 0.3, target.max = 0.6,
+                              nattempts = bw.attempts)
+      acc.bw <- this.update$acc
+      att.bw <- this.update$att
+      MH.bw  <- this.update$MH
     }
 
     ####################################################
@@ -491,7 +380,7 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
           sig.star.t <- alpha * sig.t * theta.xi.t
           xi.star    <- alpha * xi
           # get unit frechet
-          these.miss <- - 1 / log(runif(sum(miss.t)))
+          these.miss <- -1 / log(runif(sum(miss.t)))
           # transform to correct marginals
           y.tmp[miss.t, t] <- mu.star.t + sig.star.t *
             (these.miss^xi.star - 1) / xi.star
@@ -502,102 +391,69 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     }
 
     #KEEP TRACK OF STUFF:
-    keep.beta1[iter, , , ] <- beta1
-    keep.beta2[iter, , , ] <- beta2
-    keep.xi[iter]          <- xi
-    # keep.beta.sd[iter, ]   <- c(beta1.sd, beta2.sd)
-    keep.tau1[iter, ]      <- tau1
-    keep.tau2[iter, ]      <- tau2
-    # keep.mu[iter, , ]      <- mu[these.sites, these.days]
-    # keep.ls[iter, , ]      <- ls[these.sites, these.days]
-    # keep.bw.basis[iter]  <- bw.basis
-    keep.bw.gp[iter]       <- bw.gp
-    keep.A[iter, , ]       <- A[these.knots, these.days]
+    keep.beta.int[iter, , ]  <- beta.int
+    keep.beta.time[iter, , ] <- beta.time
+    keep.xi[iter]            <- xi
+    keep.tau.int[iter, ]     <- tau1
+    keep.tau.time[iter, ]    <- tau2
+    keep.bw[iter]            <- bw
+    keep.A[iter, , ]         <- A[these.knots, these.days]
 
     #DISPLAY CURRENT VALUE:
 
     if (iter %% update == 0) {
       cat("    Finished fit:", iter, "of", iters, "iters \n")
+      params <- c("mu", "ls")
       if (iterplot) {
-        # acc.rate.mu     <- round(acc.mu / att.mu, 3)
-        # acc.rate.ls     <- round(acc.ls / att.ls, 3)
-        acc.rate.beta1  <- round(acc.beta1 / att.beta1, 3)
-        acc.rate.beta2  <- round(acc.beta2 / att.beta2, 3)
-        acc.rate.xi     <- round(acc.xi / att.xi, 3)
-        # acc.rate.bw.basis <- round(acc.bw.basis / att.bw.basis, 3)
-        acc.rate.bw.gp    <- round(acc.bw.gp / att.bw.gp, 3)
+        acc.rate.beta.int  <- round(acc.beta.int / att.beta.int, 3)
+        acc.rate.beta.time <- round(acc.beta.time / att.beta.time, 3)
+        acc.rate.xi        <- round(acc.xi / att.xi, 3)
+        acc.rate.bw        <- round(acc.bw / att.bw, 3)
 
         if (iter > burn) {
           start <- burn + 1
         } else {
-          start <- max(iter - 2000, 1)
+          start <- max(iter - 3000, 1)
         }
 
-        par(mfrow = c(3, 5))
+        par(mfrow = c(5, 4))
 
-        # for (i in 1:2) {
-        #   plot(keep.beta1[start:iter, i], type = "l",
-        #        main = bquote(paste(mu, ": ", beta[.(i)])))
-        # }
+        for (i in 1) {
+          for (p in 1:2) {
+            plot(keep.beta.int[start:iter, i, p], type = "l",
+                 main = paste(params[p], " beta int ", i, sep = ""),
+                 ylab = paste("MH: ", round(MH.beta.int[i, p], 3)),
+                 xlab = acc.rate.int[i, p])
+            plot(keep.beta.time[start:iter, i, p], type = "l",
+                 main = paste(params[p], " beta time ", i, sep = ""),
+                 ylab = paste("MH: ", round(MH.beta.time[i, p], 3)),
+                 xlab = acc.rate.time[i, p])
+          }
+        }
 
-        for (i in 1:2) {
-          this.site <- these.sites[i]
-          this.day  <- these.days[i]
-          plot(keep.beta1[start:iter, this.site, this.day, 1], type = "l",
-               main = bquote(paste("mu", beta[.(i)])),
-               xlab = round(acc.rate.beta1[i, i], 3),
-               ylab = paste("MH =", round(MH.beta1[i, i], 3)))
-          plot(keep.beta2[start:iter, this.site, this.day, 2], type = "l",
-               main = bquote(paste("mu", beta[.(i)])),
-               xlab = round(acc.rate.beta1[i, i], 3),
-               ylab = paste("MH =", round(MH.beta1[i, i], 3)))
+        for (p in 1:2) {
+          plot(keep.tau.int[start:iter, p], type = "l",
+               main = paste(params[p], " tau int", sep = ""))
+          plot(keep.tau.time[start:iter, p], type = "l",
+               main = paste(params[p], " tau time", sep = ""))
+        }
+        for (p in 1:2) {
+          plot(keep.beta.int.mn[start:iter, p], type = "l",
+               main = paste(params[p], " beta int mean", sep = ""))
+          plot(keep.beta.time.mn[start:iter, p], type = "l",
+               main = paste(params[p], " beta time mean", sep = ""))
         }
 
         plot(keep.xi[start:iter], main = bquote(xi),
              xlab = acc.rate.xi, type = "l",
              ylab = paste("MH =", round(MH.xi, 3)))
 
-        # for (i in 1:2) {
-        #   plot(keep.beta2[start:iter, i], type = "l",
-        #        main = bquote(paste(sigma, ": ", beta[.(i)])))
-        # }
-
-        for (i in 1:2) {
-          this.site <- these.sites[i]
-          this.day  <- these.days[i]
-          plot(keep.beta2[start:iter, this.site, this.day, 1], type = "l",
-               main = bquote(paste("ls int", beta[.(i)])),
-               xlab = round(acc.rate.beta2[i, i], 3),
-               ylab = paste("MH =", round(MH.beta2[i, i], 3)))
-          plot(keep.beta2[start:iter, this.site, this.day, 2], type = "l",
-               main = bquote(paste("ls time", beta[.(i)])),
-               xlab = round(acc.rate.beta2[i, i], 3),
-               ylab = paste("MH =", round(MH.beta2[i, i], 3)))
-        }
-
-        # plot(keep.bw.basis[start:iter], main = "kernel bandwidth",
-        #      xlab = acc.rate.bw.basis, type = "l",
-        #      ylab = paste("MH =", round(MH.bw.basis, 3)))
-
-        plot(keep.bw.gp[start:iter], main = "gaussian process bandwidth",
+        plot(keep.bw[start:iter], main = "gaussian process bandwidth",
              xlab = acc.rate.bw.gp, type = "l",
              ylab = paste("MH =", round(MH.bw.gp, 3)))
 
-        plot(keep.tau1[start:iter, 1], main = "tau1[1]", type = "l")
-        plot(keep.tau1[start:iter, 2], main = "tau1[2]", type = "l")
-        plot(keep.tau2[start:iter, 1], main = "tau2[1]", type = "l")
-        plot(keep.tau2[start:iter, 2], main = "tau2[2]", type = "l")
-
-        # plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
-        #
-        # plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
-        #
-        # plot(log(keep.A[start:iter, L, 1]), main = "log(A[L, 1])", type = "l")
-        #
-        # plot(log(keep.A[start:iter, L, 2]), main = "log(A[L, 2])", type = "l")
-
-        # plot(log(keep.A[start:iter, L, nt]),
-        #      main = "log(A[L, nt])", type = "l")
+        plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
+        plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
       }
     }
 
@@ -611,19 +467,15 @@ ReShMCMC<-function(y, X, X1 = NULL, X2 = NULL, s, knots, thresh, B, alpha,
     return.iters <- (burn + 1):iters
   }
 
-  list(beta1   = keep.beta1[return.iters, , , drop = FALSE],
-       beta2   = keep.beta2[return.iters, , , drop = FALSE],
-       xi      = keep.xi[return.iters],
-       # beta.sd = keep.beta.sd[return.iters, ],
-       tau1    = keep.tau1[return.iters, ],
-       tau2    = keep.tau2[return.iters, ],
-       # mu      = keep.mu[return.iters, , , drop = FALSE],
-       # ls      = keep.ls[return.iters, , , drop = FALSE],
-       # bw.basis = keep.bw.basis[return.iters],
-       bw.gp = keep.bw.gp[return.iters],
-       A = keep.A[return.iters, , , drop = FALSE],
-       y.pred = keep.y,  # only stores for post-burnin
-       timing = toc - tic)
+  list(beta.int  = keep.beta1[return.iters, , drop = FALSE],
+       beta.time = keep.beta2[return.iters, , drop = FALSE],
+       xi        = keep.xi[return.iters],
+       tau.int   = keep.tau.int[return.iters, ],
+       tau.time  = keep.tau.int[return.iters, ],
+       bw        = keep.bw[return.iters],
+       A         = keep.A[return.iters, , , drop = FALSE],
+       y.pred    = keep.y,  # only stores for post-burnin
+       timing    = toc - tic)
 }
 
 #############################################################:

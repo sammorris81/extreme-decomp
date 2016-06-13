@@ -157,13 +157,17 @@ ll.ind.xi <- function(beta, X, y) {
 
 
 #### Logposteriors and gradients - needs to be done for each timepoint
-logpost.beta1.int <- function(beta.int, beta.int.mn, tau, Qb,
+logpost.beta1.int <- function(beta.int, beta.mn, tau, Qb,
                               beta.time, time, y, ls, xi, theta,
                               theta.xi, thresh, alpha) {
 
-  lp1 <- -0.5 * tau * quad.form(Qb, beta.int - beta.int.mn)
+  lp1 <- -0.5 * tau * (beta.int - beta.mn) %*% (Qb %*% (beta.int - beta.mn))
 
-  mu  <- beta.int + beta.time * time
+  mu <- matrix(0, ns, nt)
+  for (t in 1:nt) {
+    mu[, t] <- beta.int + beta.time * time[t]
+  }
+
   lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
                  theta.xi = theta.xi, thresh = thresh, alpha = alpha)
 
@@ -172,14 +176,20 @@ logpost.beta1.int <- function(beta.int, beta.int.mn, tau, Qb,
   return(logpost)
 }
 
-logpost.beta1.int.grad <- function(beta.int, beta.int.mn, tau, Qb,
+logpost.beta1.int.grad <- function(beta.int, beta.mn, tau, Qb,
                                    beta.time, time, y, ls, xi,
                                    theta, theta.xi, thresh, alpha) {
 
-  d1dmu <- -tau * crossprod(Qb, (beta.int - beta.int.mn))  # crossprod is faster
+  d1dmu <- -tau * crossprod(Qb, (beta.int - beta.mn))  # crossprod is faster
   # d1dmu <- -tau * (Qb %*% (beta.int - beta.int.mn))
 
-  mu <- beta.int + beta.time * time
+  # print(d1dmu)
+  mu <- matrix(0, ns, nt)
+  for (t in 1:nt) {
+    mu[, t] <- beta.int + beta.time * time[t]
+  }
+  # print(mu)
+
   sig <- exp(ls)
 
   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
@@ -201,16 +211,17 @@ logpost.beta1.int.grad <- function(beta.int, beta.int.mn, tau, Qb,
 
   d2dmu[is.na(y)] <- 0
 
-  grad <- d1dmu + d2dmu
+  grad <- d1dmu + rowSumsC(d2dmu)
+  # print(d2dmu)
 
   return(grad)
 }
 
-logpost.beta1.time <- function(beta.time, beta.time.mn, time, tau, Qb,
+logpost.beta1.time <- function(beta.time, beta.mn, time, tau, Qb,
                                beta.int, y, ls, xi, theta,
                                theta.xi, thresh, alpha) {
   sig <- exp(ls)
-  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.time.mn)
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.mn)
 
   mu <- beta.int + beta.time * time
   lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
@@ -221,11 +232,11 @@ logpost.beta1.time <- function(beta.time, beta.time.mn, time, tau, Qb,
   return(logpost)
 }
 
-logpost.beta1.time.grad <- function(beta.time, beta.time.mn, time, tau, Qb,
-                                    beta.int, y, ls, xi,
+logpost.beta1.time.grad <- function(beta.time, beta.mn, tau, Qb,
+                                    beta.int, time, y, ls, xi,
                                     theta, theta.xi, thresh, alpha) {
   sig <- exp(ls)
-  d1dmu <- -tau * crossprod(Qb, (beta.time - beta.time.mn))  # faster than %*%
+  d1dmu <- -tau * crossprod(Qb, (beta.time - beta.mn))  # faster than %*%
   # d1dmu <- -tau * (Qb %*% (beta.time - beta.time.mn))
 
   mu <- beta.int + beta.time * time
@@ -780,8 +791,14 @@ get.level.mat <- function(logs, cuts) {
   return(level)
 }
 
-logdet <- function(X){
-  determinant(X)$modulus
+# get log(det(X)) using X or its Cholesky factor
+logdet <- function(X, chol = NULL){
+  if (is.null(chol)) {
+    logdet <- determinant(X)$modulus
+  } else {
+    logdet <- 2 * sum(log(diag(chol)))
+  }
+  return(logdet)
 }
 
 trunc <- function(x, eps = 0.1){

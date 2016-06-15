@@ -207,14 +207,14 @@ cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 #134.94
 # fit the model using the training data
-Rprof(filename = "Rprof.out", line.profiling = TRUE)
+# Rprof(filename = "Rprof.out", line.profiling = TRUE)
 beta.time.init <- matrix(0, ns, 2)
 fit <- ReShMCMC(y = Y, s = s.scale, thresh = -Inf, B = B.sp, alpha = alpha,
                 beta.int = beta.int.init, canbeta.int.sd = 0.5,
                 beta.time = beta.time.init, canbeta.time.sd = 0.5,
                 xi = xi.init, bw.init = 0.2, A = A.init,
                 iters = iters, burn = burn, update = update,
-                iterplot = TRUE)
+                iterplot = FALSE)
 # fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
 #                 thresh = -Inf, B = B.sp, alpha = alpha,
 #                 tau1.a = 0.1, tau1.b = 0.1,
@@ -234,8 +234,8 @@ fit <- ReShMCMC(y = Y, s = s.scale, thresh = -Inf, B = B.sp, alpha = alpha,
 #                # iters = iters, burn = burn, update = update, keep.burn = TRUE,
 #                # iterplot = TRUE)
 cat("Finished fit and predict \n")
-Rprof(filename = NULL)
-summaryRprof(filename = "Rprof.out", lines = "show")
+# Rprof(filename = NULL)
+# summaryRprof(filename = "Rprof.out", lines = "show")
 
 # par(mfrow = c(7, 5))
 # for (i in 1:np) {

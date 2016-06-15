@@ -165,7 +165,7 @@ fit <- ReShMCMC(y = Y, s = s, thresh = thresh90, B = B.sp,
                 beta.time.attempts = 50, canbeta.time.sd = 0.5,
                 xi = xi.init, bw.init = 0.2, A = A.init,
                 iters = iters, burn = burn, update = update,
-                iterplot = TRUE)
+                iterplot = FALSE)
 
 
 # mu.post <- ls.post <- array(0, dim = c(10000, ns, nt))

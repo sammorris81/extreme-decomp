@@ -340,6 +340,7 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
           acc.a[j] <- att.a[j] <- 0
         }
       }
+
       this.update <- mhUpdate(acc = acc.beta.int[, p], att = att.beta.int[, p],
                               MH = MH.beta.int[, 1], target.min = 0.3,
                               target.max = 0.6, nattempts = beta.int.attempts)

@@ -34,6 +34,9 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
                    beta.int.attempts = 100, canbeta.int.sd = 0.1,
                    beta.time = NULL, beta.time.mn = NULL,
                    beta.time.attempts = 100, canbeta.time.sd = 0.1,
+                   # this is the prior standard deviation on the mean of the
+                   # GPs
+                   mu.beta.pri.sd = 100, ls.beta.pri.sd = 10,
                    xi = 0.001, xi.min = -0.5, xi.max = 0.5,
                    xi.mn = 0, xi.sd = 0.5, xi.attempts = 50, canxi.sd = 0.1,
                    tau.int = NULL, tau.int.a = 0.1, tau.int.b = 0.1,
@@ -66,7 +69,7 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
 
   time <- rep(0, nt)
   for (t in 1:nt) {
-    time <- (t - nt / 2) / nt
+    time[t] <- (t - nt / 2) / nt
   }
 
   miss <- is.na(y)
@@ -92,6 +95,7 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
   }
 
   beta.int.mn <- beta.time.mn <- rep(0, 2)
+  beta.pri.sd <- c(mu.beta.pri.sd, ls.beta.pri.sd)
 
   mu <- ls <- matrix(0, ns, nt)
   for (t in 1:nt) {
@@ -102,15 +106,14 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
   # get the initial covariance matrix for the gaussian process
   d <- rdist(s)
   diag(d) <- 0
-  bw.gp.min <- 1e-4
-  bw.gp.max <- max(d[upper.tri(d)])
-  if (!is.null(bw.gp.init)) {
-    bw.gp <- bw.gp.init
+  bw.min <- 1e-4
+  bw.max <- max(d[upper.tri(d)])
+  if (!is.null(bw.init)) {
+    bw <- bw.init
   } else {
-    bw.gp <- (median(d[upper.tri(d)]) - bw.gp.min) / 2
-    # bw.gp <- 0.7
+    bw <- (median(d[upper.tri(d)]) - bw.min) / 2
   }
-  Sigma <- exp(-d / bw.gp)
+  Sigma <- exp(-d / bw)
   Qb    <- chol2inv(chol(Sigma))
   logdetQb <- logdet(Qb)
 
@@ -146,19 +149,22 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
 
   # initial values for loglikelihood and gradients
   curll <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
-                   thresh = thresh, alpha = alpha)
+                   theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+  # print(curll)
 
   # STORAGE:
-  these.sites    <- sort(sample(1:ns, keep.sites))  # which sites to keep GP
-  these.days     <- sort(sample(1:nt, keep.days))   # which days to keep GP and A
-  these.knots    <- sort(sample(1:L, keep.knots))   # which knots to keep A
-  keep.beta.int  <- array(0, dim = c(iters, ns, 2))
-  keep.beta.time <- array(0, dim = c(iters, ns, 2))
-  keep.xi        <- rep(0, iters)
-  keep.tau.int   <- matrix(0, iters, 2)
-  keep.tau.time  <- matrix(0, iters, 2)
-  keep.bw        <- rep(0, iters)  # bandwidth for GP
-  keep.A         <- array(0, dim = c(iters, keep.knots, keep.days))
+  these.sites <- sort(sample(1:ns, keep.sites))  # which sites to keep GP
+  these.days  <- sort(sample(1:nt, keep.days))   # which days to keep GP and A
+  these.knots <- sort(sample(1:L, keep.knots))   # which knots to keep A
+  keep.beta.int     <- array(0, dim = c(iters, ns, 2))
+  keep.beta.time    <- array(0, dim = c(iters, ns, 2))
+  keep.beta.int.mn  <- matrix(0, iters, 2)
+  keep.beta.time.mn <- matrix(0, iters, 2)
+  keep.xi           <- rep(0, iters)
+  keep.tau.int      <- matrix(0, iters, 2)
+  keep.tau.time     <- matrix(0, iters, 2)
+  keep.bw           <- rep(0, iters)  # bandwidth for GP
+  keep.A            <- array(0, dim = c(iters, keep.knots, keep.days))
   if (any(miss)) {
     # only record the missing data after burnin finishes
     keep.y <- matrix(0, iters - burn, sum(miss))
@@ -174,7 +180,7 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
   att.beta.int <- acc.beta.int <- MH.beta.int <- matrix(canbeta.int.sd, ns, 2)
   att.beta.time <- acc.beta.time <- MH.beta.time <- matrix(canbeta.time.sd, ns, 2)
   att.xi <- acc.xi <- MH.xi <- canxi.sd
-  att.bw.gp <- acc.bw.gp <- MH.bw.gp <- canbw.sd
+  att.bw <- acc.bw <- MH.bw <- canbw.sd
 
   tic <- proc.time()[3]
   for (iter in 1:iters) {
@@ -310,18 +316,18 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     #### bandwidth for GP ####
     this.update <- updateBW(bw = bw, bw.min = bw.min, bw.max = bw.max,
                             Qb = Qb, logdetQb = logdetQb, d = d,
-                            beta1 = beta1, tau1 = tau1,
-                            SS1 = SS1, beta1.mn = beta1.mn,
-                            beta2 = beta2, tau2 = tau2,
-                            SS2 = SS2, beta2.mn = beta2.mn,
+                            beta.int = beta.int, tau.int = tau.int,
+                            SS.int = SS.int, beta.int.mn = beta.int.mn,
+                            beta.time = beta.time, tau.time = tau.time,
+                            SS.time = SS.time, beta.time.mn = beta.time.mn,
                             acc = acc.bw, att = att.bw, MH = MH.bw)
-    bw        <- this.update$bw
-    Qb        <- this.update$Qb
-    logdetQb  <- this.update$logdetQb
-    SS1       <- this.update$SS1
-    SS2       <- this.update$SS2
-    acc.bw    <- this.update$acc
-    att.bw    <- this.update$att
+    bw       <- this.update$bw
+    Qb       <- this.update$Qb
+    logdetQb <- this.update$logdetQb
+    SS.int   <- this.update$SS.int
+    SS.time  <- this.update$SS.time
+    acc.bw   <- this.update$acc
+    att.bw   <- this.update$att
 
     # TUNING
     if (iter < burn / 2) {
@@ -391,13 +397,15 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     }
 
     #KEEP TRACK OF STUFF:
-    keep.beta.int[iter, , ]  <- beta.int
-    keep.beta.time[iter, , ] <- beta.time
-    keep.xi[iter]            <- xi
-    keep.tau.int[iter, ]     <- tau1
-    keep.tau.time[iter, ]    <- tau2
-    keep.bw[iter]            <- bw
-    keep.A[iter, , ]         <- A[these.knots, these.days]
+    keep.beta.int[iter, , ]   <- beta.int
+    keep.beta.time[iter, , ]  <- beta.time
+    keep.beta.int.mn[iter, ]  <- beta.int.mn
+    keep.beta.time.mn[iter, ] <- beta.time.mn
+    keep.xi[iter]             <- xi
+    keep.tau.int[iter, ]      <- tau.int
+    keep.tau.time[iter, ]     <- tau.time
+    keep.bw[iter]             <- bw
+    keep.A[iter, , ]          <- A[these.knots, these.days]
 
     #DISPLAY CURRENT VALUE:
 
@@ -418,16 +426,16 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
 
         par(mfrow = c(5, 4))
 
-        for (i in 1) {
+        for (i in 1:2) {
           for (p in 1:2) {
             plot(keep.beta.int[start:iter, i, p], type = "l",
                  main = paste(params[p], " beta int ", i, sep = ""),
                  ylab = paste("MH: ", round(MH.beta.int[i, p], 3)),
-                 xlab = acc.rate.int[i, p])
+                 xlab = acc.rate.beta.int[i, p])
             plot(keep.beta.time[start:iter, i, p], type = "l",
                  main = paste(params[p], " beta time ", i, sep = ""),
                  ylab = paste("MH: ", round(MH.beta.time[i, p], 3)),
-                 xlab = acc.rate.time[i, p])
+                 xlab = acc.rate.beta.time[i, p])
           }
         }
 
@@ -449,8 +457,8 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
              ylab = paste("MH =", round(MH.xi, 3)))
 
         plot(keep.bw[start:iter], main = "gaussian process bandwidth",
-             xlab = acc.rate.bw.gp, type = "l",
-             ylab = paste("MH =", round(MH.bw.gp, 3)))
+             xlab = acc.rate.bw, type = "l",
+             ylab = paste("MH =", round(MH.bw, 3)))
 
         plot(log(keep.A[start:iter, 1, 1]), main = "log(A[1, 1])", type = "l")
         plot(log(keep.A[start:iter, 2, 1]), main = "log(A[2, 1])", type = "l")
@@ -467,15 +475,17 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     return.iters <- (burn + 1):iters
   }
 
-  list(beta.int  = keep.beta1[return.iters, , drop = FALSE],
-       beta.time = keep.beta2[return.iters, , drop = FALSE],
-       xi        = keep.xi[return.iters],
-       tau.int   = keep.tau.int[return.iters, ],
-       tau.time  = keep.tau.int[return.iters, ],
-       bw        = keep.bw[return.iters],
-       A         = keep.A[return.iters, , , drop = FALSE],
-       y.pred    = keep.y,  # only stores for post-burnin
-       timing    = toc - tic)
+  list(beta.int     = keep.beta.int[return.iters, , , drop = FALSE],
+       beta.time    = keep.beta.time[return.iters, , , drop = FALSE],
+       beta.int.mn  = keep.beta.int.mn[return.iters, , drop = FALSE],
+       beta.time.mn = keep.beta.time.mn[return.iters, , drop = FALSE],
+       xi           = keep.xi[return.iters],
+       tau.int      = keep.tau.int[return.iters, , drop = FALSE],
+       tau.time     = keep.tau.time[return.iters, , drop = FALSE],
+       bw           = keep.bw[return.iters],
+       A            = keep.A[return.iters, , , drop = FALSE],
+       y.pred       = keep.y,  # only stores for post-burnin
+       timing       = toc - tic)
 }
 
 #############################################################:
@@ -518,11 +528,11 @@ pred.ReShMCMC <- function (mcmcoutput, X.pred, B, alpha, start = 1, end = NULL,
   Ba    <- B^(1 / alpha)
 
   # make sure we are iterating over the post burnin samples
-  niters <- length(start:end)
-  beta1  <- matrix(mcmcoutput$beta1[start:end, , drop = F], niters, p)
-  beta2  <- matrix(mcmcoutput$beta2[start:end, , drop = F], niters, p)
-  xi     <- mcmcoutput$xi[start:end]
-  A      <- mcmcoutput$A[start:end, , , drop = F]
+  niters    <- length(start:end)
+  beta.int  <- matrix(mcmcoutput$beta.int[start:end, , drop = F], niters, p)
+  beta.time <- matrix(mcmcoutput$beta.time[start:end, , drop = F], niters, p)
+  xi        <- mcmcoutput$xi[start:end]
+  A         <- mcmcoutput$A[start:end, , , drop = F]
 
   # storage for predictions
   y.pred <- array(-99999, dim = c(niters, npred, nt))

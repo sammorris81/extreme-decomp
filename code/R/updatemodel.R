@@ -49,7 +49,7 @@ updateBeta1.int <- function(beta.int, beta.mn, SS, tau,
   for (i in 1:ns) {
     canbeta.int <- rnorm(1, beta.int[i], MH[i])
     canmu <- canbeta.int + beta.time[i] * time  # length nt
-    if (any(xi * (y[i, ] - canmu) / exp(ls[i, ]) < -1)) {
+    if (any(xi * (y[i, ] - canmu) / exp(ls[i, ]) < -1, na.rm = TRUE)) {
       R <- -Inf
     } else {
       canll <- loglike(y = y[i, ], theta = theta[i, ],
@@ -64,6 +64,12 @@ updateBeta1.int <- function(beta.int, beta.mn, SS, tau,
       R <- sum(canll - curll[i, ]) +
         dnorm(canbeta.int, cond.mn, cond.sd, log = TRUE) -
         dnorm(beta.int[i], cond.mn, cond.sd, log = TRUE)
+      # print(sum(canll - curll[i, ]))
+      # print(dnorm(canbeta.int, cond.mn, cond.sd, log = TRUE))
+      # print(dnorm(beta.int[i], cond.mn, cond.sd, log = TRUE))
+      # if (i == ns) {
+      #   stop()
+      # }
 
       if (!is.na(exp(R))) { if (log(runif(1)) < R) {
         beta.int[i] <- canbeta.int
@@ -93,7 +99,7 @@ updateBeta1.time <- function(beta.time, beta.mn, SS, tau,
   for (i in 1:ns) {
     canbeta.time <- rnorm(1, beta.time[i], MH[i])
     canmu <- beta.int[i] + canbeta.time * time  # length nt
-    if (any(xi * (y[i, ] - canmu) / exp(ls[i, ]) < -1)) {
+    if (any(xi * (y[i, ] - canmu) / exp(ls[i, ]) < -1, na.rm = TRUE)) {
       R <- -Inf
     } else {
       canll <- loglike(y = y[i, ], theta = theta[i, ],
@@ -217,7 +223,7 @@ updateBeta2.int <- function(beta.int, beta.mn, SS, tau,
   for (i in 1:ns) {
     canbeta.int <- rnorm(1, beta.int[i], MH[i])
     canls <- canbeta.int + beta.time[i] * time  # length nt
-    if (any(xi * (y[i, ] - mu[i, ]) / exp(canls) < -1)) {
+    if (any(xi * (y[i, ] - mu[i, ]) / exp(canls) < -1, na.rm = TRUE)) {
       R <- -Inf
     } else {
       canll <- loglike(y = y[i, ], theta = theta[i, ],
@@ -261,7 +267,7 @@ updateBeta2.time <- function(beta.time, beta.mn, SS, tau,
   for (i in 1:ns) {
     canbeta.time <- rnorm(1, beta.time[i], MH[i])
     canls <- beta.int[i] + canbeta.time * time  # length nt
-    if (any(xi * (y[i, ] - mu[i, ]) / exp(canls) < -1)) {
+    if (any(xi * (y[i, ] - mu[i, ]) / exp(canls) < -1, na.rm = TRUE)) {
       R <- -Inf
     } else {
       canll <- loglike(y = y[i, ], theta = theta[i, ],
@@ -428,9 +434,9 @@ updateBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
   bw.star <- transform$logit(bw, bw.min, bw.max)
   canbw.star <- rnorm(1, bw.star, MH)
   canbw <- transform$inv.logit(canbw.star, bw.min, bw.max)
-  canSigma.chol <- exp(-d / canbw)
+  canSigma.chol <- chol(exp(-d / canbw))
   canQb <- chol2inv(canSigma.chol)
-  canlogdetQb <- logdet(X = canQb)
+  canlogdetQb <- -logdet(chol = canSigma.chol)
 
   canSS.int <- canSS.time <- rep(0, 2)
   for (i in 1:2) {
@@ -440,12 +446,12 @@ updateBW <- function(bw, bw.min, bw.max, Qb, logdetQb, d,
   # canSS1 <- getGPSS(Qb = canQb, param = , Xb = Xb1)
   # canSS2 <- getGPSS(Qb = canQb, param = ls, Xb = Xb2)
 
-  # For R, multiply by 4 diff(logdet) because of 4 GPs
   R <- 0
   for (i in 1:2) {
     R <- R - 0.5 * tau.int[i] * (canSS.int[i] - SS.int[i])
     R <- R - 0.5 * tau.time[i] * (canSS.time[i] - SS.time[i])
   }
+  # For R, multiply by 4 diff(logdet) because of 4 GPs
   R <- R + 0.5 * 4 * (canlogdetQb - logdetQb) +
     log(canbw - bw.min) + log(bw.max - canbw) -  # Jacobian of the prior
     log(bw - bw.min) - log(bw.max - bw)

@@ -1648,7 +1648,7 @@ theta.xi.t <- theta.t^xi.t
 alpha.t <- 1
 
 # initialize values
-bw <- 0.1
+bw <- 0.5
 Sigma <- exp(-d / bw)
 Qb    <- chol2inv(chol(Sigma))
 logdetQb <- logdet(Qb)

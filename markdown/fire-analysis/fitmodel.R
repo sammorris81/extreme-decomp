@@ -125,32 +125,56 @@ thresh99.tst <- thresh99[cv.idx[[cv]]]
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
+iters  <- 35000
+burn   <- 25000
 update <- 1000
 
-# iters <-200; burn <- 50;
-update <- 100  # for testing
+# iters <- 5000; burn <- 4500; update <- 100  # for testing
+A.init <- matrix(1, L, nt)  # consistent with estimates of alpha
+# A.init <- matrix(1, L, nt)
+theta.init <- (B.sp^(1 / alpha) %*% A.init)^alpha
+xi.init <- 0.1
+
+# find the beta estimates using ml for GEV
+# going to use ML but independent to get a single mu and sigma for each site
+# based on xi = 0, but with A.init and alpha
+
+# xi.init <- rep(0, ns)
+# beta.int.init <- matrix(0, ns, 2)
+# for (i in 1:ns) {
+#   fit <- optim(par = c(0, 0), fn = loglike.init,
+#                y = Y[i, ], thresh = thresh90[i, ], xi = xi.init,
+#                theta = theta.init[i, ], alpha = alpha,
+#                control = list(maxit = 5000))$par
+#   beta.int.init[i, ] <- fit[1:2]
+#   if (i %% 50 == 0) {
+#     print(paste("site ", i, " complete", sep = ""))
+#   }
+# }
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
 # s is scaled locations
-fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
-                thresh = thresh90, B = B.sp, alpha = alpha,
-                tau1.a = 1, tau1.b = 1,
-                tau2.a = 0.1, tau2.b = 0.1,
-                beta1.sd = 10, beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                can.beta1.sd = 1, beta1.attempts = 400,
-                beta2.sd = 0.1, beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                can.beta2.sd = 0.5, beta2.attempts = 400,
-                xi = 0, xi.min = -1, xi.max = 1, xi.mn = 0, xi.sd = 0.3,
-                bw.gp.init = 0.05, can.bw.gp.sd = 0.1,
-                bw.basis.init = 0.3, can.bw.basis.sd = 0.1,
-                time.interact = TRUE,
-                iters = iters, burn = burn, update = update, iterplot = TRUE)
-                # iters = iters, burn = burn, update = update, iterplot = FALSE)
-cat("Finished fit and predict \n")
+beta.int.init  <- matrix(0, ns, 2)
+beta.time.init <- matrix(0, ns, 2)
+fit <- ReShMCMC(y = Y, s = s, thresh = thresh90, B = B.sp,
+                alpha = alpha, beta.int = beta.int.init,
+                beta.int.attempts = 50, canbeta.int.sd = 0.5,
+                beta.time = beta.time.init,
+                beta.time.attempts = 50, canbeta.time.sd = 0.5,
+                xi = xi.init, bw.init = 0.2, A = A.init,
+                iters = iters, burn = burn, update = update,
+                iterplot = TRUE)
+
+
+# mu.post <- ls.post <- array(0, dim = c(10000, ns, nt))
+# for (i in 1:10000) {
+#   for (j in 1:ns) {
+#     mu.post[i, j, ] <- fit$beta.int[i, j, 1] + fit$beta.time[i, j, 1] * time
+#     ls.post[i, j, ] <- fit$beta.int[i, j, 2] + fit$beta.time[i, j, 2] * time
+#   }
+# }
 
 # mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))
 # dw2 <- rdist(s, knots)^2

@@ -16,6 +16,7 @@ source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
 source(file = "../../code/R/PCAX.R", chdir = TRUE)
 source(file = "../../code/R/mcmc.R", chdir = TRUE)
 source(file = "../../code/R/updatemodel.R", chdir = TRUE)
+source(file = "./MappingFunctions.R")
 
 if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
   openblas.set.num.threads(1)

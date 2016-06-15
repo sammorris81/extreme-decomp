@@ -65,6 +65,97 @@ loglike <- function(y, mu, ls, xi, theta, theta.xi, thresh, alpha){
   return(ll)
 }
 
+loglike.init <- function(y, params, xi, theta, thresh, alpha){
+  nt <- length(y)
+  mu <- rep(params[1], nt)
+  ls <- rep(params[2], nt)
+  theta.xi <- theta^xi
+  sigma    <- exp(ls)
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    # theta.xi  <- theta^xi
+    sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
+    t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
+    ll <- -t.y
+    ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
+  } else {
+    # theta.xi  <- theta^xi
+    mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sigma * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+    ll <- -t.y
+    ll[these] <- ll[these] + (xi.star + 1) * log(t.y[these]) -
+      log(sig.star[these])
+  }
+  ll[is.na(y)] <- 0
+  ll[is.na(ll)] <- -Inf
+
+  return(sum(-ll))
+}
+
+# loglike.init <- function(y, params, theta, thresh, alpha){
+#   nt <- length(y)
+#   mu <- matrix(params[1:ns], ns, nt)
+#   ls <- matrix(params[(ns + 1):(2 * ns)], ns, nt)
+#   xi <- tail(params, 1)
+#   theta.xi <- theta^xi
+#   sigma    <- exp(ls)
+#
+#   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+#   if (abs(xi) <= 1e-4) {
+#     # theta.xi  <- theta^xi
+#     sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
+#     t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
+#     ll <- -t.y
+#     ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
+#   } else {
+#     # theta.xi  <- theta^xi
+#     mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
+#     sig.star <- alpha * sigma * (theta.xi)
+#     xi.star  <- alpha * xi
+#     t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+#     ll <- -t.y
+#     ll[these] <- ll[these] + (xi.star + 1) * log(t.y[these]) -
+#       log(sig.star[these])
+#   }
+#   ll[is.na(y)] <- 0
+#   ll[is.na(ll)] <- -Inf
+#
+#   return(sum(-ll))
+# }
+
+# loglike.init <- function(y, params, thresh){
+#   ns <- nrow(y)
+#   nt <- ncol(y)
+#   mu <- matrix(params[1:ns], ns, nt)
+#   ls <- matrix(params[(ns + 1):(2 * ns)], ns, nt)
+#   xi <- tail(params, 1)
+#   sigma <- exp(ls)
+#
+#   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+#   if (any(xi * (y - mu) / sigma < -1, na.rm = TRUE)) {
+#     return(Inf)
+#   }
+#   if (abs(xi) <= 1e-4) {
+#     # theta.xi  <- theta^xi
+#     t.y <- exp(-(y - mu) / sigma)
+#     ll <- -t.y
+#     ll[these] <- ll[these] - log(sigma[these]) + log(t.y[these])
+#   } else {
+#     # theta.xi  <- theta^xi
+#     t.y <- (1 + xi * (y - mu) / sigma)^(-1 / xi)
+#     ll <- -t.y
+#     ll[these] <- ll[these] + (xi + 1) * log(t.y[these]) -
+#       log(sigma[these])
+#   }
+#   ll[is.na(y)] <- 0
+#   ll[is.na(ll)] <- Inf
+#
+#   return(sum(-ll))
+# }
+
 logd <- function(theta, v){
   sum(log(theta) - theta * v)
 }

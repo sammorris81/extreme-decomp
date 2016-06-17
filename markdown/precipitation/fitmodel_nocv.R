@@ -167,11 +167,11 @@ thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 100
+iters  <- 25000
+burn   <- 15000
+update <- 500
 
-iters <- 100; burn <- 90; update <- 10  # for testing
+# iters <- 100; burn <- 90; update <- 10  # for testing
 A.init <- matrix(exp(2), L, nt)  # consistent with estimates of alpha
 # A.init <- matrix(1, L, nt)
 theta.init <- (B.sp^(1 / alpha) %*% A.init)^alpha

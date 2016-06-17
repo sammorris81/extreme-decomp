@@ -114,11 +114,11 @@ thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
+iters  <- 35000
+burn   <- 25000
 update <- 1000
 
-iters <-100; burn <- 50; update <- 10  # for testing
+# iters <-100; burn <- 50; update <- 10  # for testing
 beta.int.init  <- matrix(0, ns, 2)
 beta.time.init <- matrix(0, ns, 2)
 A.init <- matrix(1, L, nt)  # consistent with estimates of alpha

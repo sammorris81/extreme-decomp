@@ -41,11 +41,6 @@ for (i in 1:(length(files))) {  # last file is timing.txt
   time.idx  <- which(times == split[2])
   basis.idx <- which(bases == split[3])
 
-  # idx: 1 - 5: ebf spatial, ebf marginal
-  # idx: 6 - 10: ebf spatial, gsk marginal
-  # idx: 11 - 15: gsk spatial, ebf marginal
-  # idx: 16 - 20: gsk spatial, gsk marginal
-  # idx: 21: gsk spatial, gsk marginal - knots at all counties
 
   if (as.numeric(split[3]) == 159) {
     idx <- length(rownames)
@@ -124,7 +119,7 @@ plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1], type = "l",
      main = "Future: Brier score for q(0.95)",
@@ -133,7 +128,7 @@ plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2], type = "l",
      main = "Current: Brier score for q(0.99)",
@@ -142,7 +137,7 @@ plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 2], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2], type = "l",
      main = "Future: Brier score for q(0.99)",
@@ -151,7 +146,7 @@ plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 dev.print(device = pdf, file = "./plots/precip-bs.pdf")
 dev.off()
 
@@ -165,7 +160,7 @@ plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 1], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 1], type = "l",
      main = "Future: Quantile score for q(0.95)",
@@ -174,7 +169,7 @@ plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 1], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 5], type = "l",
      main = "Current: Quantile score for q(0.99)",
@@ -183,7 +178,7 @@ plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 5], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 5], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 
 plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5], type = "l",
      main = "Future: Quantile score for q(0.99)",
@@ -192,7 +187,7 @@ plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5], type = "l",
      xaxt = "n")
 lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 5], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
 dev.print(device = pdf, file = "./plots/precip-qs.pdf")
 dev.off()
 

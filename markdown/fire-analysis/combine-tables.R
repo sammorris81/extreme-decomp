@@ -104,8 +104,8 @@ round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)
 
 # Brier scores
-quartz(width = 8, height = 8)
-par(mfrow = c(2, 2))
+quartz(width = 8, height = 4)
+par(mfrow = c(1, 2))
 these.ebf <- 1:8
 these.gsk <- 9:16
 plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
@@ -117,21 +117,21 @@ lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
-     main = "Quantile score for q(0.95)",
-     ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
 plot(seq_along(these.ebf), bs.results.mn[these.ebf, 2], type = "l",
      main = "Brier score for q(0.99)",
      ylab = "Brier score", xlab = "Knots",
      ylim = range(bs.results.mn[c(these.ebf, these.gsk), 2]),
      xaxt = "n")
 lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2], lty = 2)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5))
+legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
+
+plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
+     main = "Quantile score for q(0.95)",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
+     xaxt = "n")
+lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5))
 legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 

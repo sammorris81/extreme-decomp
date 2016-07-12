@@ -293,3 +293,6 @@ for (i in 1:L) {
                               midpoint = median(B.est[, i]))
 }
 multiplot(plotlist = plots, cols = 4)
+
+
+

@@ -278,6 +278,15 @@ dev.off()
 #### Generate basis function maps ####
 load(file = "precip_preprocess.RData")
 load(file = "ebf-25-all.RData")
+ns <- nrow(Y)
+nt <- ncol(Y)
+basis.weight <- colSums(B.ebf) / ns
+plot(cumsum(basis.weight), xlab = "Knot", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 knots)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "plots/precipv-25.pdf")
+
 p1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 1],
                   mainTitle = "Basis function 1 (of 25)")
 p2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 2],
@@ -307,3 +316,54 @@ dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-5.pdf")
 p6
 dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-6.pdf")
 
+# Eigenvectors
+rm(list = ls())
+source(file = "./package_load.R", chdir = T)
+load(file = "precip_preprocess.RData")
+load(file = "ebf-25-all.RData")
+
+# for correlation want ns x ns, so need cor(t(Y))
+Y.mean <- apply(Y, 1, mean)
+Y.center <- Y - Y.mean
+tY.center <- t(Y.center)
+
+Y.eigvec <- eigen(cor(tY.center))$vectors
+Y.eigval <- eigen(cor(tY.center))$values
+
+# standardize eigenvalues
+Y.eigval <- cumsum(Y.eigval) / sum(Y.eigval)
+
+plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 eigenvalues)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "preciplambda-25.pdf")
+
+e1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 1],
+                  mainTitle = "Eigenvector 1")
+e2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 2],
+                  mainTitle = "Eigenvector 2")
+e3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 3],
+                  mainTitle = "Eigenvector 3")
+e4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 4],
+                  mainTitle = "Eigenvector 4")
+e5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 5],
+                  mainTitle = "Eigenvector 5")
+e6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 6],
+                  mainTitle = "Eigenvector 6")
+
+multiplot(e1, e2, e3, e4, e5, e6, cols = 3)
+dev.print(device = pdf, width = 12, height = 8, file = "plots/precip-eig-panel.pdf")
+
+e1
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-1.pdf")
+e2
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-2.pdf")
+e3
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-3.pdf")
+e4
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-4.pdf")
+e5
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-5.pdf")
+e6
+dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-6.pdf")

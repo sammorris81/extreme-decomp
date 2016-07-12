@@ -126,6 +126,7 @@ source(file = "package_load.R")
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "ebf-25-all.RData")
+L <- 25
 
 ns <- ncol(Y)
 nt <- nrow(Y)
@@ -144,6 +145,15 @@ s[, 2] <- (s[, 2] - min(s[, 2])) / s.scale
 neighbors <- 5
 d.scale <- rdist(s)
 diag(d.scale) <- 0
+
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Fire analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/firev-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
 
 p1 <- map.ga.ggplot(Y = B.ebf[, 1], counties = counties,
                     main = "Basis function 1 (of 25)",
@@ -171,17 +181,126 @@ p6 <- map.ga.ggplot(Y = B.ebf[, 6], counties = counties,
                     limits = c(0, max(B.ebf[, 6])))
 
 multiplot(p1, p2, p3, p4, p5, p6, cols = 3)
-dev.print(device = pdf, width = 12, height = 8, file = "plots/ga-ebf-panel.pdf")
+dev.print(device = pdf, width = 12, height = 8, file = "plots/fire-ebf-panel.pdf")
 
 p1
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-1.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-1.pdf")
 p2
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-2.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-2.pdf")
 p3
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-3.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-3.pdf")
 p4
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-4.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-4.pdf")
 p5
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-5.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-5.pdf")
 p6
-dev.print(device = pdf, width = 6, height = 6, file = "plots/ga-ebf-6.pdf")
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-6.pdf")
+
+# Eigenvectors
+# Y is nt x ns so transposing
+Y <- t(Y)
+Y.mean <- apply(Y, 1, mean)
+Y.center <- Y - Y.mean
+Y <- t(Y)  # transpose back
+
+# for correlation want ns x ns, so need cor(t(Y))
+tY.center <- t(Y.center)
+Y.eigvec <- eigen(cor(tY.center))$vectors
+Y.eigval <- eigen(cor(tY.center))$values
+
+# standardize eigenvalues
+Y.eigval <- cumsum(Y.eigval) / sum(Y.eigval)
+
+plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 eigenvalues)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "plots/firelambda-25.pdf")
+
+e1 <- map.ga.ggplot(Y = Y.eigvec[, 1], counties = counties,
+                    main = "Eigenvector 1", midpoint = 0)
+e2 <- map.ga.ggplot(Y = Y.eigvec[, 2], counties = counties,
+                    main = "Eigenvector 2", midpoint = 0)
+e3 <- map.ga.ggplot(Y = Y.eigvec[, 3], counties = counties,
+                    main = "Eigenvector 3", midpoint = 0)
+e4 <- map.ga.ggplot(Y = Y.eigvec[, 4], counties = counties,
+                    main = "Eigenvector 4", midpoint = 0)
+e5 <- map.ga.ggplot(Y = Y.eigvec[, 5], counties = counties,
+                    main = "Eigenvector 5", midpoint = 0)
+e6 <- map.ga.ggplot(Y = Y.eigvec[, 6], counties = counties,
+                    main = "Eigenvector 6", midpoint = 0)
+
+multiplot(e1, e2, e3, e4, e5, e6, cols = 3)
+dev.print(device = pdf, width = 12, height = 8, file = "plots/fire-eig-panel.pdf")
+
+e1
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-1.pdf")
+e2
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-2.pdf")
+e3
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-3.pdf")
+e4
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-4.pdf")
+e5
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-5.pdf")
+e6
+dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-6.pdf")
+
+
+# Eigenvectors of log(Y)
+# Y is nt x ns so transposing
+Y <- t(Y)
+shift.Y <- Y + 0.01  # to avoid -Inf = log(0)
+lY.mean <- apply(log(shift.Y), 1, mean)
+lY.center <- log(shift.Y) - lY.mean
+Y <- t(Y)  # transpose it back
+
+# for correlation want ns x ns, so need cor(t(Y))
+tlY.center <- t(lY.center)
+lY.eigvec <- eigen(cor(tlY.center))$vectors
+lY.eigval <- eigen(cor(tlY.center))$values
+
+# standardize eigenvalues
+lY.eigval <- cumsum(lY.eigval) / sum(lY.eigval)
+
+plot(lY.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 eigenvalues)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "plots/firelambda-log-25.pdf")
+
+e1 <- map.ga.ggplot(Y = Y.eigvec[, 1], counties = counties,
+                    main = "Eigenvector 1", midpoint = 0)
+e2 <- map.ga.ggplot(Y = Y.eigvec[, 2], counties = counties,
+                    main = "Eigenvector 2", midpoint = 0)
+e3 <- map.ga.ggplot(Y = Y.eigvec[, 3], counties = counties,
+                    main = "Eigenvector 3", midpoint = 0)
+e4 <- map.ga.ggplot(Y = Y.eigvec[, 4], counties = counties,
+                    main = "Eigenvector 4", midpoint = 0)
+e5 <- map.ga.ggplot(Y = Y.eigvec[, 5], counties = counties,
+                    main = "Eigenvector 5", midpoint = 0)
+e6 <- map.ga.ggplot(Y = Y.eigvec[, 6], counties = counties,
+                    main = "Eigenvector 6", midpoint = 0)
+
+multiplot(e1, e2, e3, e4, e5, e6, cols = 3)
+dev.print(device = pdf, width = 12, height = 8,
+          file = "plots/fire-eig-log-panel.pdf")
+
+e1
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-1.pdf")
+e2
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-2.pdf")
+e3
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-3.pdf")
+e4
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-4.pdf")
+e5
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-5.pdf")
+e6
+dev.print(device = pdf, width = 6, height = 6,
+          file = "plots/fire-eig-log-6.pdf")

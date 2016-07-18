@@ -8,6 +8,7 @@ library(ggplot2)
 # library(gridExtra)  # not available on hpc
 # library(rapport)    # not available on hpc
 library(Rcpp)
+library(SpatialExtremes)
 source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
 source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
@@ -74,6 +75,25 @@ d <- rdist(s)
 diag(d) <- 0
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
+
+# compare with Schlather and Tawn estimate in fitextcoeff
+fitextcoeff(data = t(Y), coord = s, estim = "ST", marge = "emp",
+            prob = 0.90)
+
+for (fold in 1:nfolds) {
+  Y.tst <- Y
+  Y.tst[cv.idx[[fold]]] <- NA
+
+  # build ec matrix: ns x ns
+  ec <- fitextcoeff(data = t(Y.tst[1:10, ]), coord = s[1:10, ], estim = "ST",
+                    marge = "emp", prob = 0.90)
+
+  ec.hat[[fold]] <- ec$ec
+  qlim.min.range[fold, ] <- range(ec$qlims[, 1])
+  qlim.max.range[fold, ] <- range(ec$qlims[, 2])
+
+  cat("finished fold:", fold, "\n")
+}
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####

@@ -104,49 +104,56 @@ round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)
 
 # Brier scores
-quartz(width = 8, height = 8)
-par(mfrow = c(2, 2))
 these.ebf <- 1:8
 these.gsk <- 9:16
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
-     main = "Brier score for q(0.95)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
-     main = "Quantile score for q(0.95)",
-     ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 2], type = "l",
-     main = "Brier score for q(0.99)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 2]),
-     xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 5], type = "l",
-     main = "Quantile score for q(0.99)",
-     ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 5]),
-     xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-dev.print(device = pdf, file = "plots/fire-bsqs.pdf")
+quartz(width = 8, height = 8)
+ylim <- range(bs.results.mn[c(these.ebf, these.gsk), ] * 100)
+ylim[2] <- ylim[2] + 1.1  # give space for legend
+plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1] * 100, type = "b",
+     # main = "Brier score (x 100)",
+     ylab = "Brier score (x 100)", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1] * 100, lty = 1,
+      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf), bs.results.mn[these.ebf, 2] * 100, lty = 3,
+      type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2] * 100, lty = 3,
+      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 22, 21, 22), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+dev.print(device = pdf, width = 8, height = 8, file = "plots/fire-bs.pdf")
 dev.off()
 
+quartz(width = 8, height = 8)
+ylim <- range(qs.results.mn[c(these.ebf, these.gsk), c(1, 5)])
+ylim[2] <- ylim[2] + 15  # give space for legend
+plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "b",
+     # main = "Brier score (x 100)",
+     ylab = "Quantile Score", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 1,
+      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf), qs.results.mn[these.ebf, 5], lty = 3,
+      type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 3,
+      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 22, 21, 22), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+dev.print(device = pdf, width = 8, height = 8, file = "plots/fire-qs.pdf")
+dev.off()
 
 round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)

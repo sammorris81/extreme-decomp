@@ -293,6 +293,7 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     ####################################################
     #### means ####
     for (p in 1:2) {
+      # mu ~ N(0, beta.pri.sd)
       this.update <- updateGPMean(beta.sd = beta.pri.sd[p], Qb = Qb,
                                   beta.int = beta.int[, p],
                                   tau.int = tau.int[p],

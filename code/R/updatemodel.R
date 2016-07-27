@@ -58,7 +58,7 @@ updateBeta1.int <- function(beta.int, beta.mn, SS, tau,
                        thresh = thresh[i, ],
                        alpha = alpha)
 
-      cond.sd <- sqrt(Qb[i, i])
+      cond.sd <- 1 / sqrt(tau * Qb[i, i])
       cond.mn <- beta.mn - Qb[i, -i] %*% (beta.int[-i] - beta.mn) / Qb[i, i]
 
       R <- sum(canll - curll[i, ]) +
@@ -108,7 +108,7 @@ updateBeta1.time <- function(beta.time, beta.mn, SS, tau,
                        thresh = thresh[i, ],
                        alpha = alpha)
 
-      cond.sd <- sqrt(Qb[i, i])
+      cond.sd <- 1 / sqrt(tau * Qb[i, i])
       cond.mn <- beta.mn - Qb[i, -i] %*% (beta.time[-i] - beta.mn) / Qb[i, i]
 
       R <- sum(canll - curll[i, ]) +
@@ -232,7 +232,7 @@ updateBeta2.int <- function(beta.int, beta.mn, SS, tau,
                        thresh = thresh[i, ],
                        alpha = alpha)
 
-      cond.sd <- sqrt(Qb[i, i])
+      cond.sd <- 1 / sqrt(tau * Qb[i, i])
       cond.mn <- beta.mn - Qb[i, -i] %*% (beta.int[-i] - beta.mn) / Qb[i, i]
 
       R <- sum(canll - curll[i, ]) +
@@ -276,7 +276,7 @@ updateBeta2.time <- function(beta.time, beta.mn, SS, tau,
                        thresh = thresh[i, ],
                        alpha = alpha)
 
-      cond.sd <- sqrt(Qb[i, i])
+      cond.sd <- 1 / sqrt(tau * Qb[i, i])
       cond.mn <- beta.mn - Qb[i, -i] %*% (beta.time[-i] - beta.mn) / Qb[i, i]
 
       R <- sum(canll - curll[i, ]) +

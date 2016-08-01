@@ -300,21 +300,24 @@ p5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 5],
 p6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 6],
                   mainTitle = "Basis function 6 (of 25)")
 
-multiplot(p1, p2, p3, p4, p5, p6, cols = 3)
-dev.print(device = pdf, width = 12, height = 8, file = "plots/precip-ebf-panel.pdf")
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(p1, p2, p3, p4, p5, p6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-ebf-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
 
-p1
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-1.pdf")
-p2
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-2.pdf")
-p3
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-3.pdf")
-p4
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-4.pdf")
-p5
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-5.pdf")
-p6
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-ebf-6.pdf")
+ggsave(filename = "plots/precip-ebf-1.pdf", p1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-2.pdf", p2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-3.pdf", p3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-4.pdf", p4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-5.pdf", p5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-6.pdf", p6, device = pdf,
+       width = 4.5, height = 4.5)
+
 
 # Eigenvectors
 rm(list = ls())
@@ -340,30 +343,32 @@ plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
 dev.print(device = pdf, file = "preciplambda-25.pdf")
 
 e1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 1],
-                  mainTitle = "Eigenvector 1")
+                  mainTitle = "Principal Component 1")
 e2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 2],
-                  mainTitle = "Eigenvector 2")
+                  mainTitle = "Principal Component 2")
 e3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 3],
-                  mainTitle = "Eigenvector 3")
+                  mainTitle = "Principal Component 3")
 e4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 4],
-                  mainTitle = "Eigenvector 4")
+                  mainTitle = "Principal Component 4")
 e5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 5],
-                  mainTitle = "Eigenvector 5")
+                  mainTitle = "Principal Component 5")
 e6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 6],
-                  mainTitle = "Eigenvector 6")
+                  mainTitle = "Principal Component 6")
 
-multiplot(e1, e2, e3, e4, e5, e6, cols = 3)
-dev.print(device = pdf, width = 12, height = 8, file = "plots/precip-eig-panel.pdf")
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(e1, e2, e3, e4, e5, e6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-eig-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
 
-e1
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-1.pdf")
-e2
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-2.pdf")
-e3
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-3.pdf")
-e4
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-4.pdf")
-e5
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-5.pdf")
-e6
-dev.print(device = pdf, width = 6, height = 6, file = "plots/precip-eig-6.pdf")
+ggsave(filename = "plots/precip-eig-1.pdf", e1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-2.pdf", e2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-3.pdf", e3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-4.pdf", e4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-5.pdf", e5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-6.pdf", e6, device = pdf,
+       width = 4.5, height = 4.5)

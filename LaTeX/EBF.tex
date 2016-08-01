@@ -1,0 +1,697 @@
+\documentclass[11pt]{article}
+\usepackage{amssymb, amsthm, amsmath}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[authoryear]{natbib}
+\usepackage{bm}
+\usepackage{verbatim}
+\usepackage{lineno}
+\usepackage{times}
+\usepackage{soul}
+\usepackage{color}
+\usepackage{enumerate}
+\usepackage{setspace}
+\usepackage{times}
+\usepackage{changepage}
+\usepackage{multirow}
+\usepackage{booktabs}
+
+\usepackage[left=1in,top=1in,right=1in]{geometry}
+\pdfpageheight 11in
+\pdfpagewidth 8.5in
+\linespread{2.0}
+\input{mycommands.sty}
+
+
+\begin{document}\linenumbers
+\pagestyle{empty}
+\begin{center}
+{\Large {\bf Exploration and inference in spatial extremes using empirical basis functions}}\\
+
+{\large Samuel A Morris\footnote[1]{North Carolina State University}, Brian J Reich\footnotemark[1]{}, and Emeric Thibaud\footnote[2]{Colorado State University}}
+
+%\footnote{This is the footnote} looks like this. Later text referring to same footnote\footnotemark[\value{footnote}]
+\today
+\end{center}
+
+
+\begin{abstract}
+	words...\\
+	{\bf Key words}: Bayesian data analysis; principal components analysis; max-stable process; spectral representation.
+
+\end{abstract}
+\newpage
+\pagestyle{plain}
+\setcounter{page}{1}
+
+\section{Introduction}\label{ebs:intro}
+The spatial Extreme Value Analysis (EVA) literature is expanding rapidly \citep{Davison2012} to meet the demands of researchers to improve estimates of rare-event probabilities by borrowing information across space and to estimate the probability of extreme events occurring simultaneously at multiple locations.
+Environmental datasets commonly include observations from hundreds or thousands of locations, and advanced tools are required to explore and analyze these data.
+For Gaussian data, Principle Components Analysis \citep[PCA]{Everitt2008}, also known as Empirically Orthogonal Functions \citep[EOF]{Toggweiler2001}, has proven to be a powerful tool to study correlation between spatial locations; understand the most important large-scale spatial features; and reduce the dimension of the problem to allow for simple computation even for massive datasets.
+Computation and exploration are arguably more difficult for EVA than Gaussian data, yet to our knowledge no tool analogous to spatial PCA has been developed for EVA.
+
+In EVA, extremes are separated from the bulk of the distribution by either analyzing only points above a threshold or block maximums \citep{Coles2001}, e.g., the annual maximum of the daily precipitation.
+A natural spatial model for block maximum at several spatial locations is the max-stable process, which, under certain conditions, arises as the limit of the location-wise maximum of infinitely-many spatial processes \citep{deHaan2006}.
+\Citet{deHaan1984} showed that any max-stable process can be represented in terms of a countable number of spatial processes (e.g., stationary log Gaussian processes), and a finite truncation of this representation has been used for conditional simulation \citep{Wang2011}.
+The proposed empirical basis function (EBF) approach also uses a finite truncation of the spectral representation, and develops a method-of-moments estimator for the underlying spatial processes.
+
+In addition to exploratory analysis, we show that the EBFs can be used for Bayesian inference on the marginal parameters at each location and to test for covariate effects.
+Fully-Bayesian analysis using max-stable processes is cumbersome for large data sets \citep{Wadsworth2014,Thibaud2013a}.
+One option is to use non-max-stable models that retain extremal dependence such as the skew-t process in Morris et al \hl{put on arxiv}.
+Alternatively, \citet{Reich2012} propose a low-rank method based on spatial kernel functions, and others have used pairwise \citep{Padoan2010,Huser2014} and trivariate \citep{Genton2011} likelihood methods for parameter estimation.
+
+In this paper we develop methodology to use the spectral representation of a max-stable process to identify a small set of EBFs that capture the most important spatial features of the data.
+Unlike PCA/EOFs, the EBFs are not orthogonal, nonetheless these spatial functions can be plotted for exploratory analysis to reveal important spatial trends.
+The EBFs can also be used in a second-stage statistical analysis.
+By basing the spatial dependence on EBFs, the resulting spatial analysis does not require dubious assumptions such as stationarity.
+In addition, a Bayesian analysis for either block-maximum or point above a threshold is computationally feasible for large datsets because the entire spatial process is represented by a small number of basis functions.
+
+The paper proceeds as follows. In \sref{ebs:model} we present the low-rank model. \hl{More here about the sections}
+
+\section{Model}\label{ebs:model}
+
+Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal setting in \sref{ebs:estimation}.
+To focus attention on the extreme values, we emphasize the statistical model for exceedances above a location-specific threshold $T(\bs)$.
+We begin by specifying a spatial model for the complete data $Y(\bs)$ and then use the censored likelihood defined by $T(\bs)$ for inference as described in \sref{ebs:MCMC}.
+Although the model presented implements a censored likelihood, the model also can fit uncensored data (such as block-maxima) by setting $T(\bs) = -\infty$.
+
+Spatial dependence is captured by modeling $Y(\bs)$ as a max-stable process \citep{deHaan2006}.
+Max-stable processes have generalized extreme value (GEV; see \aref{eba:GEV}) marginal distribution.
+The GEV has three parameters: location $\mu(\bs)$; scale $\sigma(\bs)$; and shape $\xi(\bs)$.
+Spatial dependence is present both in the GEV parameters but also the standardized residual process
+\begin{align} \label{ebeq:Y2Z}
+ Z(\bs) = \left\{1+\frac{\xi(\bs)}{\sigma(\bs)}\left[Y(\bs) - \mu(\bs)\right]\right\}^{1/\xi(\bs)},
+\end{align}
+which has unit $\Frechet$ (i.e., GEV with location, scale, and shape all equal one) marginal distribution for all $\bs$.
+
+Our objective is to identify a low-rank model for the spatial dependence of $Z(\bs)$.
+\citep[Chapter 9]{deHaan1984} show that any max-stable process can be written as
+\begin{align} \label{ebeq:spectral}
+  Z(\bs) = \mbox{sup}_l B(\bs,\bt_l)A_{l}
+\end{align}
+where the function $B$ satisfies $B(\bs,\bt)>0$ for all $(\bs,\bt)$ and $\int B(\bs,\bt)d\bt=1$ for all $\bs$, and $(\bt_l,A_l)$ for $l=1,...,\infty$ are a Poisson process with intensity measure $dA d\bt/A^2$.
+
+To arrive at a low-rank model, we assume there are a finite and known number of spatial basis functions $B_1(\bs), \ldots, B_L(\bs)$ that explain the important spatial variation in the process.
+As in de Haan's expansion, the basis functions are restricted so that $B_l(\bs) > 0$ and $\displaystyle \sum_{l = 1}^L B_l(\bs) = 1$ for all $\bs$.
+Because it is unrealistic to assume that realizations of $Z$ are exactly functions of $L$ basis functions, we include independent error variables $\epsilon(\bs)$ to capture variation not explained by the $B_l(\bs)$.
+We follow \citet{Reich2012} and decompose  $Z(\bs)$ as $Z(\bs)=\theta(\bs)\varepsilon(\bs)$ where $\theta(\bs)$ is a spatial process and $\varepsilon(\bs)\iid$ GEV$(1,\alpha,\alpha)$ is independent error.
+The spatial component is
+\begin{align} \label{ebeq:theta}
+  \theta(\bs) = \left(\sum_{l=1}^LB_{l}(\bs)^{1/\alpha}A_{l}\right)^{\alpha}.
+\end{align}
+If $B_{l}(\bs)>0$, $\sum_{l=1}^LB_{l}(\bs)=1$ for all $\bs$, and the $A_{l}$ have positive stable (PS; \aref{eba:gridapprox}) distribution $A_{l}\iid$ PS$(\alpha)$, then $Z(\bs)$ is max-stable and has unit $\Frechet$ marginal distributions.
+
+Extremal spatial dependence for max-stable processes can be summarized by the extremal coefficient \citep[EC]{Schlather2003} $\vartheta(\bs,\bt)\in[1,2]$, where
+\begin{align} \label{ebeq:ECdev}
+  \mbox{Prob}[Z(\bs)<c,Z(\bt)<c] = \mbox{Prob}[Z(\bs)<c]^{\vartheta(\bs,\bt)}.
+\end{align}
+For the PS random effects model the EC has the form
+\begin{align} \label{ebeq:EC}
+   \vartheta(\bs,\bt) = \sum_{l=1}^L \left[B_{l}(\bs)^{1/\alpha}+B_{l}(\bs)^{1/\alpha}\right]^\alpha.
+\end{align}
+In particular, $\vartheta(\bs,\bs) = 2^{\alpha}$ for all $\bs$.
+
+\section{Estimating the spatial dependence function}\label{ebs:estimation}
+To estimate the extremal coefficient function, we consider the process at $n_s$ spatial locations $\bs_1,...,\bs_{n_s}$ and $n_t$ times $t=1,...,n_t$.
+The basis functions are fixed over time, but the random effects and errors are independent over time.
+That is $Z_t(\bs) = \theta_t(\bs) \epsilon_t(\bs)$ where $\theta_t(\bs) = \left(\displaystyle \sum_{l=1}^L B_{l}(\bs)^{1/\alpha}A_{lt}\right)^{\alpha}$, $A_{lt} \iid$ PS$(\alpha)$, and $\epsilon_t(\bs) \iid$ GEV$(1, \alpha, \alpha)$.
+Denote $Y_t(\bs_i) = Y_{it}$, $B_l(\bs_i) = B_{il}$, $T(\bs_i)=T_i$, and $\vartheta(\bs_i,\bs_j) = \vartheta_{ij}$.
+
+In this section we develop an algorithm to estimate the spatial dependence parameter $\alpha$ and the $n_s\times L$ matrix $\bB = \{B_{il}\}$.
+% Given these parameters, we insert them into our model and proceed with Bayesian analysis as described in \sref{ebs:MCMC}.
+Our algorithm has the following steps:
+\begin{enumerate}[(1)]
+  \item Obtain an initial estimate of the extremal coefficient for each pair of locations, ${\hat \vartheta}_{ij}$.
+  \item Spatially smooth these initial estimates ${\hat \vartheta}_{ij}$ using kernel smoothing to obtain ${\tilde \vartheta}_{ij}$.
+  \item Estimate the spatial dependence parameters by minimizing the difference between model-based coefficients, $\vartheta_{ij}$, and smoothed coefficients, ${\tilde \vartheta}_{ij}$.
+\end{enumerate}
+
+% Use for thesis
+The first-stage estimates are obtained using an empirical estimate as follows.
+To estimate the spatial dependence we first remove variation in the marginal distribution.
+Let $U_{it} = \sum_{k=1}^{n_t} I[Y_{ik}<Y_{it}]/n_t$, so that the $U_{it}$ are approximately uniform at each location.
+Then for some extreme probability $q\in(0,1)$, solving \eref{ebeq:ECdev} suggests the estimate
+\begin{align}\label{ebeq:EChat0}
+   {\hat \vartheta}_{ij}(q) = \frac{\log[Q_{ij}(q)]}{\log(q)},
+\end{align}
+where $Q_{ij}(q) = \sum_{t=1}^{n_t}I[U_{it}<q,U_{jt}<q]/n_t$ is the sample proportion of the time points at which both sites are less than $q$.
+Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_1<...<q_{n_q}$
+\begin{align} \label{ebeq:EChat1}
+{\hat \vartheta}_{ij} = \frac{1}{n_q}\sum_{j=1}^{n_q}{\hat \vartheta}_{ij}(q_j).
+\end{align}
+
+% Use for paper
+% The first-stage estimates are obtained from the estimator of \citet{Schlather2003} using the \texttt{fitextcoeff} function in the \texttt{SpatialExtremes} \citep{Ribatet2015} package of \texttt{R} \citep{Rmanual}.
+Assuming the true EC is smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.
+Let
+\begin{align} \label{ebeq:EChat2}
+  {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
+  {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
+\end{align}
+where $w_{iu} = \exp[-(||\bs_i-\bs_u'||/\phi)^2])$ is the Gaussian kernel function with bandwidth $\phi$.
+The elements ${\hat \vartheta}_{ii}$ do not contribute any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.
+To eliminate the influence of these estimates we set $w_{ii}=0$.
+However, this approach does give imputed values ${\tilde \vartheta}_{ii}$, which provide information about small-scale spatial variability.
+
+The dependence parameters $B_{lt}$ and $\alpha$ are estimated by comparing estimates ${\tilde \vartheta}_{ij}$ with the model-based values $\vartheta_{ij}$.
+For all $i$, $\vartheta_{ii} = 2^{\alpha}$, and therefore we set $\alpha$ to $\alphahat = \log_2(\sum_{i=1}^{n_s}{\tilde \vartheta}_{ii}/n_s)$.
+Given $\alpha=\alphahat$, it remains to estimate $\bB$.
+Similarly to \citet{Smith1990} for a stationary max-stable process, we use squared-error loss, so the estimate $\hat{\bB}$ is the minimizer of
+\begin{align} \label{ebeq:Bhat}
+\sum_{i<j} \left({\tilde \vartheta}_{ij} - \vartheta_{ij}\right)^2
+  =
+  \sum_{i<j} \left({\tilde \vartheta}_{ji} - \sum_{l=1}^L[B_{il}^{1/\alphahat} + B_{jl}^{1/\alphahat}]^{\alphahat}\right)^2
+\end{align}
+under the restrictions that $B_{il}\ge 0$ for all $i$ and $l$ and $\sum_{l=1}^LB_{il}=1$ for all $i$.
+Since the minimizer of \eref{ebeq:Bhat} does not have a closed form, we use block coordinate descent to obtain ${\hat \bB}$.
+We cycle through spatial locations and update the vectors $(B_{i1},...,B_{iL})$ conditioned on the values for the other location and repeat until convergence.
+At each step, we use the restricted optimization routine in the \texttt{R} function \texttt{optim}.
+This algorithm gives estimates of the $B_{il}$ at the $n_s$ data locations, but is easily extended to all $\bs$ for spatial prediction.
+The kernel smoothing step ensures that the estimates for $\hat{B}_{il}$ are spatially smooth, and thus interpolation of the $\hat{B}_{il}$ gives spatial functions $\hat{B}_l(\bs)$.
+
+These functions provide useful exploratory data analysis techniques.
+Maps of $\hat{B}_l(\bs)$ show important spatial features in the extremal dependence.
+Furthermore, they allow for a non-stationary spatial dependence structure.
+The relative contribution of each term can be measured by
+\begin{align} \label{ebeq:v}
+v_l = \frac{1}{n_s}\sum_{i=1}^{n_s}{\hat B}_{il}.
+\end{align}
+Since $\sum_{l=1}^L{\hat B}_{il}=1$ for all $i$, we have $\sum_{l=1}^Lv_l = 1$.
+Therefore, terms with large $v_l$ are the most important.
+The order of the terms is arbitrary, and so we reorder the terms so that $v_1\ge \ldots \ge v_L$.
+
+\section{Bayesian implementation details}\label{ebs:MCMC}
+For our data analysis in \sref{ebs:analysis} we allow the GEV location and scale parameters, denoted $\mu_t(\bs)$ and scale $\sigma_t(\bs)$ respectively, to vary with space and time.
+The model we choose is as follows
+\begin{align}\label{ebeq:GPprior}
+  \mu_t(\bs) &= \beta_{1, \text{int}}(\bs) + \beta_{1, \text{time}}(\bs) t\\
+  \log[\sigma_t(\bs)] &= \beta_{2, \text{int}}(\bs) + \beta_{2, \text{time}}(\bs) t
+\end{align}
+where
+\begin{align} \label{ebeq:GPhyper}
+  \beta_{1, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{int}}, \sigma^2_{1, \text{int}} \bSigma) \quad &\beta_{1, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{time}}, \sigma^2_{1, \text{time}} \bSigma) \\
+  \beta_{2, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{int}}, \sigma^2_{2, \text{int}} \bSigma) \quad &\beta_{2, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{time}}, \sigma^2_{2, \text{time}} \bSigma) \nonumber
+\end{align}
+are Gaussian process priors and $\bSigma$ is an exponential spatial correlation matrix obtained from \mbox{$\rho(h) = \exp\left\{- \frac{h}{\phi}\right\}$} where $h = ||\bs_1 - \bs_2||$ is the Euclidean distance between sites $\bs_1$ and $\bs_2$.
+The GEV shape parameter $\xi$ is held constant over space and time because this parameter is challenging to estimate.
+Collectively, let the marginal GEV parameters at location $i$ and time $t$ be $\Theta_{it} = \{\mu_{it},\sigma_{it},\xi\}$ where $\mu_{it} = \mu_t(\bs_i)$ and $\sigma_{it} = \sigma_t(\bs_i)$.
+
+As shown in \citet{Reich2012}, the uncensored responses $Y_{t}(\bs)$ are conditionally independent given the spatial random effects, with conditional distribution
+\begin{align} \label{ebeq:Ycond}
+   Y_{it}|\theta_{it},\Theta_{it}\indep GEV(\mu^*_{it}, \sigma_{it}^*,\xi^*),
+\end{align}
+where $\mu_{it}^* = \mu_{it} + \frac{\sigma_{it}}{\xi}(\theta_{it}^\xi - 1)$,
+$\sigma_{it}^* = \alpha\sigma_{it}\theta_{it}^\xi$, and $\xi^* = \alpha\xi$.
+Therefore, the conditional likelihood conveniently factors across observations; marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence.
+To focus on the extreme values above the local threshold $T_i$, we use the censored likelihood
+\begin{align} \label{ebeq:g}
+d(y;\theta_{it},\Theta_{it}, T_i)  =
+\left\{\begin{array}{ll}
+    F(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y \le T_i \\
+  f(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y>T_i,
+\end{array}\right.
+\end{align}
+where $F$ and $f$ are the GEV distribution and density functions, respectively, defined in \aref{eba:evd}.
+
+In summary, given the estimates of $\alpha$ and $\bB$, the hierarchical model is
+\begin{align} \label{ebeq:bayesmodel}
+  Y_{it} |\theta_{ij} &\indep d(y;\theta_{it},\Theta_{it}, T_i) \\
+  \theta_{it} &= \left(\sum_{l=1}^L{\hat B}_{il}^{1/\alphahat}A_{lt}\right)^{\alphahat}
+  \text{\ \ \ where \ \ \ }
+  A_{lt} \iid PS(\alphahat)\nonumber\\
+  \mu_{it} &= \beta_{1, \text{int}}(\bs_i) + \beta_{1, \text{time}}(\bs_i) t \nonumber \\
+  \log(\sigma_{it}) &= \beta_{2, \text{int}}(\bs) + \beta_{2, \text{time}}(\bs) t. \nonumber
+\end{align}
+We estimate parameters $\Theta = \left\{A_{lt}, \bbeta_1, \bbeta_2, \xi \right\}$ using Markov chain Monte Carlo methods.
+We use a Metropolis-Hastings algorithm to update the model parameters with random walk candidate distributions for all parameters.
+The PS density is challenging to evaluate as it does not have a closed form.
+One technique to avoid this complication is to incorporate auxiliary random variables \citep{Stephenson2009}, but we opt for a numerical approximation to the integral as described in \aref{eba:gridapprox}.
+The hyperparameters $\mu_{1, \text{int}}, \mu_{1, \text{time}}, \mu_{2, \text{int}}, \mu_{2, \text{time}}$ and $\sigma^2_{1, \text{int}}, \sigma^2_{1, \text{time}}, \sigma^2_{2, \text{int}}, \sigma^2_{2, \text{time}}$ are updated using Gibbs sampling since their prior distributions are conjugate.
+
+The first-stage estimate of the extremal coefficients has three tuning parameters: the quantile thresholds $q_1,...,q_{n_q}$, the kernel bandwidth $\phi$, and the number of terms $L$.
+In \sref{ebs:analysis} we explore a few possibilities for $L$ and discuss sensitivity to this choice.
+The second-stage Bayesian analysis requires selecting thresholds $T_i,...,T_{n_s}$.  For this we use spatially smoothed sample quantiles.
+That is, we set $T_i$ to the 0.95 quantile of the $Y_{it}$ and its five nearest neighbors.
+
+\section{Data analysis}\label{ebs:analysis}
+In this section, we illustrate our method with two data analyses.
+In \sref{ebs:georgia}, we present a points above a threshold analysis using annual acreage burned due to wildfires in Georgia from 1965 -- 2014.
+This is followed in \sref{ebs:precip} by an analysis of block maxima precipitation data in the eastern U.S.
+We compare our method with another method that uses standardized Gaussian kernels for the spatial basis functions.
+
+\subsection{Gaussian kernel basis functions}
+To provide a comparison of our model with another approach, we also fit a model that uses standardized Gaussian kernels for the spatial basis functions \citep{Reich2012}.
+In this method, \citeauthor{Reich2012} introduce a set of $\bk_1, \ldots, \bk_L$ spatial knots and use standardized Gaussian kernel functions (GSK) instead of using EBFs for the $\hat{B_l}(\bs)$.
+For the comparison between EBF and GSK methods, we use the same number of basis functions.
+We obtain estimates the spatial bandwidth $\hat{\rho}$ and spatial dependence $\hat{\alpha}$, using the same block coordinate descent as with the EBF method, and treat these as fixed in the MCMC.
+For more information about the basis functions, see \aref{eba:gskfunctions}.
+
+\subsection{Analysis of extreme Georgia fires}\label{ebs:georgia}
+The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.state.ga.us/FireData/}).
+\fref{ebfig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
+Based on this plot and other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
+
+\begin{figure}[htbp]  % markdown/eda/eda-plotting.R
+  \centering
+  \includegraphics[width=0.55\linewidth]{plots/fire-spag-rand-25}
+  \includegraphics[width=0.44\linewidth, trim = 0 8em 0 10em]{plots/fire-spatial-q95.pdf}
+  \caption{Time series of log acres burned for 25 randomly selected counties with colors coding the county's quadrant (left), and spatially smoothed threshold values, $T_i$ for each county (right).}
+  \label{ebfig:firets25}
+\end{figure}
+
+We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_1 = 0.90$ and using $n_q = 100$.
+With more data, it would possible to increase $q_1$, but we set $q_1 = 0.90$ to increase the stability when estimating $\hat{\vartheta}_{ij}$.
+Because these data are not block-maxima, we select a site-specific threshold $T_i$ to use in the analysis with the following algorithm.
+Without some adjustment to the data, it is challenging to borrow information across sites to inform the threshold selection.
+We first standardize the data, separated by county, by subtracting the site's median and dividing by the site's interquartile range.
+Denote the standardized data by $\widetilde{\bY}_i$.
+% \begin{align}
+%   \widetilde{\bY}_i = \frac{\bY_i - \text{med}(\bY_i)}{\text{IQR}(\bY_i)}
+% \end{align}
+% where med$(\cdot)$ is the median, and IQR$(\cdot)$ is the inter-quartile range.
+Then we combine all sites together and plot a mean residual plot for $\widetilde{Y}_{it}, i = 1, \ldots, n_s$ and $t = 1, \ldots, n_t$.
+The mean residual plot is given in \fref{ebfig:mrlthresh}.
+Based upon the mean residual plot, we select the 95th percentile for the threshold.
+To calculate $T_i$ for each county, we use the 95th percentile for the combined data for county $i$ and its five closest counties (see \fref{ebfig:firets25}).
+
+\begin{figure}[htbp]  % markdown/eda/eda-plotting.R
+  \centering
+  \includegraphics[width = \linewidth]{plots/fire-mrl-plots.pdf}
+  \caption{Mean residual plot for the data pooled across counties after standardizing using the county's median and interquartile range. The two panels show different ranges on the x-axis and include a vertical line at the sample 95th percentile.}
+  \label{ebfig:mrlthresh}
+\end{figure}
+
+%\begin{figure}[htbp]
+%  \centering
+%  \includegraphics[width = 0.47\linewidth, trim = 0 10em 0 10em]{plots/fire-spatial-q95.pdf}
+%  \caption{Spatially smoothed threshold values for each county.}
+%  \label{fig:mrlthresh}
+%\end{figure}
+
+The empirical basis functions for the analysis can be used to help explore spatial dependence in the extremes.
+See \fref{ebfig:fireebfs} for the first six (of 25) EBFs for the Georgia fire data.
+\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-ebf-panel.pdf}
+  \caption{First six EBFs for the Georgia fire data.}
+  \label{ebfig:fire-ebfpanel}
+\end{figure}
+We also plot the cumulative sum of the contributions for each basis function in \ref{ebfig:fire-v25}.
+\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+  \centering
+  \includegraphics[width=0.5\linewidth]{plots/firev-25.pdf}
+  \caption{Cumulative sum of contributions $v_1, \ldots, v_25$.}
+  \label{ebfig:fire-v25}
+\end{figure}
+As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \fref{ebfig:fire-eigpanel}.
+
+
+\subsection{Results for fire analysis}\label{ebs:results-fire}
+We use 10-fold cross-validation to assess the predictive performance of a model.
+For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
+The remaining 10\% of sites and years are withheld for testing model predictions.
+To assess the predictions for the test set, we use quantile scores and Brier scores \citep{Gneiting2007}.
+The quantile score is given by \hl{give formula}.
+The Brier score is given by \hl{give formula}.
+For both of these methods, a lower score indicates a better fit.
+The Brier and quantile scores for the fire analysis are given in \tref{ebtbl:firescores}.
+
+% Posterior summaries for each county's $\beta_\text{time}$ coefficient are given in \fref{ebfig:ebfpost} and \fref{ebfig:gskpost}.
+% These plots both seem to catch similar features with some differences particularly in the posterior distribution of the county-specific $\beta_{\mu, \text{time}}$.
+
+\begin{table}[htbp]
+\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for fire analysis.}
+\label{ebtbl:firescores}
+\centering
+  \begin{tabular}{llcrrcrrcc}
+  \toprule
+  & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
+  \cmidrule{4-5} \cmidrule{7-8}
+  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
+  \midrule
+  L = 5  & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 10 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 15 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 20 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 25 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 30 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 35 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 40 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \bottomrule
+	\end{tabular}
+\end{table}
+
+\hl{Figure here with BS and QS for the fire data}
+
+Based on the cross-validation results, we run a full analysis using all of the data with $L = 25$.
+\fref{ebfig:fire-ebfpostbeta1} and \fref{ebfig:fire-gskpostbeta1} give the county by county posterior means of $\beta_{1, \text{time}}$ and $\beta_{2, \text{time}}$ for EBF and GSK respectively.
+\fref{ebfig:fire-ebfpostbeta1pos} and \fref{ebfig:fire-gskpostbeta1pos} give the county by county posterior P$(\beta_{1, \text{time}} > 0)$ and P$(\beta_{2, \text{time}} > 0)$ for EBF and GSK respectively.
+
+\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatime.pdf}
+  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using EBF.}
+  \label{ebfig:fire-ebfpostbeta1}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatime.pdf}
+  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using GSK.}
+  \label{ebfig:fire-gskpostbeta1}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatimepos.pdf}
+  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using EBF.}
+  \label{ebfig:fire-ebfpostbeta1pos}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatimepos.pdf}
+  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using GSK.}
+  \label{ebfig:fire-gskpostbeta1pos}
+\end{figure}
+
+\hl{Is this what you were thinking for the difference in $q(0.90)$? These do not use $\theta$.}
+We also plot the difference in $\hat{q}(0.90)$, the estimated 90th quantile, between 2014 and 1965.
+To obtain the estimate for each county, we first take the posterior mean of $\beta_{1, \text{int}}$, $\beta_{1, \text{time}}$, $\beta_{2, \text{int}}$, and $\beta_{2, \text{time}}$ for each county.
+Then we find $\mu(\bs, t)$ and $\sigma(\bs, t)$ for each county in 1965 and 2014.
+Then for the shape parameter we take the posterior mean of $\xi$.
+Finally, we use the inverse distribution function of the GEV to obtain $\hat{q}(0.90)_{1965}$ and $\hat{q}(0.90)_{2014}$ and plot \mbox{$\hat{q}(0.90)_\text{diff} = \hat{q}(0.90)_{2014} - \hat{q}(0.90)_{1965}$} in \fref{ebfig:fire-q90diff}.
+
+\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-q90diff-compare.pdf}
+  \caption{Difference in $q(0.90)$ for fire data between 2014 and 1965 for EBF (left) and GSK (right). Three counties (labeled) have differences higher than 2500. County 1: Ware (EBF: 9690, GSK: 8934), County 2: Clinch (EBF: 6693, GSK: 6520), and County 3: Charlton (EBF: 6084, GSK: 6794)}
+  \label{ebfig:fire-q90diff}
+\end{figure}
+
+% \begin{figure}  % markdown/fire-analysis/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/ebf-post-betatime.pdf}
+%   \caption{Posterior summaries of $\beta_{\text{time}}$ when using EBF for the spatial process with $L = 35$.}
+%   \label{ebfig:ebfpost}
+% \end{figure}
+
+% \begin{figure}  % markdown/fire-analysis/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/gsk-post-betatime.pdf}
+%   \caption{Posterior summaries of $\beta_{\text{time}}$ when using GSK for the spatial process with $L = 35$.}
+%   \label{ebfig:gskpost}
+% \end{figure}
+
+% \begin{figure}  % markdown/fire-analysis/combine-tables.R
+%   \centering
+%   \includegraphics[width=0.47\linewidth]{plots/fire-bs}
+%   \includegraphics[width=0.47\linewidth]{plots/fire-qs}
+%   \caption{Average Brier score for exceeding q(0.95) and q(0.99) (left). Average Quantile score for exceeding q(0.95) and q(0.99) (right).}
+%   \label{fig:avgqscore}
+% \end{figure}
+
+% \begin{figure}  % markdown/fire-analysis/combine-tables.R
+% 	\centering
+% 	\includegraphics[width=\linewidth]{plots/fire-qs}
+% 	\caption{Average quantile score for q(0.95) (left). Average quantile score for q(0.99) (right).}
+%   \label{fig:avgqscore}
+% \end{figure}
+
+% \begin{figure}  % markdown/fire-analysis/combine-tables.R
+% 	\centering
+% 	\includegraphics[width=0.47\linewidth]{plots/fire-timing}
+% 	\caption{Timing comparison of basis functions to kernel functions for the spatial process (100 iterations)}
+%   \label{fig:timingcompare}
+% \end{figure}
+
+\subsection{Analysis of annual precipitation}\label{ebs:precip}
+We also conduct an analysis of the precipitation data presented in \citep{Reich2012}.
+The data are climate model output from the North American Regional Climate Change Assessment Program (NARCCAP).
+This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern US, and includes historical data (1969 -- 2000) as well as future conditions (2039 -- 2070).
+
+\begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-ts}
+  \caption{Time series of yearly max precipitation for current (1969 -- 2000) (left). Time series of yearly max precipitation for future (2039 -- 2070) (right).}
+  \label{ebf:tsprecip}
+\end{figure}
+
+For this dataset, to estimate the EBFs, we use the combined current and future data.
+The first six EBFs for the combined data are given in \fref{ebfig:precip-ebfpanel}.
+\begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-ebf-panel.pdf}
+  \caption{First six EBFs for the combined precipitation data.}
+  \label{ebfig:precip-ebfpanel}
+\end{figure}
+We also plot the cumulative sum of the contributions for each basis function in \ref{ebfig:precip-v25}.
+\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+  \centering
+  \includegraphics[width=0.5\linewidth]{plots/precipv-25.pdf}
+  \caption{Cumulative sum of contributions $v_1, \ldots, v_25$.}
+  \label{ebfig:precip-v25}
+\end{figure}
+As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \fref{ebfig:fire-eigpanel}.
+
+\subsection{Results for precipitation analysis}\label{ebs:results-precip}
+
+\begin{table}[htbp]
+\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for current precipitation analysis.}
+\label{ebtbl:firescores}
+\centering
+  \begin{tabular}{llcrrcrrcc}
+  \toprule
+  & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
+  \cmidrule{4-5} \cmidrule{7-8}
+  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
+  \midrule
+  L = 5  & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 10 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 15 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 20 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 25 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 30 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 35 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 40 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for future precipitation analysis.}
+\label{ebtbl:firescores}
+\centering
+  \begin{tabular}{llcrrcrrcc}
+  \toprule
+  & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
+  \cmidrule{4-5} \cmidrule{7-8}
+  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
+  \midrule
+  L = 5  & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 10 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 15 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 20 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 25 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 30 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 35 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \midrule
+  L = 40 & EBF &&  &  &&  &  && \\
+         & GSK &&  &  &&  &  && \\
+  \bottomrule
+  \end{tabular}
+\end{table}
+
+\hl{Figure here with BS and QS for the precipitation data}
+
+Based on the cross-validation results, we run a full analysis using all of the data with $L = 25$.
+\fref{ebfig:fire-ebfpostbeta1} and \fref{ebfig:fire-gskpostbeta1} give the county by county posterior means of $\beta_{1, \text{time}}$ and $\beta_{2, \text{time}}$ for EBF and GSK respectively.
+\fref{ebfig:fire-ebfpostbeta1pos} and \fref{ebfig:fire-gskpostbeta1pos} give the county by county posterior P$(\beta_{1, \text{time}} > 0)$ and P$(\beta_{2, \text{time}} > 0)$ for EBF and GSK respectively.
+
+\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-ebf-post-betatime.pdf}
+  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for current (top) and future (bottom) precipitation data using EBF.}
+  \label{ebfig:fire-ebfpostbeta1}
+\end{figure}\tabularnewline
+
+\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatime.pdf}
+  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for current (top) and future (bottom) precipitation data using GSK.}
+  \label{ebfig:fire-gskpostbeta1}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-ebf-post-betatimepos.pdf}
+  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using EBF.}
+  \label{ebfig:fire-ebfpostbeta1pos}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatimepos.pdf}
+  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using GSK.}
+  \label{ebfig:fire-gskpostbeta1pos}
+\end{figure}
+
+We also plot the difference in $\hat{q}(0.90)$, the estimated 90th quantile, between 2000 and 1969 for current and 2070 and 2039 for future.
+The estimates are obtained in the same was as for the fire analysis and are given in \fref{ebfig:fire-q90diff}.
+
+\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-q90diff-compare.pdf}
+  \caption{Difference in $q(0.90)$ for precipitation data between 2000 and 1969 for current (top) and 2070 and 2039 for future (bottom) using EBF (left) and GSK (right).}
+  \label{ebfig:precip-q90diff}
+\end{figure}
+
+% \begin{figure}  % markdown/precipitation/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-bs.pdf}
+%   \caption{Brier scores for current and future precipitation analysis.}
+%   \label{ebfig:precip-bs}
+% \end{figure}
+
+% \begin{figure}  % markdown/precipitation/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-qs.pdf}
+%   \caption{Quantile scores for current and future precipitation analysis.}
+%   \label{ebfig:precip-qs}
+% \end{figure}
+
+% \begin{figure}  % markdown/precipitation/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-post-time.pdf}
+%   \caption{Posterior distributions for $\beta_{\text{time}}$ for $\mu$ (left) and $\log(\sigma)$ (right).}
+%   \label{ebfig:precip-qs}
+% \end{figure}
+
+\section{Conclusions}\label{ebs:con}
+
+\section*{Acknowledgements}
+The authors would like to acknowledge Dan Cooley for his helpful suggestions on the manuscript.
+
+\appendix
+\section{Appendices}
+\subsection{Extreme value distributions} \label{eba:GEV}
+The cumulative distribution function for the GEV is $F(y) = \exp\{-t(y)\}$ where
+\begin{align} \label{ebeq:gevt}
+  t(y) = \left\{ \begin{array}{ll}
+      \left[1 + \xi \displaystyle \frac{y - \mu}{\sigma}\right]^{-1 / \xi}, \quad &\xi \neq 0 \\ [0.5em]
+      \exp\left\{- \displaystyle \frac{y - \mu}{\sigma}\right\}, &\xi = 0.
+  \end{array}\right.
+\end{align}
+The probability density function for the GEV is given by $f(y) = \frac{1}{\sigma} t(x)^{\xi + 1} \exp\{-t(y)\}$ where $t(y)$ is defined in \eref{ebeq:gevt}.
+
+\subsection{Grid approximation to PS density} \label{eba:gridapprox}
+The PS($\alpha$) density can be challenging to use because it does not have a closed form.
+From Section 2 of \citep{Stephenson2009}, the density can be expressed as
+\begin{align}
+  g_1(A) = \int_0^1 g_1(A, B) dB,
+\end{align}
+where
+\begin{align}
+  g_1(A, B) = \frac{\alpha}{1 - \alpha} \left( \frac{1}{A} \right)^{1 / 1 - \alpha} c(\pi B) \exp \left\{ -\left(\frac{1}{A}\right)^{\alpha / (1 - \alpha)} c(\pi B) \right\},
+\end{align}
+with
+\begin{align}
+  c(\psi) = \left[\frac{\sin(\alpha \psi)}{\sin(\psi)}\right]^{1 / (1 - \alpha)} \frac{\sin[(1 - \alpha) \psi]}{\sin(\alpha \psi)}.
+\end{align}
+\Citet{Stephenson2009} presents an auxiliary variable technique to deal with the integral in the density function, but we opt to numerically evaluate the integral because it is only one-dimensional.
+To evaluate the integral, we use 50 evenly spaced quantiles of a Beta$(0.5, 0.5)$ distribution as the midpoints $B_1, \ldots, B_{50}$, and then use the midpoint rule to evaluate $\displaystyle \int_0^1 g_1(A, B) dB$.
+
+\subsection{Standardized Gaussian kernel functions} \label{eba:gskfunctions}
+\citet{Reich2012} use standardized Gaussian kernel functions as their spatial basis functions in the low-rank max-stable model.
+Consider a set of $\bk_1, \ldots, \bk_L$ spatial knot locations in $\calD^2$, the region of interest.
+Then
+\begin{align}
+  \hat{B}_{il} = \frac{\exp\left\{- \displaystyle\frac{||\bs_i - \bk_l||^2}{2 \rho^2} \right\}}{\displaystyle \sum_{j = 1}^L \exp\left\{- \frac{||\bs_i - \bk_j||^2}{2 \rho^2} \right\}}
+\end{align}
+where $|| \cdot ||$ is the Euclidean distance between a site and a knot location.
+
+\subsection{Principal components for fire and precipitation data}
+As a comparison to the EBFs, \fref{ebfig:fire-eigpanel} gives the first six principal components for the fire data, and \fref{ebfig:precip-eigpanel} gives the first six principal components for the precipitation data.
+\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/fire-eig-panel.pdf}
+  \caption{First six principal components for the Georgia fire data.}
+  \label{ebfig:fire-eigpanel}
+\end{figure}
+
+\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+  \centering
+  \includegraphics[width=0.5\linewidth]{plots/firelambda-25.pdf}
+  \caption{Cumulative sum of the first 25 eigenvalues.}
+  \label{ebfig:fire-eigpanel}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
+  \centering
+  \includegraphics[width=\linewidth]{plots/precip-eig-panel.pdf}
+  \caption{First six principal components for the precipitation data.}
+  \label{ebfig:precip-eigpanel}
+\end{figure}
+
+\begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
+  \centering
+  \includegraphics[width=0.5\linewidth]{plots/preciplambda-25.pdf}
+  \caption{Cumulative sum of the first 25 eigenvalues.}
+  \label{ebfig:precip-eigpanel}
+\end{figure}
+
+One reason why the principal components for the fire data look so different from the EBFs presented in \fref{ebfig:fire-ebfpanel} is that the EBFs use censored data whereas the principal components do not.
+
+\begin{singlespace}
+\bibliographystyle{rss}
+\bibliography{library}
+\end{singlespace}
+
+\end{document}
+
+
+
+

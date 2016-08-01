@@ -49,11 +49,14 @@ plot(rownames(rank.transform), log(sd.censored), type = "b",
 
 #### plot the data ####
 library(fields)
+load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
+Y <- t(Y)
 d <- rdist(cents)
 diag(d) <- 0
-n <- nrow(cents)
+ns <- nrow(cents)
 thresh <- rep(0, ns)
+nt <- ncol(Y)
 
 # standardize the locations
 s <- cents
@@ -124,6 +127,8 @@ axis(1, at = seq(1, nt), labels = rownames(Y))
 
 #### plot time series for 25 counties ####
 set.seed(1)
+ns <- ncol(Y)
+nt <- nrow(Y)
 counties <- sample(1:ns, 25, replace = FALSE)
 color <- rainbow_hcl(n = 4)  # colors for 4 different regions
 
@@ -138,7 +143,7 @@ colors[s.these[, 1] <  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[4]   # NE
 
 # counties <- c(counties, which(Y == max(Y), arr.ind = TRUE)[2])
 # counties <- c(counties, which(Y == min(Y), arr.ind = TRUE)[2])
-quartz(width = 16, height = 8)
+quartz(width = 12, height = 8)
 par(mar = c(4.1, 4.1, 0.6, 0.6))
 matplot(log(Y[, counties]), type = "l",
         col = colors, cex.lab = 1.5, cex.axis = 1.5, lty = 1, lwd = 1.5,

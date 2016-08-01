@@ -122,6 +122,8 @@ rm(list=ls())
 library(fields)
 library(splines)
 library(Rcpp)
+library(ggplot2)
+library(gridExtra)
 source(file = "package_load.R")
 load(file = "../../code/analysis/fire/georgia_preprocess/georgia_map.RData")
 load(file = "../../code/analysis/fire/georgia_preprocess/fire_data.RData")
@@ -180,21 +182,22 @@ p6 <- map.ga.ggplot(Y = B.ebf[, 6], counties = counties,
                     midpoint = diff(range(B.ebf[, 6])) / 2,
                     limits = c(0, max(B.ebf[, 6])))
 
-multiplot(p1, p2, p3, p4, p5, p6, cols = 3)
-dev.print(device = pdf, width = 12, height = 8, file = "plots/fire-ebf-panel.pdf")
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(p1, p2, p3, p4, p5, p6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "plots/fire-ebf-panel.pdf", panel, device = pdf, width = 13.5, height = 9)
 
-p1
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-1.pdf")
-p2
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-2.pdf")
-p3
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-3.pdf")
-p4
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-4.pdf")
-p5
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-5.pdf")
-p6
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-ebf-6.pdf")
+ggsave(filename = "plots/fire-ebf-1.pdf", p1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-ebf-2.pdf", p2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-ebf-3.pdf", p3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-ebf-4.pdf", p4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-ebf-5.pdf", p5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-ebf-6.pdf", p6, device = pdf,
+       width = 4.5, height = 4.5)
 
 # Eigenvectors
 # Y is nt x ns so transposing
@@ -218,33 +221,34 @@ plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
 dev.print(device = pdf, file = "plots/firelambda-25.pdf")
 
 e1 <- map.ga.ggplot(Y = Y.eigvec[, 1], counties = counties,
-                    main = "Eigenvector 1", midpoint = 0)
+                    main = "Principal Component 1", midpoint = 0)
 e2 <- map.ga.ggplot(Y = Y.eigvec[, 2], counties = counties,
-                    main = "Eigenvector 2", midpoint = 0)
+                    main = "Principal Component 2", midpoint = 0)
 e3 <- map.ga.ggplot(Y = Y.eigvec[, 3], counties = counties,
-                    main = "Eigenvector 3", midpoint = 0)
+                    main = "Principal Component 3", midpoint = 0)
 e4 <- map.ga.ggplot(Y = Y.eigvec[, 4], counties = counties,
-                    main = "Eigenvector 4", midpoint = 0)
+                    main = "Principal Component 4", midpoint = 0)
 e5 <- map.ga.ggplot(Y = Y.eigvec[, 5], counties = counties,
-                    main = "Eigenvector 5", midpoint = 0)
+                    main = "Principal Component 5", midpoint = 0)
 e6 <- map.ga.ggplot(Y = Y.eigvec[, 6], counties = counties,
-                    main = "Eigenvector 6", midpoint = 0)
+                    main = "Principal Component 6", midpoint = 0)
 
-multiplot(e1, e2, e3, e4, e5, e6, cols = 3)
-dev.print(device = pdf, width = 12, height = 8, file = "plots/fire-eig-panel.pdf")
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(e1, e2, e3, e4, e5, e6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "plots/fire-eig-panel.pdf", panel, device = pdf, width = 13.5, height = 9)
 
-e1
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-1.pdf")
-e2
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-2.pdf")
-e3
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-3.pdf")
-e4
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-4.pdf")
-e5
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-5.pdf")
-e6
-dev.print(device = pdf, width = 6, height = 6, file = "plots/fire-eig-6.pdf")
+ggsave(filename = "plots/fire-eig-1.pdf", e1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-eig-2.pdf", e2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-eig-3.pdf", e3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-eig-4.pdf", e4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-eig-5.pdf", e5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/fire-eig-6.pdf", e6, device = pdf,
+       width = 4.5, height = 4.5)
 
 
 # Eigenvectors of log(Y)

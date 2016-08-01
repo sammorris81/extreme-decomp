@@ -101,8 +101,6 @@ map.heatmap <- function (lat, lon, data,
   # Store the base data of the underlying map
   baseData <- map_data("state")
 
-
-
   # Combine the data into a dataframe
   dfMap <- as.data.frame(cbind(lon, lat, data))
   colnames(dfMap) <- c("lon", "lat", "Value")
@@ -117,7 +115,7 @@ map.heatmap <- function (lat, lon, data,
   p <- p + geom_tile()
   p <- p + geom_polygon(data=baseData, aes(x=long, y=lat, group=group),
                         colour="black", fill="white", alpha=0)
-  p <- p + labs(title=paste(mainTitle,"\n",sep=""), x="", y="")
+  p <- p + labs(title=mainTitle, x="", y="")
   p <- p + theme(plot.title = element_text(size = rel(1.5)))
   p <- p + coord_fixed(ratio=1.1, xlim=xlim, ylim=ylim)
 
@@ -140,8 +138,8 @@ map.heatmap <- function (lat, lon, data,
     #                              na.value=color_na,
     #                              limits=zlim,
     #                              name=legendTitle)
-    p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4",
-                                  # mid = "#ffffff",
+    p <- p + scale_fill_gradient2(low = "dodgerblue3", high = "firebrick3",
+                                  mid = color_mid,
                                   midpoint = midpoint,
                                   limits = zlim,
                                   name = legendTitle)

@@ -1034,7 +1034,8 @@ theme_clean <- function(base_size = 12) {
 }
 
 map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
-                          midpoint = NULL, limits = NULL) {
+                          mid = NULL, midpoint = NULL, limits = NULL,
+                          cents = NULL, cents.text = NULL) {
   require(ggplot2)
   require(maps)
   if (is.null(midpoint)) {
@@ -1051,23 +1052,34 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
         "a list of counties.")
     basis <- data.frame(Y, subregion)
   } else {
-    basis <- data.frame(Y, subregion = counties)
+    basis <- data.frame(Y, subregion = tolower(counties))
   }
-  extcoef_map <- merge(county_map, basis, all.x = TRUE)
+  extcoef_map <- merge(county_map, basis, sort = FALSE, all.x = TRUE)
 
   if (is.null(limits)) {
     limits <- c(min(Y), max(Y))
   }
 
+  if (is.null(mid)) {
+    mid = "#FFFFFF"
+  }
+
+  if (!is.null(cents)) {
+    df.text <- data.frame(x = cents[, 1], y = cents[, 2], text = cents.text)
+  }
+
   # using fill = Y because that's the column of extcoef_map with the actual data
-  p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
-  p <- p + geom_polygon(colour = "grey", aes(fill = Y))
+  p <- ggplot(extcoef_map, aes(x = long, y = lat))
+  p <- p + geom_polygon(aes(group = group, fill = Y), color = "grey20")
   p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
   p <- p + coord_map("polyconic")
   p <- p + ggtitle(main)  # make the title
   p <- p + labs(fill = fill.legend)
-  p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4",
-                                mid = "#ffffff", midpoint = midpoint,
+  if (!is.null(cents)) {
+    p <- p + geom_text(data = df.text, aes(x = x, y = y, label = text))
+  }
+  p <- p + scale_fill_gradient2(low = "dodgerblue3", high = "firebrick3",
+                                mid = mid, midpoint = midpoint,
                                 limits = limits)
   p <- p + theme_clean()
   return(p)

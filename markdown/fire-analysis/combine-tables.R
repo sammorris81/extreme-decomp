@@ -17,7 +17,7 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
-files <- files[-c(41, 122)]
+files <- files[-c(41, 82, 123, 164)]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
@@ -579,3 +579,10 @@ plot(fit.kern$beta2[, 6], type = "l")
 hist(fit.basis$y.pred[, 1])
 hist(fit.kern$y.pred[, 1])
 
+#### Get the timing ####
+ebf.time <- read.table("./cv-tables/ebf-timing.txt")
+gsk.time <- read.table("./cv-tables/gsk-timing.txt")
+time <- cbind(apply(ebf.time, 1, mean), apply(gsk.time, 1, mean))
+time <- time / 350 * 1000 / 60
+colnames(time) <- c("ebf", "gsk")
+round(time, 2)

@@ -114,37 +114,15 @@ ls.1  <- beta.ls.int + beta.ls.time * time.1
 ls.10 <- beta.ls.int + beta.ls.time * time.10
 ls.t  <- beta.ls.int + beta.ls.time * time.t
 xi    <- mean(fit$xi)
-q.90.1 <- q.90.10 <- q.90.t <- rep(NA, ns)
-for (i in 1:ns) {
-  q.90.1[i] <- qgev(p = 0.90, loc = mu.1[i], scale = exp(ls.1[i]), shape = xi)
-  q.90.10[i] <- qgev(p = 0.90, loc = mu.10[i], scale = exp(ls.10[i]),
-                     shape = xi)
-  q.90.t[i] <- qgev(p = 0.90, loc = mu.t[i], scale = exp(ls.t[i]), shape = xi)
-}
-q.90.diff.nt <- q.90.t - q.90.1   # change over whole dataset
-q.90.diff.10 <- q.90.t - q.90.10  # change in last 10 years
-
-# there are three exceptionally high changes
-idx.1 <- which.max(q.90.diff.nt)
-idx.2 <- which(q.90.diff.nt == max(q.90.diff.nt[-idx.1]))
-idx.3 <- which(q.90.diff.nt == max(q.90.diff.nt[-c(idx.1, idx.2)]))
-these <- c(idx.1, idx.2, idx.3)
-cents.text <- q.90.diff.nt[these]
-round(cents.text)  # c(6084, 6693, 9690) - Charlton, Clinch, Ware
-cents.plot <- cents[these, ]
-cents.plot[1, 1] <- -82.5
-cents.plot[1, 2] <- 31.2
-cents.plot[2, 2] <- 30.95
-cents.plot[3, 1] <- -82.2
-cents.plot[3, 2] <- 30.9
-q.90.diff.nt[these] <- 2500
-
-# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
-main <- bquote(paste(Delta, "Q90", sep = ""))
-fill.legend <- "Difference"
-p3 <- map.ga.ggplot(Y = q.90.diff.nt, counties = county, midpoint = 0,
-                    mid = mid, fill.legend = fill.legend, main = main,
-                    cents = cents.plot, cents.text = c(1, 2, 3))
+# q.90.1 <- q.90.10 <- q.90.t <- rep(NA, ns)
+# for (i in 1:ns) {
+#   q.90.1[i] <- qgev(p = 0.90, loc = mu.1[i], scale = exp(ls.1[i]), shape = xi)
+#   q.90.10[i] <- qgev(p = 0.90, loc = mu.10[i], scale = exp(ls.10[i]),
+#                      shape = xi)
+#   q.90.t[i] <- qgev(p = 0.90, loc = mu.t[i], scale = exp(ls.t[i]), shape = xi)
+# }
+# q.90.diff.nt <- q.90.t - q.90.1   # change over whole dataset
+# q.90.diff.10 <- q.90.t - q.90.10  # change in last 10 years
 
 post.q90.diff <- matrix(NA, niters, ns)
 this.q90.1 <- this.q90.t <- rep(0, ns)
@@ -166,6 +144,31 @@ for (i in 1:niters) {
     print(paste("Finished iter ", i, sep = ""))
   }
 }
+
+q.90.diff.nt <- apply(post.q90.diff, 2, mean)
+
+# there are three exceptionally high changes
+idx.1 <- which.max(q.90.diff.nt)
+idx.2 <- which(q.90.diff.nt == max(q.90.diff.nt[-idx.1]))
+idx.3 <- which(q.90.diff.nt == max(q.90.diff.nt[-c(idx.1, idx.2)]))
+these <- c(idx.1, idx.2, idx.3)
+cents.text <- q.90.diff.nt[these]
+round(cents.text)  # Ware: 11109, Clinch: 7128, Charlton: 6545
+cents[these, ]
+cents.plot <- cents[these, ]
+cents.plot[1, 1] <- -82.5
+cents.plot[1, 2] <- 31.2
+cents.plot[2, 2] <- 30.95
+cents.plot[3, 1] <- -82.2
+cents.plot[3, 2] <- 30.9
+q.90.diff.nt[these] <- 2500
+
+# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
+main <- bquote(paste(Delta, "Q90", sep = ""))
+fill.legend <- "Difference"
+p3 <- map.ga.ggplot(Y = q.90.diff.nt, counties = county, midpoint = 0,
+                    mid = mid, fill.legend = fill.legend, main = main,
+                    cents = cents.plot, cents.text = c(1, 2, 3))
 
 pdiff.q90.pos <- apply(post.q90.diff > 0, 2, mean)
 # main <- bquote(paste(.(toupper(method)), ": P[", Delta, "Q90 > 0]", sep = ""))
@@ -261,41 +264,15 @@ ls.1  <- beta.ls.int + beta.ls.time * time.1
 ls.10 <- beta.ls.int + beta.ls.time * time.10
 ls.t  <- beta.ls.int + beta.ls.time * time.t
 xi    <- mean(fit$xi)
-q.90.1 <- q.90.10 <- q.90.t <- rep(NA, ns)
-for (i in 1:ns) {
-  q.90.1[i] <- qgev(p = 0.90, loc = mu.1[i], scale = exp(ls.1[i]), shape = xi)
-  q.90.10[i] <- qgev(p = 0.90, loc = mu.10[i], scale = exp(ls.10[i]),
-                     shape = xi)
-  q.90.t[i] <- qgev(p = 0.90, loc = mu.t[i], scale = exp(ls.t[i]), shape = xi)
-}
-q.90.diff.nt <- q.90.t - q.90.1   # change over whole dataset
-q.90.diff.10 <- q.90.t - q.90.10  # change in last 10 years
-
-# there are three exceptionally high changes
-idx.1 <- which.max(q.90.diff.nt)
-idx.2 <- which(q.90.diff.nt == max(q.90.diff.nt[-idx.1]))
-idx.3 <- which(q.90.diff.nt == max(q.90.diff.nt[-c(idx.1, idx.2)]))
-these <- c(idx.1, idx.2, idx.3)
-cents.text <- q.90.diff.nt[these]
-round(cents.text)  # c(6520, 6794, 8934) - Clinch, Charlton, Ware
-cents.plot <- cents[these, ]
-cents.plot[1, 1] <- -82.5
-cents.plot[1, 2] <- 31.2
-cents.plot[2, 1] <- -82.2
-cents.plot[2, 2] <- 30.9
-cents.plot[3, 2] <- 30.95
-q.90.diff.nt[these] <- 2500
-
-main <- paste(toupper(method), ": Change in q(0.90)", sep = "")
-fill.legend <- "Difference"
-p3 <- map.ga.ggplot(Y = q.90.diff.nt, counties = county, midpoint = 0,
-                           mid = mid, fill.legend = fill.legend, main = main,
-                           cents = cents.plot, cents.text = c(1, 3, 2))
-# layout.mtx <- matrix(1:2, nrow = 1, ncol = 2)
-# panel <- arrangeGrob(pdiff.ebf, pdiff.gsk, ncol = 2, layout_matrix = layout.mtx)
-
-# ggsave(paste("./plots/fire-q90diff-compare.pdf", sep = ""),
-#        panel, width = 9, height = 4.5)
+# q.90.1 <- q.90.10 <- q.90.t <- rep(NA, ns)
+# for (i in 1:ns) {
+#   q.90.1[i] <- qgev(p = 0.90, loc = mu.1[i], scale = exp(ls.1[i]), shape = xi)
+#   q.90.10[i] <- qgev(p = 0.90, loc = mu.10[i], scale = exp(ls.10[i]),
+#                      shape = xi)
+#   q.90.t[i] <- qgev(p = 0.90, loc = mu.t[i], scale = exp(ls.t[i]), shape = xi)
+# }
+# q.90.diff.nt <- q.90.t - q.90.1   # change over whole dataset
+# q.90.diff.10 <- q.90.t - q.90.10  # change in last 10 years
 
 post.q90.diff <- matrix(NA, niters, ns)
 this.q90.1 <- this.q90.t <- rep(0, ns)
@@ -317,6 +294,34 @@ for (i in 1:niters) {
     print(paste("Finished iter ", i, sep = ""))
   }
 }
+
+q.90.diff.nt <- apply(post.q90.diff, 2, mean)
+
+# there are three exceptionally high changes
+idx.1 <- which.max(q.90.diff.nt)
+idx.2 <- which(q.90.diff.nt == max(q.90.diff.nt[-idx.1]))
+idx.3 <- which(q.90.diff.nt == max(q.90.diff.nt[-c(idx.1, idx.2)]))
+these <- c(idx.1, idx.2, idx.3)
+cents.text <- q.90.diff.nt[these]
+round(cents.text)  # Ware: 9918, Charlton: 7304, Clinch: 6908
+cents.plot <- cents[these, ]
+cents.plot[1, 1] <- -82.5
+cents.plot[1, 2] <- 31.2
+cents.plot[2, 1] <- -82.2
+cents.plot[2, 2] <- 30.9
+cents.plot[3, 2] <- 30.95
+q.90.diff.nt[these] <- 2500
+
+main <- paste(toupper(method), ": Change in q(0.90)", sep = "")
+fill.legend <- "Difference"
+p3 <- map.ga.ggplot(Y = q.90.diff.nt, counties = county, midpoint = 0,
+                    mid = mid, fill.legend = fill.legend, main = main,
+                    cents = cents.plot, cents.text = c(1, 3, 2))
+# layout.mtx <- matrix(1:2, nrow = 1, ncol = 2)
+# panel <- arrangeGrob(pdiff.ebf, pdiff.gsk, ncol = 2, layout_matrix = layout.mtx)
+
+# ggsave(paste("./plots/fire-q90diff-compare.pdf", sep = ""),
+#        panel, width = 9, height = 4.5)
 
 pdiff.q90.pos <- apply(post.q90.diff > 0, 2, mean)
 # main <- bquote(paste(.(toupper(method)), ": P[", Delta, "Q90 > 0]", sep = ""))

@@ -225,7 +225,7 @@ quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 6], nx = nx, ny = ny)
 library(colorspace)
 
 set.seed(7568)  # plot
-these <- sample(2622, 50)
+these <- sample(697, 50)
 color <- rainbow_hcl(n = 4)  # SE, SW, NE, NW
 
 s.mid <- apply(s, 2, median)
@@ -239,10 +239,12 @@ colors[s.these[, 1] <  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[4]   # NE
 current <- 1:32
 future  <- 33:64
 quartz(width = 16, height = 8)
+ylim <- range(Y[these, ])
+ylim[1] <- 75
 par(mfrow = c(1, 2))
 for (i in 1:length(these)) {
   if (i == 1) {
-    plot(Y[these[i], current], type = "l", ylim = range(Y[, current]),
+    plot(Y[these[i], current], type = "l", ylim = ylim,
          # main = "Yearly max daily precipitation (1969 - 2000)",
          ylab = "Max precipitation", xaxt = "n", xlab = "Year",
          col = colors[i], lwd = 1.5,
@@ -259,12 +261,12 @@ legend("bottomright", col = color, lty = 1, cex = 1.5, lwd = 1.5,
 
 for (i in 1:length(these)) {
   if (i == 1) {
-    plot(Y[these[i], future], type = "l", ylim = range(Y[, future]),
+    plot(Y[these[i], future], type = "l", ylim = ylim,
          # main = "Yearly max daily precipitation (2039 - 2070)",
          ylab = "Max precipitation", xaxt = "n", xlab = "Year",
          col = colors[i], lwd = 1.5,
          cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-    axis(1, at = c(current), labels = year[current], cex.axis = 1.5)
+    axis(1, at = c(future), labels = year[future], cex.axis = 1.5)
   } else {
     lines(Y[these[i], future], col = colors[i], lwd = 1.5)
   }

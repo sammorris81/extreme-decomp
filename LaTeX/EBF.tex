@@ -15,12 +15,14 @@
 \usepackage{changepage}
 \usepackage{multirow}
 \usepackage{booktabs}
+\usepackage{pdflscape}
 
 \usepackage[left=1in,top=1in,right=1in]{geometry}
 \pdfpageheight 11in
 \pdfpagewidth 8.5in
 \linespread{2.0}
 \input{mycommands.sty}
+\setcitestyle{notesep={; }}
 
 
 \begin{document}\linenumbers
@@ -37,7 +39,7 @@
 
 \begin{abstract}
 	words...\\
-	{\bf Key words}: Bayesian data analysis; principal components analysis; max-stable process; spectral representation.
+	{\bf Key words}: non-stationary data analysis; principal components analysis; max-stable process; spectral representation.
 
 \end{abstract}
 \newpage
@@ -57,20 +59,20 @@ The proposed empirical basis function (EBF) approach also uses a finite truncati
 
 In addition to exploratory analysis, we show that the EBFs can be used for Bayesian inference on the marginal parameters at each location and to test for covariate effects.
 Fully-Bayesian analysis using max-stable processes is cumbersome for large data sets \citep{Wadsworth2014,Thibaud2013a}.
-One option is to use non-max-stable models that retain extremal dependence such as the skew-t process in Morris et al \hl{put on arxiv}.
+One option is to use non-max-stable models that retain extremal dependence such as the skew-t process in \citep{Morris2016}.
 Alternatively, \citet{Reich2012} propose a low-rank method based on spatial kernel functions, and others have used pairwise \citep{Padoan2010,Huser2014} and trivariate \citep{Genton2011} likelihood methods for parameter estimation.
 
 In this paper we develop methodology to use the spectral representation of a max-stable process to identify a small set of EBFs that capture the most important spatial features of the data.
-Unlike PCA/EOFs, the EBFs are not orthogonal, nonetheless these spatial functions can be plotted for exploratory analysis to reveal important spatial trends.
+Unlike PCA/EOFs, but similar to dictionary learning \citep{Mairal2014} and non-negative matrix factorizations \citep{Lee1999}, the EBFs are not orthogonal, nonetheless these spatial functions can be plotted for exploratory analysis to reveal important spatial trends.
 The EBFs can also be used in a second-stage statistical analysis.
 By basing the spatial dependence on EBFs, the resulting spatial analysis does not require dubious assumptions such as stationarity.
 In addition, a Bayesian analysis for either block-maximum or point above a threshold is computationally feasible for large datsets because the entire spatial process is represented by a small number of basis functions.
 
-The paper proceeds as follows. In \sref{ebs:model} we present the low-rank model. \hl{More here about the sections}
+The paper proceeds as follows. In \sref{ebs:model} we present the low-rank model. \sref{ebs:estimation} describes the algorithm used to estimate the spatial basis functions, and \sref{ebs:MCMC} describes the model fit using Markov chain Monte Carlo (MCMC) methods. In \sref{ebs:analysis} we demonstrate the use of the EBFs for an analysis of wildfire data in Georgia and precipitation data in the eastern U.S. Lastly in \sref{ebs:con} we give some summary conclusions and a brief discussion of the findings.
 
 \section{Model}\label{ebs:model}
 
-Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal setting in \sref{ebs:estimation}.
+Let $Y_{t}(\bs)$ be the observation at spatial location $\bs$ and time $t$.  We temporarily drop the subscript $t$ and describe the model for the process $Y(\bs)$ for a single time point, but return to the spatiotemporal notation in \sref{ebs:estimation}.
 To focus attention on the extreme values, we emphasize the statistical model for exceedances above a location-specific threshold $T(\bs)$.
 We begin by specifying a spatial model for the complete data $Y(\bs)$ and then use the censored likelihood defined by $T(\bs)$ for inference as described in \sref{ebs:MCMC}.
 Although the model presented implements a censored likelihood, the model also can fit uncensored data (such as block-maxima) by setting $T(\bs) = -\infty$.
@@ -85,29 +87,30 @@ Spatial dependence is present both in the GEV parameters but also the standardiz
 which has unit $\Frechet$ (i.e., GEV with location, scale, and shape all equal one) marginal distribution for all $\bs$.
 
 Our objective is to identify a low-rank model for the spatial dependence of $Z(\bs)$.
-\citep[Chapter 9]{deHaan1984} show that any max-stable process can be written as
+\Citet[Chapter 9]{deHaan1984} show that any max-stable process can be written as
 \begin{align} \label{ebeq:spectral}
-  Z(\bs) = \mbox{sup}_l B(\bs,\bt_l)A_{l}
+  Z(\bs) = \bigvee_{l = 1}^{\infty} B(\bs, \bk_l)A_{l}
 \end{align}
-where the function $B$ satisfies $B(\bs,\bt)>0$ for all $(\bs,\bt)$ and $\int B(\bs,\bt)d\bt=1$ for all $\bs$, and $(\bt_l,A_l)$ for $l=1,...,\infty$ are a Poisson process with intensity measure $dA d\bt/A^2$.
+where the functions $B(\bs, \bk_l)$ satisfy $B(\bs, \bk_l) > 0$ for all $\bs$ and $\int B(\bs, \bk_l) d\bk_l = 1$ for all $\bs$, and $(\bk_l, A_l)$ for $l=1,\ldots,\infty$ are a Poisson process with intensity measure $dA d\bk/A^2$.
+In many representations of max-stable process, such as \citet{Smith1990} and \citet{Reich2012}, the $\bk_l$ are spatial locations that represent the center of process $l$; however, in our proposed method the basis functions are not associated with one particular location and so to simplify notation we let $B_l(\bs) = B(\bs; \bk_l)$
 
 To arrive at a low-rank model, we assume there are a finite and known number of spatial basis functions $B_1(\bs), \ldots, B_L(\bs)$ that explain the important spatial variation in the process.
 As in de Haan's expansion, the basis functions are restricted so that $B_l(\bs) > 0$ and $\displaystyle \sum_{l = 1}^L B_l(\bs) = 1$ for all $\bs$.
 Because it is unrealistic to assume that realizations of $Z$ are exactly functions of $L$ basis functions, we include independent error variables $\epsilon(\bs)$ to capture variation not explained by the $B_l(\bs)$.
-We follow \citet{Reich2012} and decompose  $Z(\bs)$ as $Z(\bs)=\theta(\bs)\varepsilon(\bs)$ where $\theta(\bs)$ is a spatial process and $\varepsilon(\bs)\iid$ GEV$(1,\alpha,\alpha)$ is independent error.
+We follow \citet{Reich2012} and decompose $Z(\bs)$ as $Z(\bs)=\theta(\bs)\varepsilon(\bs)$ where $\theta(\bs)$ is a spatial process and $\varepsilon(\bs)\iid$ GEV$(1,\alpha,\alpha)$ is independent error.
 The spatial component is
 \begin{align} \label{ebeq:theta}
   \theta(\bs) = \left(\sum_{l=1}^LB_{l}(\bs)^{1/\alpha}A_{l}\right)^{\alpha}.
 \end{align}
 If $B_{l}(\bs)>0$, $\sum_{l=1}^LB_{l}(\bs)=1$ for all $\bs$, and the $A_{l}$ have positive stable (PS; \aref{eba:gridapprox}) distribution $A_{l}\iid$ PS$(\alpha)$, then $Z(\bs)$ is max-stable and has unit $\Frechet$ marginal distributions.
 
-Extremal spatial dependence for max-stable processes can be summarized by the extremal coefficient \citep[EC]{Schlather2003} $\vartheta(\bs,\bt)\in[1,2]$, where
+Extremal spatial dependence for max-stable processes can be summarized by the extremal coefficient \citep[EC]{Schlather2003} $\vartheta(\bs_1, \bs_2)\in[1,2]$, where
 \begin{align} \label{ebeq:ECdev}
-  \mbox{Prob}[Z(\bs)<c,Z(\bt)<c] = \mbox{Prob}[Z(\bs)<c]^{\vartheta(\bs,\bt)}.
+  \mbox{Prob}[Z(\bs_1)<c, Z(\bs_2)<c] = \mbox{Prob}[Z(\bs_1)<c]^{\vartheta(\bs_1,\bs_2)}.
 \end{align}
 For the PS random effects model the EC has the form
 \begin{align} \label{ebeq:EC}
-   \vartheta(\bs,\bt) = \sum_{l=1}^L \left[B_{l}(\bs)^{1/\alpha}+B_{l}(\bs)^{1/\alpha}\right]^\alpha.
+   \vartheta(\bs_1,\bs_2) = \sum_{l=1}^L \left[B_{l}(\bs_1)^{1/\alpha}+B_{l}(\bs_2)^{1/\alpha}\right]^\alpha.
 \end{align}
 In particular, $\vartheta(\bs,\bs) = 2^{\alpha}$ for all $\bs$.
 
@@ -189,8 +192,8 @@ The model we choose is as follows
 \end{align}
 where
 \begin{align} \label{ebeq:GPhyper}
-  \beta_{1, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{int}}, \sigma^2_{1, \text{int}} \bSigma) \quad &\beta_{1, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{time}}, \sigma^2_{1, \text{time}} \bSigma) \\
-  \beta_{2, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{int}}, \sigma^2_{2, \text{int}} \bSigma) \quad &\beta_{2, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{time}}, \sigma^2_{2, \text{time}} \bSigma) \nonumber
+  \beta_{1, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{int}} \bOne, \sigma^2_{1, \text{int}} \bSigma) \quad &\beta_{1, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{1, \text{time}} \bOne, \sigma^2_{1, \text{time}} \bSigma) \\
+  \beta_{2, \text{int}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{int}} \bOne, \sigma^2_{2, \text{int}} \bSigma) \quad &\beta_{2, \text{time}}(\bs) &\sim \text{N}(\mu^{\phantom{2}}_{2, \text{time}} \bOne, \sigma^2_{2, \text{time}} \bSigma) \nonumber
 \end{align}
 are Gaussian process priors and $\bSigma$ is an exponential spatial correlation matrix obtained from \mbox{$\rho(h) = \exp\left\{- \frac{h}{\phi}\right\}$} where $h = ||\bs_1 - \bs_2||$ is the Euclidean distance between sites $\bs_1$ and $\bs_2$.
 The GEV shape parameter $\xi$ is held constant over space and time because this parameter is challenging to estimate.
@@ -211,7 +214,7 @@ d(y;\theta_{it},\Theta_{it}, T_i)  =
   f(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y>T_i,
 \end{array}\right.
 \end{align}
-where $F$ and $f$ are the GEV distribution and density functions, respectively, defined in \aref{eba:evd}.
+where $F$ and $f$ are the GEV distribution and density functions, respectively, defined in \aref{eba:GEV}.
 
 In summary, given the estimates of $\alpha$ and $\bB$, the hierarchical model is
 \begin{align} \label{ebeq:bayesmodel}
@@ -241,10 +244,9 @@ We compare our method with another method that uses standardized Gaussian kernel
 
 \subsection{Gaussian kernel basis functions}
 To provide a comparison of our model with another approach, we also fit a model that uses standardized Gaussian kernels for the spatial basis functions \citep{Reich2012}.
-In this method, \citeauthor{Reich2012} introduce a set of $\bk_1, \ldots, \bk_L$ spatial knots and use standardized Gaussian kernel functions (GSK) instead of using EBFs for the $\hat{B_l}(\bs)$.
+In this method, \citeauthor{Reich2012} introduce a set of $\bk_1, \ldots, \bk_L$ spatial knots and use standardized Gaussian kernel functions (GSK; see \aref{eba:gskfunctions}) instead of using EBFs for the $\hat{B_l}(\bs)$.
 For the comparison between EBF and GSK methods, we use the same number of basis functions.
-We obtain estimates the spatial bandwidth $\hat{\rho}$ and spatial dependence $\hat{\alpha}$, using the same block coordinate descent as with the EBF method, and treat these as fixed in the MCMC.
-For more information about the basis functions, see \aref{eba:gskfunctions}.
+We obtain estimates of the kernel bandwidth $\hat{\rho}$ and spatial dependence $\hat{\alpha}$, using the same least squares minimization as with the EBF method, and treat these as fixed in the MCMC.
 
 \subsection{Analysis of extreme Georgia fires}\label{ebs:georgia}
 The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\texttt{http://weather.gfc.state.ga.us/FireData/}).
@@ -263,7 +265,7 @@ We estimate the extremal coefficient function $\hat{\theta}_{ij}$ by setting $q_
 With more data, it would possible to increase $q_1$, but we set $q_1 = 0.90$ to increase the stability when estimating $\hat{\vartheta}_{ij}$.
 Because these data are not block-maxima, we select a site-specific threshold $T_i$ to use in the analysis with the following algorithm.
 Without some adjustment to the data, it is challenging to borrow information across sites to inform the threshold selection.
-We first standardize the data, separated by county, by subtracting the site's median and dividing by the site's interquartile range.
+We first standardize the data, separately by county, by subtracting the site's median and dividing by the site's interquartile range.
 Denote the standardized data by $\widetilde{\bY}_i$.
 % \begin{align}
 %   \widetilde{\bY}_i = \frac{\bY_i - \text{med}(\bY_i)}{\text{IQR}(\bY_i)}
@@ -289,119 +291,140 @@ To calculate $T_i$ for each county, we use the 95th percentile for the combined 
 %\end{figure}
 
 The empirical basis functions for the analysis can be used to help explore spatial dependence in the extremes.
-See \fref{ebfig:fireebfs} for the first six (of 25) EBFs for the Georgia fire data.
+The first six EBFs for the wildfire data along with the cumulative sum of the contributions for $v_1, \ldots, v_{25}$ are given in \fref{ebfig:fire-ebfpanel}.
 \begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
   \centering
-  \includegraphics[width=\linewidth]{plots/fire-ebf-panel.pdf}
-  \caption{First six EBFs for the Georgia fire data.}
+  \includegraphics[width=\linewidth]{plots/fire-ebf-panel.pdf}\\
+  \includegraphics[width=0.45\linewidth]{plots/firev-25.pdf}
+  \caption{First six EBFs for the Georgia fire data and the cumulative sum of contributions $v_1, \ldots, v_{25}$.}
   \label{ebfig:fire-ebfpanel}
 \end{figure}
-We also plot the cumulative sum of the contributions for each basis function in \ref{ebfig:fire-v25}.
-\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
-  \centering
-  \includegraphics[width=0.5\linewidth]{plots/firev-25.pdf}
-  \caption{Cumulative sum of contributions $v_1, \ldots, v_25$.}
-  \label{ebfig:fire-v25}
-\end{figure}
-As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \fref{ebfig:fire-eigpanel}.
+The first EBF roughly separates the Southeastern Plains (blue) from the coastal region in the southeast and mountains regions in the northeast (red).
+The remaining EBFs further partition the plains.
+As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \aref{eba:pca}.
 
+Given the basis function estimates, we run the MCMC for 35,000 iterations using a burnin period of 25,000 iterations.
+We consider models fit with both EBF and GSK, and fit the model using $L = 5, 10, \ldots, 40$.
+Timing for each setting of $L$ for 1,000 iterations is given in \tref{ebtbl:fire-scores}.
+These timings come from a single core of an Intel Core i7-5820K Haswell-E processor, using the OpenBLAS optimized BLAS library (\texttt{http://www.openblas.net}).
 
 \subsection{Results for fire analysis}\label{ebs:results-fire}
 We use 10-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 10\% of sites and years are withheld for testing model predictions.
 To assess the predictions for the test set, we use quantile scores and Brier scores \citep{Gneiting2007}.
-The quantile score is given by \hl{give formula}.
-The Brier score is given by \hl{give formula}.
+The quantile score (QS) for quantile level $q^*$ is given by \mbox{$2 \{I[Y(\bs) > \hat{q}(\bs)] - q^*]\}\{\hat{q}(\bs) - Y(\bs)\}$} where $\hat{q}(\bs)$ is the estimated $q^*$th quantile at site $\bs$, and $I[\cdot]$ is an indicator function.
+The Brier score (BS) for predicting an exceedance of a level $c$ at site $\bs$ is given by \mbox{$\{I[Y(\bs) > c] - \hat{P}[Y(\bs) > c]\}^2$}.
 For both of these methods, a lower score indicates a better fit.
-The Brier and quantile scores for the fire analysis are given in \tref{ebtbl:firescores}.
-
-% Posterior summaries for each county's $\beta_\text{time}$ coefficient are given in \fref{ebfig:ebfpost} and \fref{ebfig:gskpost}.
-% These plots both seem to catch similar features with some differences particularly in the posterior distribution of the county-specific $\beta_{\mu, \text{time}}$.
+The Brier and quantile scores for the fire analysis are given in \tref{ebtbl:fire-scores}. %, and a plot of the scores are given in \fref{ebfig:fire-bsqs}.
+For the data, the BS and QS are fairly similar for all number of basis functions and the EBF versus GSK.
+This is perhaps due to the spatial variation in the marginal distribution explaining most of the spatial variation.
+In fact, using the EBFs, the estimate of residual dependence for the fire data is $\hat{\alpha} = 0.861$ ($\alpha = 1$ is residual independence).
 
 \begin{table}[htbp]
-\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for fire analysis.}
-\label{ebtbl:firescores}
+\caption{Average Brier scores ($\times 100$), average quantile scores for $q(0.95)$ and $q(0.99)$, and time (in minutes) for 1,000 iterations for fire analysis.}
+\label{ebtbl:fire-scores}
 \centering
   \begin{tabular}{llcrrcrrcc}
   \toprule
   & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
   \cmidrule{4-5} \cmidrule{7-8}
-  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
+  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time\\
   \midrule
-  L = 5  & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 5  & EBF && 4.269 & 1.653 && 107.904 & 67.345 && 1.16\\
+         & GSK && 4.244 & 1.644 && 103.822 & 64.046 && 1.18\\
   \midrule
-  L = 10 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 10 & EBF && 4.328 & 1.675 && 107.075 & 66.300 && 1.56\\
+         & GSK && 4.170 & 1.665 && 104.214 & 64.589 && 1.47\\
   \midrule
-  L = 15 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 15 & EBF && 4.330 & 1.690 && 108.381 & 67.671 && 1.86\\
+         & GSK && 4.214 & 1.654 && 104.490 & 65.201 && 1.83\\
   \midrule
-  L = 20 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 20 & EBF && 4.346 & 1.697 && 107.389 & 66.957 && 2.18\\
+         & GSK && 4.174 & 1.646 && 104.671 & 65.430 && 2.20\\
   \midrule
-  L = 25 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 25 & EBF && 4.263 & 1.650 && 106.656 & 64.913 && 2.54\\
+         & GSK && 4.216 & 1.661 && 104.208 & 64.468 && 2.55\\
   \midrule
-  L = 30 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 30 & EBF && 4.328 & 1.678 && 106.265 & 64.674 && 2.90\\
+         & GSK && 4.228 & 1.660 && 104.143 & 64.443 && 2.92\\
   \midrule
-  L = 35 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 35 & EBF && 4.329 & 1.671 && 106.817 & 65.002 && 3.29\\
+         & GSK && 4.256 & 1.663 && 105.016 & 64.920 && 3.32\\
   \midrule
-  L = 40 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 40 & EBF && 4.284 & 1.653 && 106.621 & 64.753 && 3.70\\
+         & GSK && 4.233 & 1.666 && 105.301 & 64.932 && 3.56\\
   \bottomrule
 	\end{tabular}
 \end{table}
 
-\hl{Figure here with BS and QS for the fire data}
+% \begin{figure}[htbp]  % markdown/fire-analysis/combine-tables.R
+%   \centering
+%   \includegraphics[width=0.49\linewidth]{plots/fire-bs.pdf}
+%   \includegraphics[width=0.49\linewidth]{plots/fire-qs.pdf}
+%   \caption{Brier scores (left) and quantile scores (right) for $q(0.95)$ and $q(0.99)$ to compare EBF and GSK analysis of Georgia fire data.}
+%   \label{ebfig:fire-bsqs}
+% \end{figure}
+
+% \begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatime.pdf}
+%   \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using EBF.}
+%   \label{ebfig:fire-ebfpostbeta1}
+% \end{figure}
+
+% \begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatime.pdf}
+%   \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using GSK.}
+%   \label{ebfig:fire-gskpostbeta1}
+% \end{figure}
+
+% \begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatimepos.pdf}
+%   \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using EBF.}
+%   \label{ebfig:fire-ebfpostbeta1pos}
+% \end{figure}
+
+% \begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatimepos.pdf}
+%   \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using GSK.}
+%   \label{ebfig:fire-gskpostbeta1pos}
+% \end{figure}
 
 Based on the cross-validation results, we run a full analysis using all of the data with $L = 25$.
-\fref{ebfig:fire-ebfpostbeta1} and \fref{ebfig:fire-gskpostbeta1} give the county by county posterior means of $\beta_{1, \text{time}}$ and $\beta_{2, \text{time}}$ for EBF and GSK respectively.
-\fref{ebfig:fire-ebfpostbeta1pos} and \fref{ebfig:fire-gskpostbeta1pos} give the county by county posterior P$(\beta_{1, \text{time}} > 0)$ and P$(\beta_{2, \text{time}} > 0)$ for EBF and GSK respectively.
+Despite the GSK model having slightly smaller BS and QS values, we use the EBF method.
+\fref{ebfig:fire-ebf-postpanel} gives posterior summaries for three quantities of interest.
+We provide maps of the linear time trend in the GEV location ($\beta_{1, \text{time}, i}$), and GEV log scale  ($\beta_{2, \text{time}, i}$)  and a map of \mbox{$\Delta Q90_i = Q90_{i, 2014} - Q90_{i, 1965}$} the change in the mean of the posterior distribution of $Q90_{i, t}$ between $t_1 = 1965$ and $t_2 = 2014$.
+We also provide maps of the posterior probability that each of the three terms is positive.
+
+We construct the posterior distribution of the the estimated 90th quantile $Q90_{i, t}$ using the GEV parameters as follows.
+Let $Q90_{i, t}^{(j)}$ be the estimated 90th quantile at site $i$ for time $t$ at iteration $j$.
+We first compute
+\begin{align}
+  \mu_{i, t}^{(j)} &= \beta_{1, \text{int}, i}^{(j)} + \beta_{1, \text{time}, i}^{(j)} t \\
+  \log\left(\sigma_{i, t}^{(j)}\right) &= \beta_{2, \text{int}, i}^{(j)} + \beta_{2, \text{time}, i}^{(j)} t. \nonumber
+\end{align}
+Let $Q90_{i, t}^{(j)} = \mu_{i, t}^{(j)} + \sigma_{i, t}^{(j)} F^{-1}\left(0.90, \xi^{(j)}\right)$ where $F^{-1}(q, \xi)$ is the inverse distribution function of the GEV$(1, 1, \xi)$ distribution evaluated at the $q$th quantile.
+Finally, let $Q90_{i, t}$ be posterior mean of $Q90_{i, t}^{(j)}$.
+To obtain the posterior probability of seeing an increase over time, we take the posterior distributions of each parameter of interest at the two time points.
+Consider two time points $t_1 < t_2$.
+Let $\varphi_t^{(j)}$ be the parameter of interest at iteration $j$ and time $t$.
+We then take the posterior mean of $I\left[\varphi_{t_2}^{(j)} > \varphi_{t_1}^{(j)}\right]$, for the posterior probability of seeing an increase in $\varphi$ from time $t_1$ to $t_2$.
+
+These results suggest that there has been a slight increase in the amount of acres burned over time.
+When looking at the variability of the acres burned over time, we see some patterns that generally correspond to landcover in Georgia (see \texttt{http://narsal.uga.edu/} for landcover maps).
+In the high intensity urban areas (e.g. the Piedmont region) and croplands, we see a decrease in variability as well as very low P$[\Delta Q90 > 0]$.
+However, in the more forested areas (e.g. Blue Ridge mountains, Okefenokee Swamp), we see increased variability over time as well as a high P$[\Delta Q90 > 0]$.
+This suggests that the 10-year return level for wildfires in regions with larger tree cover is increasing over time which corresponds with increased drought and higher temperatures.
 
 \begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
   \centering
-  \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatime.pdf}
-  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using EBF.}
-  \label{ebfig:fire-ebfpostbeta1}
-\end{figure}
-
-\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatime.pdf}
-  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for fire data using GSK.}
-  \label{ebfig:fire-gskpostbeta1}
-\end{figure}
-
-\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/fire-ebf-post-betatimepos.pdf}
-  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using EBF.}
-  \label{ebfig:fire-ebfpostbeta1pos}
-\end{figure}
-
-\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/fire-gsk-post-betatimepos.pdf}
-  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for fire data using GSK.}
-  \label{ebfig:fire-gskpostbeta1pos}
-\end{figure}
-
-\hl{Is this what you were thinking for the difference in $q(0.90)$? These do not use $\theta$.}
-We also plot the difference in $\hat{q}(0.90)$, the estimated 90th quantile, between 2014 and 1965.
-To obtain the estimate for each county, we first take the posterior mean of $\beta_{1, \text{int}}$, $\beta_{1, \text{time}}$, $\beta_{2, \text{int}}$, and $\beta_{2, \text{time}}$ for each county.
-Then we find $\mu(\bs, t)$ and $\sigma(\bs, t)$ for each county in 1965 and 2014.
-Then for the shape parameter we take the posterior mean of $\xi$.
-Finally, we use the inverse distribution function of the GEV to obtain $\hat{q}(0.90)_{1965}$ and $\hat{q}(0.90)_{2014}$ and plot \mbox{$\hat{q}(0.90)_\text{diff} = \hat{q}(0.90)_{2014} - \hat{q}(0.90)_{1965}$} in \fref{ebfig:fire-q90diff}.
-
-\begin{figure}[htbp]  % markdown/fire-analysis/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/fire-q90diff-compare.pdf}
-  \caption{Difference in $q(0.90)$ for fire data between 2014 and 1965 for EBF (left) and GSK (right). Three counties (labeled) have differences higher than 2500. County 1: Ware (EBF: 9690, GSK: 8934), County 2: Clinch (EBF: 6693, GSK: 6520), and County 3: Charlton (EBF: 6084, GSK: 6794)}
-  \label{ebfig:fire-q90diff}
+  \includegraphics[height=0.9\textheight]{plots/fire-ebf-postpanel.pdf}
+  \caption{Posterior mean of $\beta_{1, \text{time}}$ (top left), posterior mean of $\beta_{2, \text{time}}$ (middle left), estimate of $\Delta Q90$ (bottom left), P$[\beta_{1, \text{time}} > 0]$ (top right), P$[\beta_{2, \text{time}} > 0]$ (middle right), and P$[\Delta Q90 > 0]$ for fire data using EBF. In three counties (labeled), $\Delta Q90 > 2500$: County 1 - Ware (11,109), County 2 - Clinch (7,128), and County 3 - Charlton (6,545)}
+  \label{ebfig:fire-ebf-postpanel}
 \end{figure}
 
 % \begin{figure}  % markdown/fire-analysis/combine-tables.R
@@ -441,153 +464,143 @@ Finally, we use the inverse distribution function of the GEV to obtain $\hat{q}(
 % \end{figure}
 
 \subsection{Analysis of annual precipitation}\label{ebs:precip}
-We also conduct an analysis of the precipitation data presented in \citep{Reich2012}.
+We also conduct an analysis of the precipitation data presented in \citet{Reich2012}.
 The data are climate model output from the North American Regional Climate Change Assessment Program (NARCCAP).
 This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern US, and includes historical data (1969 -- 2000) as well as future conditions (2039 -- 2070).
+Because the data are block maxima, we set $T = -\infty$.
 
 \begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-ts}
   \caption{Time series of yearly max precipitation for current (1969 -- 2000) (left). Time series of yearly max precipitation for future (2039 -- 2070) (right).}
-  \label{ebf:tsprecip}
+  \label{ebfig:tsprecip}
 \end{figure}
 
 For this dataset, to estimate the EBFs, we use the combined current and future data.
-The first six EBFs for the combined data are given in \fref{ebfig:precip-ebfpanel}.
+The first six EBFs for the combined data along with the cumulative sum of the contributions for $v_1, \ldots, v_{25}$ are given in \fref{ebfig:precip-ebfpanel}.
 \begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
   \centering
-  \includegraphics[width=\linewidth]{plots/precip-ebf-panel.pdf}
-  \caption{First six EBFs for the combined precipitation data.}
+  \includegraphics[width=\linewidth]{plots/precip-ebf-panel.pdf}\\
+  \includegraphics[width=0.35\linewidth]{plots/precipv-25.pdf}
+  \caption{First six EBFs for the combined precipitation data and the cumulative sum of contributions $v_1, \ldots, v_{25}$.}
   \label{ebfig:precip-ebfpanel}
 \end{figure}
-We also plot the cumulative sum of the contributions for each basis function in \ref{ebfig:precip-v25}.
-\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
-  \centering
-  \includegraphics[width=0.5\linewidth]{plots/precipv-25.pdf}
-  \caption{Cumulative sum of contributions $v_1, \ldots, v_25$.}
-  \label{ebfig:precip-v25}
-\end{figure}
-As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \fref{ebfig:fire-eigpanel}.
+As a comparison, we provide the first six principal components of the fire data along with the cumulative sum of the first 25 eigenvalues in \aref{eba:pca}.
+For the precipitation data, we run the MCMC for 25,000 iterations using a burnin period of 15,000 iterations.
+We consider models fit with both EBF and GSK, and fit the model using $L = 5, 10, \ldots, 40$.
+Timing for each setting of $L$ is given in \tref{ebtbl:precip-scores} for 1,000.
+The timings are obtained using the same machine as for the fire analysis.
 
 \subsection{Results for precipitation analysis}\label{ebs:results-precip}
+We use 5-fold cross-validation to assess the predictive performance of a model.
+For each method, we randomly select 80\% of the observations across counties and years to be used as a training set to fit the model.
+The remaining 20\% of sites and years are withheld for testing model predictions.
+As with the fire analysis, we use Brier scores and quantile scores to compare model performance.
+The Brier and quantile scores for the current and future precipitation data analysis are given in \tref{ebtbl:precip-scores}.
+For these data, we observe more variation in the scores across the number of basis functions and generally an advantage in using EBF over GSK.
+This is in contrast to the fire analysis, and is likely due to the fact that the spatial dependence is estimated to be much stronger than for the fire analysis.
+When using the EBFs, the estimate of residual dependence for the precipitation data is $\hat{\alpha} = 0.280$ ($\alpha = 1$ is residual independence).
 
-\begin{table}[htbp]
-\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for current precipitation analysis.}
-\label{ebtbl:firescores}
+Based on the cross-validation results, we run a full analysis using all of the data with $L = 25$ and EBF.
+\fref{ebfig:precip-ebf-postpanel} gives posterior summaries for three quantities of interest.
+Because we have two separate time periods, current and future, we look at the differences between the estimates for $\hat{\mu}$, $\log(\hat{\sigma})$, and $\hat{q}(0.90)$ between $t_1 = 2000$ and $t_2 = 2070$ where $\hat{\mu}$, $\log(\hat{\sigma})$, and $\hat{q}(0.90)$ are calculated as described in \sref{ebs:results-fire}.
+We plot \mbox{$\Delta \mu = \hat{\mu}_{2070} - \hat{\mu}_{2000}$}, \mbox{$\Delta \log(\hat{\sigma}) = \log(\hat{\sigma})_{2070} - \log(\hat{\sigma})_{2000}$}, and \mbox{$\Delta Q90 = \hat{q}(0.90)_{2070} - \hat{q}(0.90)_{2000}$}, and the estimated probabilites that each are positive.
+
+The results seem to suggest that the strength of extreme rain events will increases between 2000 and 2070 as well as greater variability in the northeast region of the U.S. as well as Ohio and parts of the south.
+There very strong evidence to suggest that most of the eastern U.S. should expect to see an increase in the 10-year return level between 2000 and 2070.
+Exceptions to this trend appear in southern parts of Alabama and Mississippi and regions on the border between South Carolina and Georgia which will likely experience a decrease in the 10-year return level.
+
+\begin{landscape}
+\begin{table}
+\caption{Average Brier scores ($\times 100$), average quantile scores for $q(0.95)$ and $q(0.99)$, and time (in minutes) for 1,000 iterations for precipitation analysis.}
+\label{ebtbl:precip-scores}
+\small
 \centering
-  \begin{tabular}{llcrrcrrcc}
+  \begin{tabular}{lcc c cc c cc c r c cc c cc c r}
   \toprule
-  & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
-  \cmidrule{4-5} \cmidrule{7-8}
-  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
+  & && \multicolumn{7}{c}{Current} && \multicolumn{7}{c}{Future}  \\
+  \cmidrule{4-10} \cmidrule{12-18}
+  & & \phantom{a} & \multicolumn{2}{c}{BS ($\times 100$)} & \phantom{ab} & \multicolumn{2}{c}{QS} & \phantom{a} && \phantom{abcd} & \multicolumn{2}{c}{BS ($\times 100$)} & \phantom{ab} & \multicolumn{2}{c}{QS} & \phantom{a} &&\\
+  \cmidrule{4-5} \cmidrule{7-8} \cmidrule{12-13} \cmidrule{15-16}
+  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ &&  Time \\
   \midrule
-  L = 5  & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 5  & EBF && 3.813 & 1.098 && 0.740 & 0.203 && 5.80 && 3.357 & 1.112 && 0.738 & 0.209 && 5.82\\
+         & GSK && 3.854 & 1.074 && 0.745 & 0.204 && 5.54 && 3.338 & 1.101 && 0.742 & 0.210 && 5.49\\
   \midrule
-  L = 10 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 10 & EBF && 3.680 & 1.063 && 0.698 & 0.192 && 6.54 && 3.148 & 1.067 && 0.687 & 0.198 && 6.51\\
+         & GSK && 3.628 & 1.068 && 0.705 & 0.195 && 6.30 && 3.088 & 1.072 && 0.709 & 0.201 && 6.26\\
   \midrule
-  L = 15 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 15 & EBF && 3.505 & 1.065 && 0.668 & 0.187 && 7.27 && 3.101 & 1.095 && 0.661 & 0.189 && 7.22\\
+         & GSK && 3.618 & 1.051 && 0.695 & 0.194 && 7.05 && 3.057 & 1.064 && 0.697 & 0.199 && 7.02\\
   \midrule
-  L = 20 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 20 & EBF && 3.400 & 1.026 && 0.651 & 0.182 && 8.14 && 3.101 & 1.087 && 0.649 & 0.189 && 8.11\\
+         & GSK && 3.552 & 1.039 && 0.688 & 0.192 && 7.87 && 3.065 & 1.062 && 0.692 & 0.196 && 7.85\\
   \midrule
-  L = 25 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 25 & EBF && 3.463 & 1.058 && 0.650 & 0.182 && 9.00 && 3.003 & 1.113 && 0.637 & 0.185 && 8.98\\
+         & GSK && 3.643 & 1.063 && 0.679 & 0.190 && 8.74 && 2.039 & 1.054 && 0.686 & 0.196 && 8.71\\
   \midrule
-  L = 30 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 30 & EBF && 3.455 & 1.038 && 0.646 & 0.182 && 9.89 && 2.956 & 1.073 && 0.630 & 0.182 && 9.88\\
+         & GSK && 3.550 & 1.046 && 0.684 & 0.191 && 9/60 && 3.074 & 1.067 && 0.685 & 0.195 && 9.55\\
   \midrule
-  L = 35 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 35 & EBF && 3.471 & 1.065 && 0.649 & 0.183 && 10.79 && 3.036 & 1.114 && 0.645 & 0.189 && 10.79\\
+         & GSK && 3.608 & 1.064 && 0.686 & 0.194 && 10.46 && 3.083 & 1.075 && 0.691 & 0.199 && 10.43\\
   \midrule
-  L = 40 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
+  L = 40 & EBF && 3.551 & 1.114 && 0.652 & 0.184 && 11.70 && 3.050 & 1.131 && 0.645 & 0.189 && 11.66\\
+         & GSK && 3.605 & 1.067 && 0.686 & 0.194 && 11.32 && 3.104 & 1.083 && 0.693 & 0.199 && 11.28\\
   \bottomrule
   \end{tabular}
 \end{table}
+\end{landscape}
 
-\begin{table}[htbp]
-\caption{Average Brier scores ($\times 100$) for selected thresholds, quantile scores for selected quantiles, and timing for future precipitation analysis.}
-\label{ebtbl:firescores}
-\centering
-  \begin{tabular}{llcrrcrrcc}
-  \toprule
-  & & \phantom{ab} & \multicolumn{2}{c}{Brier Scores ($\times 100$)} & \phantom{abc} & \multicolumn{2}{c}{Quantile Scores} & \phantom{ab} & \\
-  \cmidrule{4-5} \cmidrule{7-8}
-  & Process && $q(0.95)$ & $q(0.99)$ && $q(0.95)$ & $q(0.99)$ && Time (in hours)\\
-  \midrule
-  L = 5  & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 10 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 15 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 20 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 25 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 30 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 35 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \midrule
-  L = 40 & EBF &&  &  &&  &  && \\
-         & GSK &&  &  &&  &  && \\
-  \bottomrule
-  \end{tabular}
-\end{table}
+% \begin{figure}[htbp]  % markdown/precipitation/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-bs.pdf}
+%   \caption{Brier scores for $q(0.95)$ and $q(0.99)$ to compare EBF and GSK analysis of precipitation data for current (left) and future (right).}
+%   \label{ebfig:precip-bs}
+% \end{figure}
 
-\hl{Figure here with BS and QS for the precipitation data}
-
-Based on the cross-validation results, we run a full analysis using all of the data with $L = 25$.
-\fref{ebfig:fire-ebfpostbeta1} and \fref{ebfig:fire-gskpostbeta1} give the county by county posterior means of $\beta_{1, \text{time}}$ and $\beta_{2, \text{time}}$ for EBF and GSK respectively.
-\fref{ebfig:fire-ebfpostbeta1pos} and \fref{ebfig:fire-gskpostbeta1pos} give the county by county posterior P$(\beta_{1, \text{time}} > 0)$ and P$(\beta_{2, \text{time}} > 0)$ for EBF and GSK respectively.
+% \begin{figure}[htbp]  % markdown/precipitation/combine-tables.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-bs.pdf}
+%   \caption{Quantile scores for $q(0.95)$ and $q(0.99)$ to compare EBF and GSK analysis of precipitation data for current (left) and future (right).}
+%   \label{ebfig:precip-qs}
+% \end{figure}
 
 \begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
   \centering
-  \includegraphics[width=\linewidth]{plots/precip-ebf-post-betatime.pdf}
-  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for current (top) and future (bottom) precipitation data using EBF.}
-  \label{ebfig:fire-ebfpostbeta1}
-\end{figure}\tabularnewline
-
-\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatime.pdf}
-  \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for current (top) and future (bottom) precipitation data using GSK.}
-  \label{ebfig:fire-gskpostbeta1}
+  \includegraphics[height=0.9\textheight]{plots/precip-ebf-postpanel.pdf}
+  \caption{Posterior mean of $\Delta \mu$ (top left), posterior mean of $\Delta \log(\sigma)$ (middle left), estimate of $\Delta Q90$ (bottom left), P$[\Delta \mu > 0]$ (top right), P$[\Delta \log(\sigma) > 0]$ (middle right), and P$[\Delta Q90 > 0]$ between 2000 and 2070 for precipitation data using EBF.}
+  \label{ebfig:precip-ebf-postpanel}
 \end{figure}
 
-\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/precip-ebf-post-betatimepos.pdf}
-  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using EBF.}
-  \label{ebfig:fire-ebfpostbeta1pos}
-\end{figure}
+% \begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatime.pdf}
+%   \caption{Posterior mean of $\beta_{1, \text{time}}$ (left) and $\beta_{2, \text{time}}$ (right) for current (top) and future (bottom) precipitation data using GSK.}
+%   \label{ebfig:fire-gskpostbeta1}
+% \end{figure}
 
-\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatimepos.pdf}
-  \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using GSK.}
-  \label{ebfig:fire-gskpostbeta1pos}
-\end{figure}
+% \begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-ebf-post-betatimepos.pdf}
+%   \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using EBF.}
+%   \label{ebfig:fire-ebfpostbeta1pos}
+% \end{figure}
 
-We also plot the difference in $\hat{q}(0.90)$, the estimated 90th quantile, between 2000 and 1969 for current and 2070 and 2039 for future.
-The estimates are obtained in the same was as for the fire analysis and are given in \fref{ebfig:fire-q90diff}.
+% \begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-gsk-post-betatimepos.pdf}
+%   \caption{Posterior P$(\beta_{1, \text{time}} > 0)$ (left) and P$(\beta_{2, \text{time}} > 0)$ (right) for current (top) and future (bottom) precipitation data using GSK.}
+%   \label{ebfig:fire-gskpostbeta1pos}
+% \end{figure}
 
-\begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
-  \centering
-  \includegraphics[width=\linewidth]{plots/precip-q90diff-compare.pdf}
-  \caption{Difference in $q(0.90)$ for precipitation data between 2000 and 1969 for current (top) and 2070 and 2039 for future (bottom) using EBF (left) and GSK (right).}
-  \label{ebfig:precip-q90diff}
-\end{figure}
+
+% \begin{figure}[htbp]  % markdown/precipitation/posterior_map.R
+%   \centering
+%   \includegraphics[width=\linewidth]{plots/precip-q90diff-compare.pdf}
+%   \caption{Difference in $q(0.90)$ for precipitation data between 2000 and 1969 for current (top) and 2070 and 2039 for future (bottom) using EBF (left) and GSK (right).}
+%   \label{ebfig:precip-q90diff}
+% \end{figure}
 
 % \begin{figure}  % markdown/precipitation/combine-tables.R
 %   \centering
@@ -610,10 +623,20 @@ The estimates are obtained in the same was as for the fire analysis and are give
 %   \label{ebfig:precip-qs}
 % \end{figure}
 
-\section{Conclusions}\label{ebs:con}
+\section{Discussion}\label{ebs:con}
+In this paper we have proposed new empirical basis functions for a data-driven low-rank approximation to a max-stable process.
+The basis functions provide researchers with an exploratory data analysis tool to explore maps of extremal dependence over space.
+The functions can also be used as inputs to an MCMC algorithm for inference and predicitons over space.
+The results from the data analysis provide evidence to suggest that in the presence of strong spatial dependence as with the precipitation data, the empirical basis functions show an improvement in quantile scores over using knots and standardized Gaussian kernel functions without an increase in the amount of time for computing.
+
+We have used the EBF for exploratory analysis and Bayesian inference.
+Another possibility is to use the methods to reduce the data under consideration from the actual responses to loadings $A_{kt}$.
+That is, given the EBF, one could obtain estimates of the $A_{kt}$ using a separate maximum likelihood estimation for each time point.
+Time series of the estimated $A_{kt}$ may be used as a fast and simple method to study large-scale spatiotemporal trends.
 
 \section*{Acknowledgements}
 The authors would like to acknowledge Dan Cooley for his helpful suggestions on the manuscript.
+The authors' work was partially supported by grants from the Department of the Interior (14-1-04-9), National Institutes of Health (R21ES022795-01A1), the US Environmental Protection Agency (R835228), the National Science Foundation (1107046).
 
 \appendix
 \section{Appendices}
@@ -653,37 +676,43 @@ Then
 \end{align}
 where $|| \cdot ||$ is the Euclidean distance between a site and a knot location.
 
-\subsection{Principal components for fire and precipitation data}
+\subsection{Principal components for fire and precipitation data} \label{eba:pca}
 As a comparison to the EBFs, \fref{ebfig:fire-eigpanel} gives the first six principal components for the fire data, and \fref{ebfig:precip-eigpanel} gives the first six principal components for the precipitation data.
+These figures show that the EBFs resemble the EOFs  for the uncersored precipitation data, but are quite different that the EOF from the censored fire data.
+This is not surprising considering that the censoring results in only a small subset of data being used to estimate dependence.
 \begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
   \centering
   \includegraphics[width=\linewidth]{plots/fire-eig-panel.pdf}
-  \caption{First six principal components for the Georgia fire data.}
+
+  \includegraphics[width=0.35\linewidth]{plots/firelambda-25.pdf}
+  \caption{First six principal components and the cumulative sum of the first 25 eigenvalues for the Georgia fire data.}
   \label{ebfig:fire-eigpanel}
 \end{figure}
 
-\begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
-  \centering
-  \includegraphics[width=0.5\linewidth]{plots/firelambda-25.pdf}
-  \caption{Cumulative sum of the first 25 eigenvalues.}
-  \label{ebfig:fire-eigpanel}
-\end{figure}
+% \begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+%   \centering
+%   \includegraphics[width=0.5\linewidth]{plots/firelambda-25.pdf}
+%   \caption{Cumulative sum of the first 25 eigenvalues.}
+%   \label{ebfig:fire-eigpanel}
+% \end{figure}
 
 \begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
   \centering
   \includegraphics[width=\linewidth]{plots/precip-eig-panel.pdf}
-  \caption{First six principal components for the precipitation data.}
+
+  \includegraphics[width=0.35\linewidth]{plots/preciplambda-25.pdf}
+  \caption{First six principal components and the cumulative sum of the first 25 eigenvalues for the precipitation data.}
   \label{ebfig:precip-eigpanel}
 \end{figure}
 
-\begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
-  \centering
-  \includegraphics[width=0.5\linewidth]{plots/preciplambda-25.pdf}
-  \caption{Cumulative sum of the first 25 eigenvalues.}
-  \label{ebfig:precip-eigpanel}
-\end{figure}
+% \begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
+%   \centering
+%   \includegraphics[width=0.5\linewidth]
+%   \caption{Cumulative sum of the first 25 eigenvalues.}
+%   \label{ebfig:precip-eigpanel}
+% \end{figure}
 
-One reason why the principal components for the fire data look so different from the EBFs presented in \fref{ebfig:fire-ebfpanel} is that the EBFs use censored data whereas the principal components do not.
+
 
 \begin{singlespace}
 \bibliographystyle{rss}

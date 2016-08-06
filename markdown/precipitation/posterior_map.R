@@ -404,14 +404,14 @@ Delta.ls <- ls.fut - ls.cur
 
 xi.cur <- mean(this.fit.cur$xi)
 xi.fut <- mean(this.fit.fut$xi)
-q90.cur <- q90.fut <- rep(NA, ns)
-for (i in 1:ns) {
-  q90.cur[i] <- qgev(p = 0.90, loc = mu.cur[i], scale = exp(ls.cur[i]),
-                     shape = xi.cur)
-  q90.fut[i] <- qgev(p = 0.90, loc = mu.fut[i], scale = exp(ls.fut[i]),
-                     shape = xi.fut)
-}
-Delta.q90 <- q90.fut - q90.cur
+# q90.cur <- q90.fut <- rep(NA, ns)
+# for (i in 1:ns) {
+#   q90.cur[i] <- qgev(p = 0.90, loc = mu.cur[i], scale = exp(ls.cur[i]),
+#                      shape = xi.cur)
+#   q90.fut[i] <- qgev(p = 0.90, loc = mu.fut[i], scale = exp(ls.fut[i]),
+#                      shape = xi.fut)
+# }
+# Delta.q90 <- q90.fut - q90.cur
 
 # main <- bquote(paste(.(toupper(method)), ": ", Delta, mu, sep = ""))
 main <- bquote(paste(Delta, hat(mu), sep = ""))
@@ -431,15 +431,6 @@ plot.Delta.ls <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.ls,
                              color_mid = mid, midpoint = 0)
 ggsave(paste("./plots/precip-", method, "-delta-ls.pdf", sep = ""),
        plot.Delta.ls, width = 4.5, height = 4.5)
-
-# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
-main <- bquote(paste(Delta, "Q90", sep = ""))
-fill.legend <- "Difference"
-plot.Delta.q90 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.q90,
-                              mainTitle = main, legendTitle = fill.legend,
-                              color_mid = mid, midpoint = 0)
-ggsave(paste("./plots/precip-", method, "-delta-q90.pdf", sep = ""),
-       plot.Delta.q90, width = 4.5, height = 4.5)
 
 ## P(Delta.mu > 0)
 ## Get posterior of mu.cur and mu.fut
@@ -467,6 +458,7 @@ for (i in 1:niters) {
   }
 }
 
+Delta.q90 <- apply(post.q90.diff, 2, mean)
 pdiff.mu.pos <- apply(post.mu.diff > 0, 2, mean)
 pdiff.ls.pos <- apply(post.ls.diff > 0, 2, mean)
 pdiff.q90.pos <- apply(post.q90.diff > 0, 2, mean)
@@ -489,6 +481,15 @@ plot.pdiff.ls <- map.heatmap(lat = s[, 2], lon = s[, 1], data = pdiff.ls.pos,
                              color_mid = mid, midpoint = 0.5, zlim = c(0, 1))
 ggsave(paste("./plots/precip-", method, "-pdiff-ls-pos.pdf", sep = ""),
        plot.pdiff.ls, width = 6, height = 6)
+
+# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
+main <- bquote(paste(Delta, "Q90", sep = ""))
+fill.legend <- "Difference"
+plot.Delta.q90 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.q90,
+                              mainTitle = main, legendTitle = fill.legend,
+                              color_mid = mid, midpoint = 0)
+ggsave(paste("./plots/precip-", method, "-delta-q90.pdf", sep = ""),
+       plot.Delta.q90, width = 4.5, height = 4.5)
 
 # main <- bquote(paste(.(toupper(method)), ": P[", Delta, "Q90 > 0]", sep = ""))
 main <- bquote(paste("P[", Delta, "Q90 > 0]", sep = ""))
@@ -539,14 +540,14 @@ Delta.ls <- ls.fut - ls.cur
 
 xi.cur <- mean(this.fit.cur$xi)
 xi.fut <- mean(this.fit.fut$xi)
-q90.cur <- q90.fut <- rep(NA, ns)
-for (i in 1:ns) {
-  q90.cur[i] <- qgev(p = 0.90, loc = mu.cur[i], scale = exp(ls.cur[i]),
-                     shape = xi.cur)
-  q90.fut[i] <- qgev(p = 0.90, loc = mu.fut[i], scale = exp(ls.fut[i]),
-                     shape = xi.fut)
-}
-Delta.q90 <- q90.fut - q90.cur
+# q90.cur <- q90.fut <- rep(NA, ns)
+# for (i in 1:ns) {
+#   q90.cur[i] <- qgev(p = 0.90, loc = mu.cur[i], scale = exp(ls.cur[i]),
+#                      shape = xi.cur)
+#   q90.fut[i] <- qgev(p = 0.90, loc = mu.fut[i], scale = exp(ls.fut[i]),
+#                      shape = xi.fut)
+# }
+# Delta.q90 <- q90.fut - q90.cur
 
 # main <- bquote(paste(.(toupper(method)), ": ", Delta, mu, sep = ""))
 main <- bquote(paste(Delta, hat(mu), sep = ""))
@@ -566,15 +567,6 @@ plot.Delta.ls <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.ls,
                              color_mid = mid, midpoint = 0)
 ggsave(paste("./plots/precip-", method, "-delta-ls.pdf", sep = ""),
        plot.Delta.ls, width = 4.5, height = 4.5)
-
-# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
-main <- bquote(paste(Delta, "Q90", sep = ""))
-fill.legend <- "Difference"
-plot.Delta.q90 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.q90,
-                              mainTitle = main, legendTitle = fill.legend,
-                              color_mid = mid, midpoint = 0)
-ggsave(paste("./plots/precip-", method, "-delta-q90.pdf", sep = ""),
-       plot.Delta.q90, width = 4.5, height = 4.5)
 
 ## P(Delta.mu > 0)
 ## Get posterior of mu.cur and mu.fut
@@ -602,6 +594,7 @@ for (i in 1:niters) {
   }
 }
 
+Delta.q90 <- apply(post.q90.diff, 2, mean)
 pdiff.mu.pos <- apply(post.mu.diff > 0, 2, mean)
 pdiff.ls.pos <- apply(post.ls.diff > 0, 2, mean)
 pdiff.q90.pos <- apply(post.q90.diff > 0, 2, mean)
@@ -624,6 +617,15 @@ plot.pdiff.ls <- map.heatmap(lat = s[, 2], lon = s[, 1], data = pdiff.ls.pos,
                              color_mid = mid, midpoint = 0.5, zlim = c(0, 1))
 ggsave(paste("./plots/precip-", method, "-pdiff-ls-pos.pdf", sep = ""),
        plot.pdiff.ls, width = 6, height = 6)
+
+# main <- bquote(paste(.(toupper(method)), ": ", Delta, "Q90", sep = ""))
+main <- bquote(paste(Delta, "Q90", sep = ""))
+fill.legend <- "Difference"
+plot.Delta.q90 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Delta.q90,
+                              mainTitle = main, legendTitle = fill.legend,
+                              color_mid = mid, midpoint = 0)
+ggsave(paste("./plots/precip-", method, "-delta-q90.pdf", sep = ""),
+       plot.Delta.q90, width = 4.5, height = 4.5)
 
 # main <- bquote(paste(.(toupper(method)), ": P[", Delta, "Q90 > 0]", sep = ""))
 main <- bquote(paste("P[", Delta, "Q90 > 0]", sep = ""))

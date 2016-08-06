@@ -1,5 +1,6 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
+library(gridExtra)
 
 # setMKLthreads(5)
 ################################################################################
@@ -285,7 +286,8 @@ plot(cumsum(basis.weight), xlab = "Knot", ylim = c(0, 1),
      ylab = "Cumulative relative contribution",
      main = "Precipitation analysis (25 knots)",
      cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-dev.print(device = pdf, file = "plots/precipv-25.pdf")
+dev.print(device = pdf, file = "plots/precipv-25.pdf",
+          width = 4.5, height = 4.5)
 
 p1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 1],
                   mainTitle = "Basis function 1 (of 25)")
@@ -340,7 +342,8 @@ plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
      ylab = "Cumulative relative contribution",
      main = "Precipitation analysis (25 eigenvalues)",
      cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-dev.print(device = pdf, file = "preciplambda-25.pdf")
+dev.print(device = pdf, file = "./plots/preciplambda-25.pdf", width = 6, height = 6)
+
 
 e1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 1],
                   mainTitle = "Principal Component 1")

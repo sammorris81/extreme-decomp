@@ -16,6 +16,7 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
+files <- files[-c(21, 62, 103, 144)]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
@@ -109,46 +110,114 @@ these.ebf.fut <- 9:16
 these.gsk.cur <- 17:24
 these.gsk.fut <- 25:32
 
-# Brier scores
-quartz(width = 8, height = 8)
-par(mfrow = c(2, 2))
-plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1], type = "l",
-     main = "Current: Brier score for q(0.95)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
+# Brier scores:
+# q(0.95) & q(0.99): lty = 1, lty = 2,
+# EBF & GSK: dodgerblue1 firebrick1,
+# Current & Future: pch = 21, pch = 22
+quartz(width = 16, height = 8)
+par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
 
-plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1], type = "l",
-     main = "Future: Brier score for q(0.95)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
+# current
+ylim <- c(1, 5) # range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ] * 100)
+# ylim[2] <- ylim[2] + 1.1  # give space for legend
+plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1] * 100,
+     type = "b",
+     main = "Current Precipitation Data",
+     ylab = "Brier score (x 100)", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
+lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 1] * 100,
+      lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2] * 100,
+      lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 2] * 100,
+      lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
 
-plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2], type = "l",
-     main = "Current: Brier score for q(0.99)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), 2]),
-     xaxt = "n")
-lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 2], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
+# ylim <- range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), ] * 100)
+# ylim[2] <- ylim[2] + 0.1  # give space for legend
+plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1] * 100,
+     lty = 1, type = "b",
+     main = "Future Precipitation Data",
+     ylab = "Brier score (x 100)", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
+lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 1] * 100,
+      lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2] * 100,
+      lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2] * 100,
+      lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
 
-plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2], type = "l",
-     main = "Future: Brier score for q(0.99)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), 2]),
-     xaxt = "n")
-lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF", "GSK"))
-dev.print(device = pdf, file = "./plots/precip-bs.pdf")
+dev.print(device = pdf, width = 16, height = 8, file = "plots/precip-bs.pdf")
 dev.off()
+
+#### Quantile scores
+quartz(width = 16, height = 8)
+par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
+
+# current
+ylim <- c(0.17, 0.87) # range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ] * 100)
+# ylim[2] <- ylim[2] + 1.1  # give space for legend
+plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 1],
+     type = "b",
+     main = "Current Precipitation Data",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
+lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 1],
+      lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 5],
+      lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 5],
+      lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+
+# ylim <- range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), ] * 100)
+# ylim[2] <- ylim[2] + 0.1  # give space for legend
+plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 1],
+     lty = 1, type = "b",
+     main = "Future Precipitation Data",
+     ylab = "Quantile score", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
+lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 1],
+      lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5],
+      lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 5],
+      lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+
+dev.print(device = pdf, width = 16, height = 8, file = "plots/precip-qs.pdf")
+dev.off()
+
+
 
 #### Quantile scores
 quartz(width = 8, height = 8)

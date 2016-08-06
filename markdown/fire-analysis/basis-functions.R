@@ -154,8 +154,7 @@ plot(1:L, cumsum(v), ylim = c(0, 1),
      ylab = "Cumulative relative contribution",
      xlab = "Knot")
 plotname <- paste("plots/firev-", L, ".pdf", sep = "")
-dev.print(device = pdf, file = plotname,
-          width = 6, height = 6)
+dev.print(device = pdf, file = plotname, width = 6, height = 6)
 
 p1 <- map.ga.ggplot(Y = B.ebf[, 1], counties = counties,
                     main = "Basis function 1 (of 25)",
@@ -216,9 +215,9 @@ Y.eigval <- cumsum(Y.eigval) / sum(Y.eigval)
 
 plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
      ylab = "Cumulative relative contribution",
-     main = "Precipitation analysis (25 eigenvalues)",
+     main = "Fire (25 eigenvalues)",
      cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-dev.print(device = pdf, file = "plots/firelambda-25.pdf")
+dev.print(device = pdf, file = "plots/firelambda-25.pdf", width = 6, height = 6)
 
 e1 <- map.ga.ggplot(Y = Y.eigvec[, 1], counties = counties,
                     main = "Principal Component 1", midpoint = 0)

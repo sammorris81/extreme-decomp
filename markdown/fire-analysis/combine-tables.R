@@ -17,6 +17,7 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
+files <- files[-c(41, 122)]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
@@ -116,15 +117,15 @@ plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1] * 100, type = "b",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
 lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1] * 100, lty = 1,
-      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
 lines(seq_along(these.ebf), bs.results.mn[these.ebf, 2] * 100, lty = 3,
       type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
 lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2] * 100, lty = 3,
-      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
-       pch = c(21, 22, 21, 22), pt.lwd = 1.25, pt.cex = 1.5,
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
        cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
        legend = c("q(0.95): EBF", "q(0.95): GSK",
                   "q(0.99): EBF", "q(0.99): GSK"))
@@ -140,15 +141,15 @@ plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "b",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
 lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 1,
-      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
 lines(seq_along(these.ebf), qs.results.mn[these.ebf, 5], lty = 3,
       type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
 lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 3,
-      type = "b", bg = "firebrick1", pch = 22, cex = 1.5, lwd = 1.25)
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
 axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
-       pch = c(21, 22, 21, 22), pt.lwd = 1.25, pt.cex = 1.5,
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
        cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
        legend = c("q(0.95): EBF", "q(0.95): GSK",
                   "q(0.99): EBF", "q(0.99): GSK"))

@@ -1041,6 +1041,7 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
   if (is.null(midpoint)) {
     midpoint <- 1.5
   }
+
   georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
                  plot = FALSE)
   subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
@@ -1060,6 +1061,9 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
     limits <- c(min(Y), max(Y))
   }
 
+  xlim <- range(extcoef_map$long)
+  ylim <- range(extcoef_map$lat)
+
   if (is.null(mid)) {
     mid = "#FFFFFF"
   }
@@ -1073,15 +1077,19 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
   p <- p + geom_polygon(aes(group = group, fill = Y), color = "grey20")
   p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
   p <- p + coord_map("polyconic")
-  p <- p + ggtitle(main)  # make the title
-  p <- p + labs(fill = fill.legend)
+  # p <- p + ggtitle(main)  # make the title
+  # p <- p + labs(fill = fill.legend)
+  p <- p + coord_fixed(ratio=1.2, xlim=xlim, ylim=ylim)
   if (!is.null(cents)) {
     p <- p + geom_text(data = df.text, aes(x = x, y = y, label = text))
   }
   p <- p + scale_fill_gradient2(low = "dodgerblue3", high = "firebrick3",
                                 mid = mid, midpoint = midpoint,
-                                limits = limits)
+                                limits = limits, name = fill.legend)
+  p <- p + labs(title = main, x = "", y = "")
   p <- p + theme_clean()
+  p <- p + theme(plot.title = element_text(size = rel(1.5)))
+
   return(p)
 }
 

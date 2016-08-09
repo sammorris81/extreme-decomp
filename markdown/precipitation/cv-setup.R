@@ -240,7 +240,7 @@ current <- 1:32
 future  <- 33:64
 quartz(width = 16, height = 8)
 ylim <- range(Y[these, ])
-ylim[1] <- 75
+ylim[1] <- 65
 par(mfrow = c(1, 2))
 for (i in 1:length(these)) {
   if (i == 1) {
@@ -266,7 +266,7 @@ for (i in 1:length(these)) {
          ylab = "Max precipitation", xaxt = "n", xlab = "Year",
          col = colors[i], lwd = 1.5,
          cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-    axis(1, at = c(future), labels = year[future], cex.axis = 1.5)
+    axis(1, at = c(current), labels = year[future], cex.axis = 1.5)
   } else {
     lines(Y[these[i], future], col = colors[i], lwd = 1.5)
   }

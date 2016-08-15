@@ -1,6 +1,7 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
 library(gridExtra)
+library(SpatialExtremes)
 
 # setMKLthreads(5)
 ################################################################################
@@ -54,13 +55,25 @@ cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 # before getting started
 
 ec.hat <- vector(mode = "list", length = nfolds)
+# temp <- fmadogram(data = t(Y[1:5, ]), coord = s[1:5, ], which = "ext")
+# ec.temp <- matrix(1, nrow(Y[1:5, ]), nrow(Y[1:5, ]))
+# ec.temp[lower.tri(ec.temp)] <- temp[, 3]
+# ec.temp[upper.tri(ec.temp)] <- t(ec.temp)[upper.tri(ec.temp)]
+# ec.hat[[1]] <-
+
 for (fold in 1:nfolds) {
   Y.tst <- Y
   Y.tst[cv.idx[[fold]]] <- NA
 
-  # build ec matrix: ns x ns
-  ec <- get.pw.ec.fmado(Y = Y.tst)
-  ec.hat[[fold]] <- ec$ec
+  # # build ec matrix: ns x ns
+  # ec <- get.pw.ec.fmado(Y = Y.tst)
+  # ec.hat[[fold]] <- ec$ec
+  this.ec <- fmadogram(data = t(Y.tst), coord = s, which = "ext")
+  this.ec[this.ec >= 2] <- 2
+  ec <- matrix(1, nrow(Y), nrow(Y))
+  ec[lower.tri(ec)] <- this.ec[, 3]
+  ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
+  ec.hat[[fold]] <- ec
 
   cat("finished fold:", fold, "\n")
 }
@@ -72,7 +85,7 @@ save(cv.idx, ec.hat, file = "cv-extcoef.RData")
 load("precip_preprocess.RData")
 load("cv-extcoef.RData")
 nfolds <- length(cv.idx)
-openblas.set.num.threads(4)
+# openblas.set.num.threads(4)
 s.scale        <- s
 s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
 s.min          <- apply(s, 2, min)
@@ -82,7 +95,7 @@ cents.grid     <- s.scale
 
 nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 
-for (L in nknots[3:4]) {
+for (L in nknots) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
   alphas <- rep(0, nfolds)
@@ -119,49 +132,55 @@ for (L in nknots[3:4]) {
   cat("Finished L = ", L, ".\n", sep = "")
 }
 
-par(mfrow = c(1, 2))
-quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf[[1]][, 4],
-           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
-quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf1[[1]][, 4],
-           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
-
-quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk[[1]][, 4],
-           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
-quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk1[[1]][, 3],
-           nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
-
-#### looks like L = 35 is after things settle down.
-# get pairwise extremal coefficients
-# build ec matrix: ns x ns
-ec <- get.pw.ec.fmado(Y = Y)
-ec.hat <- ec$ec
-L <- 35
-
-# Empirical basis functions
-cat("Starting estimation of empirical basis functions \n")
-out       <- get.factors.EC(ec.hat, L = L, s = s.scale)
-B.ebf     <- out$est
-ec.smooth <- out$EC.smooth
-alpha     <- out$alpha
-
-filename <- paste("ebf-", L, "-all.RData", sep = "")
-save(B.ebf, ec.smooth, alpha, file = filename)
-
-# Gaussian kernel functions
-cat("Starting estimation of Gaussian kernels \n")
-set.seed(5687)
-knots <- cover.design(cents.grid, nd = L)$design
-out   <- get.rho.alpha(EC = ec.hat, s = s.scale, knots = knots)
-B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
-
-filename <- paste("gsk-", L, "-all.RData", sep = "")
-save(B.gsk, alpha, knots, file = filename)
+# par(mfrow = c(1, 2))
+# quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf[[1]][, 4],
+#            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+# quilt.plot(s.scale[, 1], s.scale[, 2], B.ebf1[[1]][, 4],
+#            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+#
+# quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk[[1]][, 4],
+#            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+# quilt.plot(s.scale[, 1], s.scale[, 2], B.gsk1[[1]][, 3],
+#            nx = length(unique(s.scale[, 1])), ny = length(unique(s.scale[, 2])))
+#
+# #### looks like L = 35 is after things settle down.
+# # get pairwise extremal coefficients
+# # build ec matrix: ns x ns
+# ec <- get.pw.ec.fmado(Y = Y)
+# ec.hat <- ec$ec
+# L <- 35
+#
+# # Empirical basis functions
+# cat("Starting estimation of empirical basis functions \n")
+# out       <- get.factors.EC(ec.hat, L = L, s = s.scale)
+# B.ebf     <- out$est
+# ec.smooth <- out$EC.smooth
+# alpha     <- out$alpha
+#
+# filename <- paste("ebf-", L, "-all.RData", sep = "")
+# save(B.ebf, ec.smooth, alpha, file = filename)
+#
+# # Gaussian kernel functions
+# cat("Starting estimation of Gaussian kernels \n")
+# set.seed(5687)
+# knots <- cover.design(cents.grid, nd = L)$design
+# out   <- get.rho.alpha(EC = ec.hat, s = s.scale, knots = knots)
+# B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
+#
+# filename <- paste("gsk-", L, "-all.RData", sep = "")
+# save(B.gsk, alpha, knots, file = filename)
 
 #### also do L = 25 is after things settle down.
 # get pairwise extremal coefficients
 # build ec matrix: ns x ns
-ec <- get.pw.ec.fmado(Y = Y)
-ec.hat <- ec$ec
+this.ec <- fmadogram(data = t(Y), coord = s, which = "ext")
+this.ec[this.ec >= 2] <- 2
+ec <- matrix(1, nrow(Y), nrow(Y))
+ec[lower.tri(ec)] <- this.ec[, 3]
+ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
+ec.hat <- ec
+# ec <- get.pw.ec.fmado(Y = Y)
+# ec.hat <- ec$ec
 L <- 25
 
 # Empirical basis functions
@@ -197,17 +216,17 @@ plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
 dev.print(device = pdf, file = plotname,
           width = 6, height = 6)
 
-L <- 35
-file <- paste("ebf-", L, "-all.RData", sep = "")
-load(file)
-v <- colSums(B.ebf) / ns
-plot(1:L, cumsum(v), ylim = c(0, 1),
-     main = paste("Precipitation analysis (", L, " knots)", sep = ""),
-     ylab = "Cumulative relative contribution",
-     xlab = "Knot")
-plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
-dev.print(device = pdf, file = plotname,
-          width = 6, height = 6)
+# L <- 35
+# file <- paste("ebf-", L, "-all.RData", sep = "")
+# load(file)
+# v <- colSums(B.ebf) / ns
+# plot(1:L, cumsum(v), ylim = c(0, 1),
+#      main = paste("Precipitation analysis (", L, " knots)", sep = ""),
+#      ylab = "Cumulative relative contribution",
+#      xlab = "Knot")
+# plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
+# dev.print(device = pdf, file = plotname,
+#           width = 6, height = 6)
 
 
 #### plot some of the basis functions ####

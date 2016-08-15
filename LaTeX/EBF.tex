@@ -48,6 +48,7 @@
 \setcounter{page}{1}
 
 \section{Introduction}\label{ebs:intro}
+
 The spatial Extreme Value Analysis (EVA) literature is expanding rapidly \citep{Davison2012} to meet the demands of researchers to improve estimates of rare-event probabilities by borrowing information across space and to estimate the probability of extreme events occurring simultaneously at multiple locations.
 Environmental datasets commonly include observations from hundreds or thousands of locations, and advanced tools are required to explore and analyze these data.
 For Gaussian data, Principle Components Analysis \citep[PCA]{Everitt2008}, also known as Empirically Orthogonal Functions \citep[EOF]{Toggweiler2001}, has proven to be a powerful tool to study correlation between spatial locations; understand the most important large-scale spatial features; and reduce the dimension of the problem to allow for simple computation even for massive datasets.
@@ -55,21 +56,16 @@ Computation and exploration are arguably more difficult for EVA than Gaussian da
 
 In EVA, extremes are separated from the bulk of the distribution by either analyzing only points above a threshold or block maximums \citep{Coles2001}, e.g., the annual maximum of the daily precipitation.
 A natural spatial model for block maximum at several spatial locations is the max-stable process, which, under certain conditions, arises as the limit of the location-wise maximum of infinitely-many spatial processes \citep{deHaan2006}.
-Max-stable processes were also used to model spatial exceedances over a high threshold \citep{Thibaud2013,Huser2014}
+Max-stable processes were also used to model spatial exceedances over a high threshold \citep{Thibaud2013,Huser2014}.
 \Citet{deHaan1984} showed that any max-stable process can be represented in terms of a countable number of spatial processes (e.g., stationary log Gaussian processes), and a finite truncation of this representation has been used for conditional simulation \citep{Wang2011}.
-
-Fully-Bayesian analysis using max-stable processes is cumbersome for large datasets.
-\citet{Reich2012} proposed a hierarchical max-stable model can fit large datasets, but uses a low-rank approximation with knots and standardized Gaussian kernel functions.
-\citet{Thibaud2015}
-
-
-One option is to use non-max-stable models that retain extremal dependence such as the skew-t process in \citep{Morris2016}.
+Fully-Bayesian analysis using max-stable processes is cumbersome for large data sets \citep{Wadsworth2014,Thibaud2013a}.
+One option is to use non-max-stable models that retain extremal dependence such as the \skewt{} process in \citep{Morris2016}.
 Alternatively, \citet{Reich2012} propose a low-rank method based on spatial kernel functions, and others have used pairwise \citep{Padoan2010,Huser2014} and trivariate \citep{Genton2011} likelihood methods for parameter estimation.
 
-In this paper, we propose an empirical basis function (EBF) approach that builds on a finite truncation of the spectral representation of a max-stable process.
-We develop a method-of-moments estimator to identify a small set of EBFs that capture the most important spatial features of the data.
-Unlike PCA/EOFs, but similar to dictionary learning \citep{Mairal2014} and non-negative matrix factorizations \citep{Lee1999}, the EBFs are not orthogonal, nonetheless these spatial functions can be plotted for exploratory analysis to reveal important spatial trends.
-The EBFs can also be used in a second-stage statistical analysis for Bayesian inference on the marginal parameters at each location, to model spatial dependence, and to test for covariate effects.
+In this paper we propose an empirical basis function (EBF) approach that builds on a finite truncation of the spectral representation, and develops a method-of-moments estimator for the underlying spatial processes.
+Unlike PCA/EOFs, but similar to dictionary learning \citep{Mairal2014} and non-negative matrix factorizations \citep{Lee1999}, the EBFs are not orthogonal.
+Nonetheless these spatial functions can be plotted for exploratory analysis to reveal important spatial trends.
+In addition to exploratory analysis, we show that the EBFs can be used for Bayesian inference on the marginal parameters at each location, modeling spatial dependence, and to test for covariate effects.
 By basing the spatial dependence on EBFs, the resulting spatial analysis does not require dubious assumptions such as stationarity.
 In addition, a Bayesian analysis for either block-maximum or point above a threshold is computationally feasible for large datsets because the entire spatial process is represented by a small number of basis functions.
 
@@ -119,12 +115,15 @@ For the PS random effects model the EC has the form
 \end{align}
 In particular, $\vartheta(\bs,\bs) = 2^{\alpha}$ for all $\bs$.
 
-
-\section{Estimating the spatial dependence function}\label{ebs:estimation}
+\section{Estimating the basis functions} \label{ebs:estimation}
 
 To estimate the extremal coefficient function, we consider the process at $n_s$ spatial locations $\bs_1,\ldots,\bs_{n_s}$ and $n_t$ times $t=1,\ldots,n_t$.
 The basis functions are fixed over time, but the random effects and errors are independent over time.
-That is $Z_t(\bs) = \theta_t(\bs) \epsilon_t(\bs)$ where $\theta_t(\bs) = \left(\displaystyle \sum_{l=1}^L B_{l}(\bs)^{1/\alpha}A_{lt}\right)^{\alpha}$, $A_{lt} \iid$ PS$(\alpha)$, and $\epsilon_t(\bs) \iid$ GEV$(1, \alpha, \alpha)$.
+That is
+\begin{align}
+  Z_t(\bs) = \theta_t(\bs) \epsilon_t(\bs) \quad \mathrm{where} \quad \theta_t(\bs) = \left(\displaystyle \sum_{l=1}^L B_{l}(\bs)^{1/\alpha}A_{lt}\right)^{\alpha},
+\end{align}
+$A_{lt} \iid$ PS$(\alpha)$, and $\epsilon_t(\bs) \iid$ GEV$(1, \alpha, \alpha)$.
 Denote $Y_t(\bs_i) = Y_{it}$, $B_l(\bs_i) = B_{il}$, $T(\bs_i)=T_i$, and $\vartheta(\bs_i,\bs_j) = \vartheta_{ij}$.
 
 In this section we develop an algorithm to estimate the spatial dependence parameter $\alpha$ and the $n_s\times L$ matrix $\bB = \{B_{il}\}$.
@@ -155,8 +154,8 @@ Since all large $q$ give valid estimates, we average over a grid of $q$ with $q_
 Assuming the true EC is smooth over space, the initial estimates ${\hat \vartheta}_{ij}$ can be improved by smoothing.
 Let
 \begin{align} \label{ebeq:EChat2}
-  {\tilde \vartheta}_{ij} = \frac{\displaystyle \sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
-  {\displaystyle \sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
+  {\tilde \vartheta}_{ij} = \frac{\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}{\hat \vartheta}_{uv}}
+  {\sum_{u=1}^{n_s}\sum_{v=1}^{n_s} w_{iu}w_{jv}},
 \end{align}
 where $w_{iu} = \exp[-(||\bs_i-\bs_u'||/\phi)^2])$ is the Gaussian kernel function with bandwidth $\phi$.
 The elements ${\hat \vartheta}_{ii}$ do not contribute any information as ${\hat \vartheta}_{ii}=1$ for all $i$ by construction.
@@ -191,6 +190,7 @@ Therefore, terms with large $v_l$ are the most important.
 The order of the terms is arbitrary, and so we reorder the terms so that $v_1\ge \cdots \ge v_L$.
 
 \section{Bayesian implementation details}\label{ebs:MCMC}
+
 For our data analysis in \sref{ebs:analysis} we allow the GEV location and scale parameters, denoted $\mu_t(\bs)$ and scale $\sigma_t(\bs)$ respectively, to vary with space and time.
 The model we choose is as follows
 \begin{align}\label{ebeq:GPprior}
@@ -215,11 +215,10 @@ $\sigma_{it}^* = \alpha\sigma_{it}\theta_{it}^\xi$, and $\xi^* = \alpha\xi$.
 Therefore, the conditional likelihood conveniently factors across observations; marginalizing over the random effect $\theta_{it}$ induces extremal spatial dependence.
 To focus on the extreme values above the local threshold $T_i$, we use the censored likelihood
 \begin{align} \label{ebeq:g}
-d(y;\theta_{it},\Theta_{it}, T_i)  =
-\left\{\begin{array}{ll}
+d(y;\theta_{it},\Theta_{it}, T_i)  = \begin{cases}
   F(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y \le T_i \\
   f(y;\mu_{it}^*,\sigma_{it}^*,\xi^*) & y>T_i,
-\end{array}\right.
+\end{cases}
 \end{align}
 where $F$ and $f$ are the GEV distribution and density functions, respectively, defined in \aref{eba:GEV}.
 
@@ -244,18 +243,21 @@ The second-stage Bayesian analysis requires selecting thresholds $T_i,\ldots,T_{
 That is, we set $T_i$ to the 0.95 quantile of the $Y_{it}$ and its five nearest neighbors.
 
 \section{Data analysis}\label{ebs:analysis}
+
 In this section, we illustrate our method with two data analyses.
 In \sref{ebs:georgia}, we present a points above a threshold analysis using annual acreage burned due to wildfires in Georgia from 1965 -- 2014.
 This is followed in \sref{ebs:precip} by an analysis of block maxima precipitation data in the eastern U.S.
 We compare our method with another method that uses standardized Gaussian kernels for the spatial basis functions.
 
 \subsection{Gaussian kernel basis functions}
+
 To provide a comparison of our model with another approach, we also fit a model that uses standardized Gaussian kernels for the spatial basis functions \citep{Reich2012}.
 In this method, \citeauthor{Reich2012} introduce a set of $\bk_1, \ldots, \bk_L$ spatial knots and use standardized Gaussian kernel functions (GSK; see \aref{eba:gskfunctions}) instead of using EBFs for the $\hat{B_l}(\bs)$.
 For the comparison between EBF and GSK methods, we use the same number of basis functions.
 We obtain estimates of the kernel bandwidth $\hat{\rho}$ and spatial dependence $\hat{\alpha}$, using the same least squares minimization as with the EBF method, and treat these as fixed in the MCMC.
 
 \subsection{Analysis of extreme Georgia fires}\label{ebs:georgia}
+
 The dataset used for our application is composed of yearly acreage burned due to wildfires for each county in Georgia from 1965 -- 2014 (\url{http://weather.gfc.state.ga.us/FireData/}).
 \fref{ebfig:firets25} shows the time series of $\log$(acres burned) for 25 randomly selected counties.
 Based on this plot and other exploratory analysis, we see no evidence of non-linear trends and proceed with linear time trends for the GEV location and scale parameters.
@@ -312,10 +314,11 @@ As a comparison, we provide the first six principal components of the fire data 
 
 Given the basis function estimates, we run the MCMC for 35,000 iterations using a burnin period of 25,000 iterations.
 We consider models fit with both EBF and GSK, and fit the model using $L = 5, 10, \ldots, 40$.
-Timing for each setting of $L$ for 1,000 iterations is given in \tref{ebtbl:fire-scores}.
+Timings for each setting of $L$ for 1,000 iterations are given in \tref{ebtbl:fire-scores}.
 These timings come from a single core of an Intel Core i7-5820K Haswell-E processor, using the OpenBLAS optimized BLAS library (\url{http://www.openblas.net}).
 
 \subsection{Results for fire analysis}\label{ebs:results-fire}
+
 We use 10-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 90\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 10\% of sites and years are withheld for testing model predictions.
@@ -471,6 +474,7 @@ This suggests that the 10-year return level for wildfires in regions with larger
 % \end{figure}
 
 \subsection{Analysis of annual precipitation}\label{ebs:precip}
+
 We also conduct an analysis of the precipitation data presented in \citet{Reich2012}.
 The data are climate model output from the North American Regional Climate Change Assessment Program (NARCCAP).
 This data consists of $n_s = 697$ grid cells at a 50km resolution in the eastern US, and includes historical data (1969 -- 2000) as well as future conditions (2039 -- 2070).
@@ -498,7 +502,8 @@ We consider models fit with both EBF and GSK, and fit the model using $L = 5, 10
 Timing for each setting of $L$ is given in \tref{ebtbl:precip-scores} for 1,000.
 The timings are obtained using the same machine as for the fire analysis.
 
-\subsection{Results for precipitation analysis}\label{ebs:results-precip}
+\subsection{Precipitation results} \label{ebs:results-precip}
+
 We use 5-fold cross-validation to assess the predictive performance of a model.
 For each method, we randomly select 80\% of the observations across counties and years to be used as a training set to fit the model.
 The remaining 20\% of sites and years are withheld for testing model predictions.
@@ -518,6 +523,7 @@ There very strong evidence to suggest that most of the eastern U.S. should expec
 Exceptions to this trend appear in southern parts of Alabama and Mississippi and regions on the border between South Carolina and Georgia which will likely experience a decrease in the 10-year return level.
 
 \section{Discussion}\label{ebs:con}
+
 In this paper we have proposed new empirical basis functions for a data-driven low-rank approximation to a max-stable process.
 The basis functions provide researchers with an exploratory data analysis tool to explore maps of extremal dependence over space.
 The functions can also be used as inputs to an MCMC algorithm for inference and predicitons over space.
@@ -650,16 +656,19 @@ The authors' work was partially supported by grants from the Department of the I
 \appendix
 \section{Appendices}
 \subsection{Extreme value distributions} \label{eba:GEV}
+
 The cumulative distribution function for the GEV is $F(y) = \exp\{-t(y)\}$ where
 \begin{align} \label{ebeq:gevt}
-  t(y) = \left\{ \begin{array}{ll}
-      \left[1 + \xi \displaystyle \frac{y - \mu}{\sigma}\right]^{-1 / \xi}, \quad &\xi \neq 0 \\ [0.5em]
+  t(y) = \begin{cases}
+      \left[1 + \xi \displaystyle \frac{y - \mu}{\sigma}\right]^{-1 / \xi}, \quad &\xi \neq 0 \\
+      \\
       \exp\left\{- \displaystyle \frac{y - \mu}{\sigma}\right\}, &\xi = 0.
-  \end{array}\right.
+  \end{cases}
 \end{align}
-The probability density function for the GEV is given by $f(y) = \frac{1}{\sigma} t(x)^{\xi + 1} \exp\{-t(y)\}$ where $t(y)$ is defined in \eref{ebeq:gevt}.
+The probability density function for the GEV is given by $f(y) = \displaystyle \frac{1}{\sigma} t(x)^{\xi + 1} \exp\{-t(y)\}$ where $t(y)$ is defined in \eref{ebeq:gevt}.
 
 \subsection{Grid approximation to PS density} \label{eba:gridapprox}
+
 The PS($\alpha$) density can be challenging to use because it does not have a closed form.
 From Section 2 of \citep{Stephenson2009}, the density can be expressed as
 \begin{align}
@@ -677,6 +686,7 @@ with
 To evaluate the integral, we use 50 evenly spaced quantiles of a Beta$(0.5, 0.5)$ distribution as the midpoints $B_1, \ldots, B_{50}$, and then use the midpoint rule to evaluate $\displaystyle \int_0^1 g_1(A, B) \dd B$.
 
 \subsection{Standardized Gaussian kernel functions} \label{eba:gskfunctions}
+
 \citet{Reich2012} use standardized Gaussian kernel functions as their spatial basis functions in the low-rank max-stable model.
 Consider a set of $\bk_1, \ldots, \bk_L$ spatial knot locations in $\calD^2$, the region of interest.
 Then
@@ -685,7 +695,8 @@ Then
 \end{align}
 where $|| \cdot ||$ is the Euclidean distance between a site and a knot location.
 
-\subsection{Principal components} \label{eba:pca}
+\section{Principal components} \label{eba:pca}
+
 As a comparison to the EBFs, \fref{ebfig:fire-eigpanel} gives the first six principal components for the fire data, and \fref{ebfig:precip-eigpanel} gives the first six principal components for the precipitation data.
 These figures show that the EBFs resemble the EOFs  for the uncersored precipitation data, but are quite different that the EOF from the censored fire data.
 This is not surprising considering that the censoring results in only a small subset of data being used to estimate dependence.
@@ -697,6 +708,13 @@ This is not surprising considering that the censoring results in only a small su
   \caption{First six principal components and the cumulative sum of the first 25 eigenvalues for the Georgia fire data.}
   \label{ebfig:fire-eigpanel}
 \end{figure}
+
+% \begin{figure}[htbp] % markdown/fire-analysis/basis-functions.R
+%   \centering
+%   \includegraphics[width=0.5\linewidth]{plots/firelambda-25.pdf}
+%   \caption{Cumulative sum of the first 25 eigenvalues.}
+%   \label{ebfig:fire-eigpanel}
+% \end{figure}
 
 \begin{figure}[htbp]  % markdown/precipitation/cv-setup.R
   \centering

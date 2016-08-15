@@ -119,37 +119,37 @@ for (i in 1:ns) {
 # basis function coefficients to be 0.
 
 # only fitting intercept, std.elev, and time
-Y.spatex <- t(Y)
-X.spatex <- matrix(X[, 1, 3], ns, 1)
-X.timeex <- t(t(X[1, , 2]))
+# Y.spatex <- t(Y)
+# X.spatex <- matrix(X[, 1, 3], ns, 1)
+# X.timeex <- t(t(X[1, , 2]))
+#
+# colnames(X.spatex) <- "elev"
+# colnames(X.timeex) <- "year"
+#
+# loc.form   <- ~ elev
+# scale.form <- ~ elev
+# shape.form <- shape ~ 1
+#
+# temp.form.loc   <- temp.loc ~ year
+# temp.form.scale <- temp.scale ~ year
 
-colnames(X.spatex) <- "elev"
-colnames(X.timeex) <- "year"
-
-loc.form   <- ~ elev
-scale.form <- ~ elev
-shape.form <- shape ~ 1
-
-temp.form.loc   <- temp.loc ~ year
-temp.form.scale <- temp.scale ~ year
-
-options(warn = 0)
-library(SpatialExtremes)
-fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
-                      loc.form = loc.form, scale.form = scale.form,
-                      shape.form = shape.form,
-                      temp.cov = X.timeex,
-                      temp.form.loc = temp.form.loc,
-                      temp.form.scale = temp.form.scale)
-options(warn = 2)
-
-beta1.init <- c(fit.mle$fitted.values[1], fit.mle$fitted.values[6],
-                fit.mle$fitted.values[2])
-beta1.init <- c(beta1.init, rep(0, 2 * L))
-beta2.init <- c(fit.mle$fitted.values[3], fit.mle$fitted.values[7],
-                fit.mle$fitted.values[4])
-beta2.init <- c(beta2.init, rep(0, 2 * L))
-xi.init <- fit.mle$fitted.values[5]
+# options(warn = 0)
+# library(SpatialExtremes)
+# fit.mle <- fitspatgev(data = Y.spatex, covariables = X.spatex,
+#                       loc.form = loc.form, scale.form = scale.form,
+#                       shape.form = shape.form,
+#                       temp.cov = X.timeex,
+#                       temp.form.loc = temp.form.loc,
+#                       temp.form.scale = temp.form.scale)
+# options(warn = 2)
+#
+# beta1.init <- c(fit.mle$fitted.values[1], fit.mle$fitted.values[6],
+#                 fit.mle$fitted.values[2])
+# beta1.init <- c(beta1.init, rep(0, 2 * L))
+# beta2.init <- c(fit.mle$fitted.values[3], fit.mle$fitted.values[7],
+#                 fit.mle$fitted.values[4])
+# beta2.init <- c(beta2.init, rep(0, 2 * L))
+# xi.init <- fit.mle$fitted.values[5]
 
 ################################################################################
 #### Spatially smooth threshold ################################################
@@ -176,32 +176,66 @@ thresh99.tst <- thresh99[this.cv]
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
-update <- 1000
+iters  <- 25000
+burn   <- 15000
+update <- 500
 
-# iters <- 100; burn <- 50; update <- 10  # for testing
-A.init <- exp(6)  # consistent with estimates of alpha
+# iters <- 1000; burn <- 900; update <- 50  # for testing
+A.init <- matrix(exp(2), L, nt)  # consistent with estimates of alpha
+# A.init <- matrix(1, L, nt)
+theta.init <- (B.sp^(1 / alpha) %*% A.init)^alpha
+xi.init <- 0.1
+
+# find the beta estimates using ml for GEV
+# going to use ML but independent to get a single mu and sigma for each site
+# based on xi = 0, but with A.init and alpha
+
+# xi.init <- rep(0, ns)
+beta.int.init <- matrix(0, ns, 2)
+for (i in 1:ns) {
+  fit <- optim(par = c(0, 0), fn = loglike.init,
+               y = Y[i, ], thresh = rep(-Inf, nt), xi = xi.init,
+               theta = theta.init[i, ], alpha = alpha,
+               control = list(maxit = 5000))$par
+  beta.int.init[i, ] <- fit[1:2]
+  if (i %% 50 == 0) {
+    print(paste("site ", i, " complete", sep = ""))
+  }
+}
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
-
+#134.94
 # fit the model using the training data
-fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
-                thresh = -Inf, B = B.sp, alpha = alpha,
-                can.mu.sd = 0.001, can.sig.sd = 0.005,
-                beta1.attempts = 50, beta2.attempts = 50, A = A.init,
-                beta1 = beta1.init, beta2 = beta2.init, xi = 0,
-                beta1.tau.a = 0.1, beta1.tau.b = 0.1,
-                beta1.sd = 10, beta1.sd.fix = FALSE,
-                beta2.tau.a = 0.1, beta2.tau.b = 0.1,
-                beta2.sd = 1, beta2.sd.fix = FALSE,
-                beta1.block = FALSE, beta2.block = FALSE,
-                mu1.sd = 50, mu2.sd = 5, bw.attempts = 50,
-                time.interact = TRUE,
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
-#                iters = iters, burn = burn, update = update, iterplot = TRUE)
+# Rprof(filename = "Rprof.out", line.profiling = TRUE)
+beta.time.init <- matrix(0, ns, 2)
+fit <- ReShMCMC(y = Y, s = s.scale, thresh = -Inf, B = B.sp, alpha = alpha,
+                beta.int = beta.int.init, canbeta.int.sd = 0.5,
+                beta.time = beta.time.init, canbeta.time.sd = 0.5,
+                xi = xi.init, bw.init = 0.2, A = A.init,
+                iters = iters, burn = burn, update = update,
+                iterplot = FALSE)
+# fit <- ReShMCMC(y = Y, X = X, s = s.scale, knots = knots,
+#                 thresh = -Inf, B = B.sp, alpha = alpha,
+#                 tau1.a = 0.1, tau1.b = 0.1,
+#                 tau2.a = 0.1, tau2.b = 0.1,
+#                 # beta1 = beta1.init,
+#                 beta1.pri.sd = 10,
+#                 beta1.tau.a = 0.1, beta1.tau.b = 0.1, can.beta1.sd = 0.05,
+#                 # beta2 = beta2.init,
+#                 beta2.pri.sd = 1,
+#                 beta2.tau.a = 0.1, beta2.tau.b = 0.1, can.beta2.sd = 0.01,
+#                 xi = 0, xi.min = -0.5, xi.max = 0.5, xi.mn = 0, xi.sd = 0.5,
+#                 bw.gp.init = 0.3,
+#                 A = A.init, bw.basis.init = 0.3,
+#                 time.interact = TRUE,
+#                 keep.sites = 5, keep.days = 5, keep.knots = 10,
+#                 iters = iters, burn = burn, update = update, iterplot = FALSE)
+#                # iters = iters, burn = burn, update = update, keep.burn = TRUE,
+#                # iterplot = TRUE)
 cat("Finished fit and predict \n")
+# Rprof(filename = NULL)
+# summaryRprof(filename = "Rprof.out", lines = "show")
 
 # par(mfrow = c(7, 5))
 # for (i in 1:np) {

@@ -54,11 +54,14 @@
 
 ENTRY
   { address
+    archive
+    archivePrefix
     author
     booktitle
     chapter
     edition
     editor
+    eprint
     howpublished
     institution
     journal
@@ -68,6 +71,7 @@ ENTRY
     number
     organization
     pages
+    primaryClass
     publisher
     school
     series
@@ -339,7 +343,7 @@ MACRO {tcs} {"Theoretical Computer Science"}
 FUNCTION {format.url}
 { url empty$
     { "" }
-    { "\urlprefix\url{" url * "}" * }
+    { "\url{" url * "}" * }
   if$
 }
 
@@ -430,6 +434,14 @@ FUNCTION {format.key}
   if$
 }
 
+FUNCTION {format.archive}
+{
+  archivePrefix empty$
+      { "" }
+      { archivePrefix ":" *}
+  if$            
+}
+
 FUNCTION {format.authors}
 { author empty$
     { "" }
@@ -484,6 +496,29 @@ FUNCTION {format.title}
     { title "t" change.case$
     }
   if$
+}
+
+FUNCTION {format.primaryClass}
+{
+  primaryClass empty$
+      { "" }
+      { " [" primaryClass * "]" *}
+  if$            
+}
+
+FUNCTION {format.eprint}
+{ eprint empty$
+     { ""}
+     { archive empty$
+          {"\href{http://arxiv.org/abs/" eprint * "}" * 
+             "{{\ttfamily " * format.archive * eprint *
+              format.primaryClass * "}}" *}
+          {"\href{" archive *  "/" * eprint * "}" * 
+             "{{\ttfamily " * format.archive * eprint *
+              format.primaryClass * "}}" *}
+       if$
+     }
+     if$
 }
 
 FUNCTION {format.full.names}
@@ -903,6 +938,7 @@ FUNCTION {article}
       format.pages output
     }
   if$
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -941,6 +977,7 @@ FUNCTION {book}
     }
   if$
   format.edition output
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -959,6 +996,8 @@ FUNCTION {booklet}
   new.block
   howpublished output
   address output
+  new.block
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -1001,6 +1040,8 @@ FUNCTION {inbook}
   if$
   format.edition output
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1029,6 +1070,8 @@ FUNCTION {incollection}
       format.chapter.pages output
     }
   if$
+  new.block
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -1063,6 +1106,8 @@ FUNCTION {inproceedings}
     }
   if$
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1084,6 +1129,8 @@ FUNCTION {manual}
   address output
   format.edition output
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1103,6 +1150,8 @@ FUNCTION {mastersthesis}
   school "school" output.check
   address output
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1119,6 +1168,8 @@ FUNCTION {misc}
   format.title output
   new.block
   howpublished output
+  new.block
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -1138,6 +1189,8 @@ FUNCTION {phdthesis}
   bbl.phdthesis format.thesis.type output.nonnull
   school "school" output.check
   address output
+  new.block
+  format.eprint output
   new.block
   format.url output
   new.block
@@ -1163,6 +1216,8 @@ FUNCTION {proceedings}
     }
   if$
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1182,6 +1237,8 @@ FUNCTION {techreport}
   institution "institution" output.check
   address output
   new.block
+  format.eprint output
+  new.block
   format.url output
   new.block
   format.note output
@@ -1196,6 +1253,8 @@ FUNCTION {unpublished}
   format.date "year" output.check
   date.block
   format.title "title" output.check
+  new.block
+  format.eprint output
   new.block
   format.url output
   new.block

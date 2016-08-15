@@ -114,24 +114,29 @@ thresh99 <- matrix(thresh99, nrow(Y), ncol(Y))
 ################################################################################
 #### run the MCMC ##############################################################
 ################################################################################
-iters  <- 30000
-burn   <- 20000
+iters  <- 35000
+burn   <- 25000
 update <- 1000
 
 # iters <-100; burn <- 50; update <- 10  # for testing
+beta.int.init  <- matrix(0, ns, 2)
+beta.time.init <- matrix(0, ns, 2)
+A.init <- matrix(1, L, nt)  # consistent with estimates of alpha
+xi.init <- 0.1
 
 cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 # fit the model using the training data
 # s is scaled locations
-fit <- ReShMCMC(y = Y, X = X, s = s, knots = knots,
-                thresh = thresh95, B = B.sp, alpha = alpha,
-                time.interact = TRUE,
-                # beta1 = beta1.init,
-                beta1.tau.a = 1, beta1.tau.b = 1, beta1.sd.fix = FALSE,
-                beta2.tau.a = 1, beta2.tau.b = 1, beta2.sd.fix = FALSE,
-                # iters = iters, burn = burn, update = update, iterplot = TRUE)
-                iters = iters, burn = burn, update = update, iterplot = FALSE)
+
+fit <- ReShMCMC(y = Y, s = s, thresh = thresh90, B = B.sp,
+                alpha = alpha, beta.int = beta.int.init,
+                beta.int.attempts = 50, canbeta.int.sd = 0.5,
+                beta.time = beta.time.init,
+                beta.time.attempts = 50, canbeta.time.sd = 0.5,
+                xi = xi.init, bw.init = 0.2, A = A.init,
+                iters = iters, burn = burn, update = update,
+                iterplot = FALSE)
 cat("Finished fit and predict \n")
 
 # mu.post <- sig.post <- array(0, dim = c(10000, ns, nt))

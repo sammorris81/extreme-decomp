@@ -8,8 +8,6 @@ time    <- "current"  # current or future
 L       <- 5          # number of knots to use for the basis functions
 cv      <- 1          # which cross-validation set to use
 
-loc.fun <- scale.fun <- ~ time + elev # + B1 + B2 + B3 + B4 + B5 + 0
-
 # fit the model and get predictions
 source(file = "./fitmodel.R")
 

@@ -1,5 +1,6 @@
 rm(list=ls())
 source(file = "./package_load.R", chdir = T)
+library(gridExtra)
 
 # setMKLthreads(5)
 ################################################################################
@@ -183,6 +184,31 @@ B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
 filename <- paste("gsk-", L, "-all.RData", sep = "")
 save(B.gsk, alpha, knots, file = filename)
 
+# plot cumsum against basis function
+L <- 25
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Precipitation analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
+L <- 35
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Precipitation analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/precipv-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
 
 #### plot some of the basis functions ####
 nx <- length(unique(s[, 1]))
@@ -199,7 +225,7 @@ quilt.plot(x = s[, 1], y = s[, 2], z = B.ebf[[1]][, 6], nx = nx, ny = ny)
 library(colorspace)
 
 set.seed(7568)  # plot
-these <- sample(2622, 50)
+these <- sample(697, 50)
 color <- rainbow_hcl(n = 4)  # SE, SW, NE, NW
 
 s.mid <- apply(s, 2, median)
@@ -213,10 +239,12 @@ colors[s.these[, 1] <  s.mid[1] & s.these[, 2] >= s.mid[2]] <- color[4]   # NE
 current <- 1:32
 future  <- 33:64
 quartz(width = 16, height = 8)
+ylim <- range(Y[these, ])
+ylim[1] <- 65
 par(mfrow = c(1, 2))
 for (i in 1:length(these)) {
   if (i == 1) {
-    plot(Y[these[i], current], type = "l", ylim = range(Y[, current]),
+    plot(Y[these[i], current], type = "l", ylim = ylim,
          # main = "Yearly max daily precipitation (1969 - 2000)",
          ylab = "Max precipitation", xaxt = "n", xlab = "Year",
          col = colors[i], lwd = 1.5,
@@ -233,12 +261,12 @@ legend("bottomright", col = color, lty = 1, cex = 1.5, lwd = 1.5,
 
 for (i in 1:length(these)) {
   if (i == 1) {
-    plot(Y[these[i], future], type = "l", ylim = range(Y[, future]),
+    plot(Y[these[i], future], type = "l", ylim = ylim,
          # main = "Yearly max daily precipitation (2039 - 2070)",
          ylab = "Max precipitation", xaxt = "n", xlab = "Year",
          col = colors[i], lwd = 1.5,
          cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
-    axis(1, at = c(current), labels = year[current], cex.axis = 1.5)
+    axis(1, at = c(current), labels = year[future], cex.axis = 1.5)
   } else {
     lines(Y[these[i], future], col = colors[i], lwd = 1.5)
   }
@@ -250,76 +278,102 @@ dev.print(device = pdf, file = "plots/precip-ts.pdf")
 
 dev.off()
 
-library(ggplot2)
-library(gridExtra)
-# just want to see if it looks as weird when we run all the data
-ec <- get.pw.ec(Y = Y, qlim = c(0.90, 1), verbose = TRUE, update = 50)$ec
-p.1 <- map.ga.ggplot(Y = ec[, 4],
-                     main = paste("Extremal Coefficients full data"),
-                     fill.legend = "EC")
+#### Generate basis function maps ####
+load(file = "precip_preprocess.RData")
+load(file = "ebf-25-all.RData")
+ns <- nrow(Y)
+nt <- ncol(Y)
+basis.weight <- colSums(B.ebf) / ns
+plot(cumsum(basis.weight), xlab = "Knot", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 knots)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "plots/precipv-25.pdf",
+          width = 4.5, height = 4.5)
 
-p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 4],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+p1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 1],
+                  mainTitle = "Basis function 1 (of 25)")
+p2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 2],
+                  mainTitle = "Basis function 2 (of 25)")
+p3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 3],
+                  mainTitle = "Basis function 3 (of 25)")
+p4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 4],
+                  mainTitle = "Basis function 4 (of 25)")
+p5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 5],
+                  mainTitle = "Basis function 5 (of 25)")
+p6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 6],
+                  mainTitle = "Basis function 6 (of 25)")
 
-p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 4],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(p1, p2, p3, p4, p5, p6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-ebf-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
 
-p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 4],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+ggsave(filename = "plots/precip-ebf-1.pdf", p1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-2.pdf", p2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-3.pdf", p3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-4.pdf", p4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-5.pdf", p5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-ebf-6.pdf", p6, device = pdf,
+       width = 4.5, height = 4.5)
 
-# grid.arrange(p.1, p.2, ncol = 2, widths = c(1.5, 1.5),
-#              top = "EC comparison for CV")
 
-grid.arrange(p.1, p.2, p.3, p.4, ncol = 2, widths = c(1.5, 1.5),
-             top = "EC comparison for CV")
+# Eigenvectors
+rm(list = ls())
+source(file = "./package_load.R", chdir = T)
+load(file = "precip_preprocess.RData")
+load(file = "ebf-25-all.RData")
 
-p.1 <- map.ga.ggplot(Y = ec[, 10],
-                     main = paste("Extremal Coefficients full data"),
-                     fill.legend = "EC")
+# for correlation want ns x ns, so need cor(t(Y))
+Y.mean <- apply(Y, 1, mean)
+Y.center <- Y - Y.mean
+tY.center <- t(Y.center)
 
-p.2 <- map.ga.ggplot(Y = ec.hat[[1]][, 10],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+Y.eigvec <- eigen(cor(tY.center))$vectors
+Y.eigval <- eigen(cor(tY.center))$values
 
-p.3 <- map.ga.ggplot(Y = ec.hat[[2]][, 10],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+# standardize eigenvalues
+Y.eigval <- cumsum(Y.eigval) / sum(Y.eigval)
 
-p.4 <- map.ga.ggplot(Y = ec.hat[[4]][, 10],
-                     main = paste("Extremal Coefficients cross validation"),
-                     fill.legend = "EC")
+plot(Y.eigval[1:25], xlab = "Eigenvalue contribution", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (25 eigenvalues)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "./plots/preciplambda-25.pdf", width = 6, height = 6)
 
-grid.arrange(p.1, p.2, p.3, p.4, ncol = 2, widths = c(1.5, 1.5),
-             top = "EC comparison for CV")
 
-d <- rdist(cents)
-diag(d) <- 0
-n <- nrow(cents)
+e1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 1],
+                  mainTitle = "Principal Component 1")
+e2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 2],
+                  mainTitle = "Principal Component 2")
+e3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 3],
+                  mainTitle = "Principal Component 3")
+e4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 4],
+                  mainTitle = "Principal Component 4")
+e5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 5],
+                  mainTitle = "Principal Component 5")
+e6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 6],
+                  mainTitle = "Principal Component 6")
 
-# standardize the locations
-s <- cents
-s[, 1] <- (s[, 1] - min(s[, 1])) / diff(range(s[, 1]))
-s[, 2] <- (s[, 2] - min(s[, 2])) / diff(range(s[, 2]))
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(e1, e2, e3, e4, e5, e6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-eig-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
 
-# get a reasonable bandwidth for the kernel smoother
-d <- rdist(s)
-diag(d) <- 0
-ksmooth.bw <- quantile(d[upper.tri(d)], probs = 0.05)
-
-cat("Start basis function estimation \n")
-# basis function estimates using only the training data
-L <- 10
-out       <- get.factors.EC(ec, L = L, s = s, bw = ksmooth.bw)
-B.est     <- out$est
-ec.smooth <- out$EC.smooth
-
-plots <- vector(mode = "list", length = L)
-for (i in 1:L) {
-  title <- paste("basis function", i)
-  plots[[i]] <- map.ga.ggplot(Y = B.est[, i], main = title,
-                              midpoint = median(B.est[, i]))
-}
-multiplot(plotlist = plots, cols = 4)
+ggsave(filename = "plots/precip-eig-1.pdf", e1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-2.pdf", e2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-3.pdf", e3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-4.pdf", e4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-5.pdf", e5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "plots/precip-eig-6.pdf", e6, device = pdf,
+       width = 4.5, height = 4.5)

@@ -1,23 +1,16 @@
 # Rcpp functions
-if (!exists("dPSCPP")) {
-  sourceCpp(file = "llps.cpp")
-}
-
-if (!exists("ifelsematCPP")) {
-  sourceCpp(file = "ifelse.cpp")
-}
-
-if (!exists("madogramCPP")) {
-  sourceCpp(file = "ec.cpp")
+if (!exists("cppaux.load")) {
+  sourceCpp(file = "auxfunctions.cpp")
+  cppaux.load <- TRUE
 }
 
 #############################################################
 ########   FUNCTIONS TO COMPUTE INITIAL VALUES    ###########
 #############################################################
 
-get.inits.mu <- function(y, logsig = 0, xi = 0.1){
+get.inits.mu <- function(y, ls = 0, xi = 0.1){
   m <- median(y, na.rm = TRUE)
-  mu <- m - exp(logsig) * (log(2)^(-xi) - 1) / xi
+  mu <- m - exp(ls) * (log(2)^(-xi) - 1) / xi
   return(mu)
 }
 
@@ -33,8 +26,8 @@ h1 <- function(logs, u, alpha, log = TRUE){
   c <- c * sin((1 - alpha) * psi) / sin(alpha * psi)
 
   logd <- log(alpha) - log(1 - alpha) - (1 / (1 - alpha)) * logs +
-          log(c) - c * (1 / s^(alpha / (1 - alpha))) +
-          logs
+    log(c) - c * (1 / s^(alpha / (1 - alpha))) +
+    logs
 
   if (!log) {
     logd <- exp(logd)
@@ -44,19 +37,123 @@ h1 <- function(logs, u, alpha, log = TRUE){
 }
 
 ######################################################
-########           GEV FUNCTIONS           ###########
+##########     Densities and posteriors    ###########
 ######################################################
+loglike <- function(y, mu, ls, xi, theta, theta.xi, thresh, alpha){
+  sigma    <- exp(ls)
 
-# loglike <- function(y, mu, logsig, xi, theta, alpha) {
-#   missing <- is.na(y)
-#   theta <- theta^alpha
-#   mu.star <- mu + exp(logsig) * (theta^xi - 1) / xi
-#   sig.star <- alpha * exp(logsig) * (theta^xi)
-#   xi.star <- alpha * xi
-#   ttt <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
-#   lll <- -log(sig.star) + (xi.star + 1) * log(ttt) - ttt
-#   lll[missing] <- 0
-#   return(lll)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    # theta.xi  <- theta^xi
+    sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
+    t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
+    ll <- -t.y
+    ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
+  } else {
+    # theta.xi  <- theta^xi
+    mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sigma * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+    ll <- -t.y
+    ll[these] <- ll[these] + (xi.star + 1) * log(t.y[these]) -
+      log(sig.star[these])
+  }
+  ll[is.na(y)] <- 0
+  ll[is.na(ll)] <- -Inf
+
+  return(ll)
+}
+
+loglike.init <- function(y, params, xi, theta, thresh, alpha){
+  nt <- length(y)
+  mu <- rep(params[1], nt)
+  ls <- rep(params[2], nt)
+  theta.xi <- theta^xi
+  sigma    <- exp(ls)
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    # theta.xi  <- theta^xi
+    sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
+    t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
+    ll <- -t.y
+    ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
+  } else {
+    # theta.xi  <- theta^xi
+    mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sigma * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+    ll <- -t.y
+    ll[these] <- ll[these] + (xi.star + 1) * log(t.y[these]) -
+      log(sig.star[these])
+  }
+  ll[is.na(y)] <- 0
+  ll[is.na(ll)] <- -Inf
+
+  return(sum(-ll))
+}
+
+# loglike.init <- function(y, params, theta, thresh, alpha){
+#   nt <- length(y)
+#   mu <- matrix(params[1:ns], ns, nt)
+#   ls <- matrix(params[(ns + 1):(2 * ns)], ns, nt)
+#   xi <- tail(params, 1)
+#   theta.xi <- theta^xi
+#   sigma    <- exp(ls)
+#
+#   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+#   if (abs(xi) <= 1e-4) {
+#     # theta.xi  <- theta^xi
+#     sig.star <- alpha * sigma  # theta.xi = 1 when xi = 0
+#     t.y <- (theta * exp(-(y - mu) / sigma))^(1 / alpha)
+#     ll <- -t.y
+#     ll[these] <- ll[these] - log(sig.star[these]) + log(t.y[these])
+#   } else {
+#     # theta.xi  <- theta^xi
+#     mu.star  <- mu + sigma * ((theta.xi) - 1) / xi
+#     sig.star <- alpha * sigma * (theta.xi)
+#     xi.star  <- alpha * xi
+#     t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+#     ll <- -t.y
+#     ll[these] <- ll[these] + (xi.star + 1) * log(t.y[these]) -
+#       log(sig.star[these])
+#   }
+#   ll[is.na(y)] <- 0
+#   ll[is.na(ll)] <- -Inf
+#
+#   return(sum(-ll))
+# }
+
+# loglike.init <- function(y, params, thresh){
+#   ns <- nrow(y)
+#   nt <- ncol(y)
+#   mu <- matrix(params[1:ns], ns, nt)
+#   ls <- matrix(params[(ns + 1):(2 * ns)], ns, nt)
+#   xi <- tail(params, 1)
+#   sigma <- exp(ls)
+#
+#   these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+#   if (any(xi * (y - mu) / sigma < -1, na.rm = TRUE)) {
+#     return(Inf)
+#   }
+#   if (abs(xi) <= 1e-4) {
+#     # theta.xi  <- theta^xi
+#     t.y <- exp(-(y - mu) / sigma)
+#     ll <- -t.y
+#     ll[these] <- ll[these] - log(sigma[these]) + log(t.y[these])
+#   } else {
+#     # theta.xi  <- theta^xi
+#     t.y <- (1 + xi * (y - mu) / sigma)^(-1 / xi)
+#     ll <- -t.y
+#     ll[these] <- ll[these] + (xi + 1) * log(t.y[these]) -
+#       log(sigma[these])
+#   }
+#   ll[is.na(y)] <- 0
+#   ll[is.na(ll)] <- Inf
+#
+#   return(sum(-ll))
 # }
 
 logd <- function(theta, v){
@@ -95,6 +192,15 @@ rgevspatial <- function(nreps, S, knots, mu = 1, sig = 1, xi = 1, alpha = 0.5,
   return(y)
 }
 
+rX <- function(ns, nt, np) {
+  X.sp <- matrix(rnorm(ns * (np - 2), 0, 0.3), ns, np - 2)
+  X.t <- rnorm(nt, 0, 0.3)
+  X <- array(1, dim = c(ns, nt, np))
+  for (t in 1:nt) {
+    X[, t, 2:np] <- cbind(rep(X.t[t], ns), X.sp)
+  }
+  return(X)
+}
 
 ll.ind <- function(beta, X, y, xi = -0.1) {
   # nt <- dim(X)[2]
@@ -141,6 +247,477 @@ ll.ind.xi <- function(beta, X, y) {
 }
 
 
+#### Logposteriors and gradients - needs to be done for each timepoint
+logpost.beta1.int <- function(beta.int, beta.mn, tau, Qb,
+                              beta.time, time, y, ls, xi, theta,
+                              theta.xi, thresh, alpha) {
+
+  lp1 <- -0.5 * tau * (beta.int - beta.mn) %*% (Qb %*% (beta.int - beta.mn))
+
+  mu <- matrix(0, ns, nt)
+  for (t in 1:nt) {
+    mu[, t] <- beta.int + beta.time * time[t]
+  }
+
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta1.int.grad <- function(beta.int, beta.mn, tau, Qb,
+                                   beta.time, time, y, ls, xi,
+                                   theta, theta.xi, thresh, alpha) {
+
+  d1dmu <- -tau * crossprod(Qb, (beta.int - beta.mn))  # crossprod is faster
+  # d1dmu <- -tau * (Qb %*% (beta.int - beta.int.mn))
+
+  # print(d1dmu)
+  mu <- matrix(0, ns, nt)
+  for (t in 1:nt) {
+    mu[, t] <- beta.int + beta.time * time[t]
+  }
+  # print(mu)
+
+  sig <- exp(ls)
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad <- d1dmu + rowSumsC(d2dmu)
+  # print(d2dmu)
+
+  return(grad)
+}
+
+logpost.beta1.time <- function(beta.time, beta.mn, time, tau, Qb,
+                               beta.int, y, ls, xi, theta,
+                               theta.xi, thresh, alpha) {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.mn)
+
+  mu <- beta.int + beta.time * time
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta1.time.grad <- function(beta.time, beta.mn, tau, Qb,
+                                    beta.int, time, y, ls, xi,
+                                    theta, theta.xi, thresh, alpha) {
+  sig <- exp(ls)
+  d1dmu <- -tau * crossprod(Qb, (beta.time - beta.mn))  # faster than %*%
+  # d1dmu <- -tau * (Qb %*% (beta.time - beta.time.mn))
+
+  mu <- beta.int + beta.time * time
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad <- d1dmu + d2dmu * time
+
+  return(grad)
+}
+
+logpost.beta1.grad <- function(beta.int, beta.int.mn, tau.int,
+                               beta.time, beta.time.mn, time, tau.time,
+                               Qb, y, ls, xi, theta, theta.xi, thresh,
+                               alpha) {
+  sig <- exp(ls)
+  # crossprod is generally a little faster than %*%
+  d1dbeta.int  <- -tau.int * crossprod(Qb, (beta.int - beta.int.mn))
+  d1dbeta.time <- -tau.time * crossprod(Qb, (beta.time - beta.time.mn))
+  # d1dmu <- -tau * (Qb %*% (beta.time - beta.time.mn))
+
+  mu <- beta.int + beta.time * time
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad.beta.int  <- d1dbeta.int + d2dmu
+  grad.beta.time <- d1dbeta.time + d2dmu * time
+
+  results <- list(grad.beta.int = grad.beta.int,
+                  grad.beta.time = grad.beta.time)
+
+  return(results)
+}
+
+logpost.beta2.int <- function(beta.int, beta.int.mn, tau, beta.time, time,
+                              Qb, y, mu, xi, theta, theta.xi, thresh, alpha) {
+
+
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.int - beta.int.mn)
+
+  ls <- beta.int + beta.time * time
+  sig <- exp(ls)
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta2.int.grad <- function(beta.int, beta.int.mn, tau,
+                                   beta.time, time, Qb, beta, y, mu,
+                                   xi, theta, theta.xi, thresh, alpha) {
+
+  d1dls <- -tau * crossprod(Qb, (beta.int - beta.int.mn))  # faster than %*%
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  grad <- d1dls + d2dls
+  return(grad)
+}
+
+logpost.beta2.time <- function(beta.time, beta.time.mn, time, tau, beta.int,
+                               Qb, y, mu, xi, theta, theta.xi, thresh, alpha) {
+
+
+  lp1 <- -0.5 * tau * quad.form(Qb, beta.time - beta.time.mn)
+
+  ls <- beta.int + beta.time * time
+  sig <- exp(ls)
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.beta2.time.grad <- function(beta.time, beta.time.mn, time, tau,
+                                    beta.int, Qb, beta, y, mu,
+                                    xi, theta, theta.xi, thresh, alpha) {
+
+  d1dls <- -tau * crossprod(Qb, (beta.time - beta.time.mn))  # faster than %*%
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  grad <- d1dls + d2dls * time
+  return(grad)
+}
+
+logpost.beta2.grad <- function(beta.time, beta.time.mn, time, tau,
+                                    beta.int, Qb, beta, y, mu,
+                                    xi, theta, theta.xi, thresh, alpha) {
+
+  d1dbeta.int  <- -tau * crossprod(Qb, (beta.int - beta.int.mn))
+  d1dbeta.time <- -tau * crossprod(Qb, (beta.time - beta.time.mn))
+
+  ls <- beta.int + beta.time * time
+
+  sig <- exp(ls)
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  gradbeta.int  <- d1dbeta.int + d2dls
+  gradbeta.time <- d1dbeta.time + d2dls * time
+  results <- list(grad.beta.int = grad.beta.int,
+                  grad.beta.time = grad.beta.time)
+  return(results)
+}
+
+# if GP prior on mu
+logpost.mu <- function(mu, Xb, tau, Qb, y, ls, xi, theta, theta.xi, thresh,
+                       alpha) {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, mu - Xb)
+
+  # lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+  #                thresh = thresh, alpha = alpha)
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.mu.grad <- function(mu, Xb, tau, Qb, y, ls, xi, theta, theta.xi,
+                            thresh, alpha) {
+  sig <- exp(ls)
+  d1dmu <- -tau * crossprod(Qb, (mu - Xb))  # crossprod is actually a bit faster
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dmu <- -t.y / (sig.star)
+    d2dmu[these] <- d2dmu[these] + 1 / (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    t.y <- 1 + xi.star * (y - mu.star) / sig.star
+    d2dmu <- - t.y^(-1 / xi.star - 1) / sig.star
+    d2dmu[these] <- d2dmu[these] + (xi.star + 1) /
+      (sig.star[these] * t.y[these])
+  }
+
+  d2dmu[is.na(y)] <- 0
+
+  grad <- d1dmu + d2dmu
+
+  return(grad)
+}
+
+logpost.logsig <- function(ls, Xb, tau, Qb, y, mu, xi, theta, theta.xi, thresh,
+                           alpha)
+  {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, ls - Xb)
+
+  lp2 <- loglike(y = y, mu = mu, ls = ls, xi = xi, theta = theta,
+                 theta.xi = theta.xi, thresh = thresh, alpha = alpha)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.logsig.grad <- function(ls, Xb, tau, Qb, y, mu, xi, theta, theta.xi,
+                                thresh, alpha) {
+  sig <- exp(ls)
+  d1dls <- -tau * crossprod(Qb, (ls - Xb))  # crossprod is actually a bit faster
+
+  these <- (y > thresh) & !is.na(y) # likelihood changes if y > thresh
+  if (abs(xi) <= 1e-4) {
+    sig.star <- alpha * sig  # when xi = 0, theta.xi = 1
+    t.y <- (theta * exp(-(y - mu) / sig))^(1 / alpha)
+    d2dls <- -t.y * (y - mu) / (sig.star)
+    d2dls[these] <- d2dls[these] - 1 + (y[these] - mu[these]) /
+      (sig.star[these])
+  } else {
+    # theta.xi <- theta^xi
+    mu.star  <- mu + sig * ((theta.xi) - 1) / xi
+    sig.star <- alpha * sig * (theta.xi)
+    xi.star  <- alpha * xi
+    y.star <- (y - mu) / sig
+    t.y <- (1 + xi * y.star) / theta.xi
+    d2dls <- -y.star * t.y^(-1 / xi.star - 1) / (alpha * theta.xi)
+
+    d2dls[these] <- d2dls[these] - 1 + y.star[these] * (xi.star + 1) /
+      (t.y[these] * alpha * theta.xi[these])
+  }
+  d2dls[is.na(y)] <- 0
+
+  grad <- d1dls + d2dls
+  return(grad)
+}
+
+logpost.mu.grad.test <- function(mu, Xb, tau, Qb, y, ls, xi) {
+  sig <- exp(ls)
+  d1dmu <- as.vector(-tau * Qb %*% (mu - Xb))
+
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  t.y <- 1 + xi.star * (y - mu.star) / sig.star
+  d2dmu <- (xi.star + 1) / (sig.star * t.y) - t.y^(-1 / xi.star - 1) / sig.star
+
+  grad <- d1dmu + d2dmu
+  return(grad)
+}
+
+logpost.mu.test <- function(mu, Xb, tau, Qb, y, ls, xi) {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, mu - Xb)
+
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  t.y <- (1 + xi.star * (y - mu.star) / sig.star)^(-1 / xi.star)
+  lp2 <- (xi.star + 1) * log(t.y) - t.y
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.logsig.test <- function(mu, Xb, tau, Qb, y, ls, xi) {
+  sig <- exp(ls)
+  lp1 <- -0.5 * tau * quad.form(Qb, ls - Xb)
+
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  lp2 <- dgev(x = y, loc = mu.star, scale = sig.star, shape = xi.star,
+              log = TRUE)
+
+  logpost <- lp1 + sum(lp2)
+
+  return(logpost)
+}
+
+logpost.logsig.grad.test <- function(mu, Xb, tau, Qb, y, ls, xi) {
+  sig <- exp(ls)
+  d1dlogsig <- as.vector(-tau * Qb %*% (ls - Xb))
+
+  mu.star  <- mu
+  sig.star <- sig
+  xi.star  <- xi
+  y.star <- (y - mu.star) / sig.star
+  t.y <- 1 + xi.star * y.star
+  d2dlogsig <- -1 + y.star * ((xi.star + 1) / t.y - t.y^(-1 / xi.star - 1))
+
+  grad <- d1dlogsig + d2dlogsig
+  return(grad)
+}
+
+dPS.Rcpp <- function(A, alpha, bins) {
+  if (is.null(dim(A))) {
+    ns <- length(A)
+    nt <- 1
+    A <- matrix(A, ns, nt)  # turn it into a matrix
+  } else {
+    ns <- nrow(A)
+    nt <- ncol(A)
+  }
+
+  mid.points <- bins$MidPoints
+  bin.width  <- bins$BinWidth
+
+  results <- dPSCPP(A=A, alpha=alpha, mid_points=mid.points,
+                    bin_width=bin.width)
+  return(results)
+}
+
+ld.old <- function(u, A, alpha){
+  psi <- pi * u
+  c <- (sin(alpha * psi) / sin(psi))^(1 / (1 - alpha))
+  c <- c * sin((1 - alpha) * psi) / sin(alpha * psi)
+  logd <- log(alpha) - log(1 - alpha) - (1 / (1 - alpha)) * log(A) +
+    log(c) - c * (1/A^(alpha / (1 - alpha)))
+  exp(logd)
+}
+
+dPS.old <- function(A, alpha, bins){
+  l <- 0
+  for(j in 1:bins$npts){
+    l <- l + bins$BinWidth[j] * ld(bins$MidPoints[j], A, alpha)
+  }
+  l <- ifelse(A > 0, log(l), -Inf)
+  return(l)
+}
+
+
 ######################################################
 ##########    FUNCTIONS USED FOR PREDICTION  #########
 ######################################################
@@ -170,8 +747,6 @@ proj.beta <- function(B, d12, d22, S11inv, tau, logrho) {
   return(Bnew)
 }
 
-
-
 ######################################################
 ####  FUNCTION TO COMPUTE THE RANDOM EFFECTS  ########
 ######################################################
@@ -189,6 +764,9 @@ make.theta <- function(FAC, logs, alpha) {
   return(xxx)
 }
 
+######################################################
+########  2d gaussian kernel basis functions  ########
+######################################################
 stdKern <- function(w, single = FALSE) {
   if (single) { K <- w / sum(w) }
   if (!single) { K <- sweep(w, 1, rowSums(w), "/") }
@@ -200,6 +778,26 @@ make.kern <- function(d2, logrho) {
   w <- exp(-0.5 * d2 / rho2)
   return(w)
 }
+
+getW <- function(dw2, rho) {
+  w <- stdW(makeW(dw2 = dw2, rho = rho))
+  return(w)
+}
+
+# get the kernel weighting
+makeW <- function(dw2, rho) {
+  w <- exp(-0.5 * dw2 / (rho^2))
+
+  return(w)
+}
+
+# standardize the kernel weights
+stdW <- function(x, single = FALSE) {
+  if (single) {x <- x / sum(x)}
+  if (!single) {x <- sweep(x, 1, rowSums(x), "/")}
+  return(x)
+}
+
 
 add.basis.X <- function(X, B, time.interact = FALSE) {
   ns <- dim(X)[1]
@@ -216,9 +814,12 @@ add.basis.X <- function(X, B, time.interact = FALSE) {
 
   # copy over old X information
   newX[, , 1:np] <- X
+
   if (time.interact) {
-    B.interact <- B * X[, t, 2]
-    newX[, t, (np + 1):(np + nB)] <- cbind(B, B.interact)
+    for (t in 1:nt) {
+      B.interact <- B * X[, t, 2]
+      newX[, t, (np + 1):(np + nB)] <- cbind(B, B.interact)
+    }
   } else {
     for (t in 1:nt) {
       newX[, t, (np + 1):(np + nB)] <- B
@@ -260,11 +861,35 @@ rep.basis.X <- function(X, newB, time.interact = FALSE) {
 ######################################################
 
 get.level <- function(logs, cuts){
-  sum(logs > cuts) + 1
+  if (is.matrix(logs)) {
+    level <- getLevelCPP(A = logs, cuts = cuts)
+  } else if (length(logs) > 1) {
+    A <- as.matrix(logs, length(logs), 1)
+    level <- as.vector(getLevelCPP(A = A, cuts = cuts))
+  } else {
+    level <- sum(logs > cuts) + 1
+  }
+
+  return(level)
 }
 
-logdet <- function(X){
-  determinant(X)$modulus
+get.level.mat <- function(logs, cuts) {
+  level <- logs
+  for (i in 1:nrow(logs)) { for (j in 1:ncol(logs)) {
+    level[i, j] <- sum(logs[i, j] > cuts) + 1
+  }}
+
+  return(level)
+}
+
+# get log(det(X)) using X or its Cholesky factor
+logdet <- function(X, chol = NULL){
+  if (is.null(chol)) {
+    logdet <- determinant(X)$modulus
+  } else {
+    logdet <- 2 * sum(log(diag(chol)))
+  }
+  return(logdet)
 }
 
 trunc <- function(x, eps = 0.1){
@@ -273,59 +898,126 @@ trunc <- function(x, eps = 0.1){
   return(x)
 }
 
-rtnorm <- function(mn, sd = 0.25, fudge = 0){
-  upper <- pnorm(1 - fudge, mn, sd)
-  lower <- pnorm(fudge, mn, sd)
-  if (is.matrix(mn)) {
-    U <- matrix(runif(prod(dim(mn)), lower, upper), dim(mn)[1], dim(mn)[2])
+getXBeta <- function(X, beta) {
+  np <- length(beta)
+  if (np != dim(X)[3]) {
+    stop("X has the wrong dimensions")
   }
-  if (!is.matrix(mn)) {
-    U <- runif(length(mn), lower, upper)
+  XBeta <- 0
+  for (p in 1:np) {
+    XBeta <- XBeta + X[, , p] * beta[p]
   }
-  return(qnorm(U, mn, sd))
+
+  return(XBeta)
 }
 
-dtnorm <- function(y, mn, sd = 0.25, fudge = 0){
-  upper <- pnorm(1 - fudge, mn, sd)
-  lower <- pnorm(fudge, mn, sd)
-  l <- dnorm(y, mn, sd, log = TRUE) - log(upper - lower)
-  return(l)
+# SSE for row of Y - EC
+SSE.B <- function(B1, B2, B.star, Y, alpha, lambda = 1000){
+
+  BB  <- B1^(1 / alpha)
+  B2  <- B.star
+  EC  <- sweepC2plus(X = B2, y = BB)
+  EC  <- rowSumsC(EC^alpha)
+
+  # penalty term is to make sure that the bases sum to 1
+  sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
+
+  return(sse)
 }
 
-# update candidate standard deviation
-mhUpdate <- function(acc, att, mh, nattempts = 50, lower = 0.8, higher = 1.2) {
-  acc.rate     <- acc / att
-  these.update <- att > nattempts
-  these.low    <- (acc.rate < 0.25) & these.update
-  these.high   <- (acc.rate > 0.50) & these.update
+SSE.B.grad <- function(B1, B.star, Y, alpha, lambda = 1000, exclude = 1){
 
-  mh[these.low]  <- mh[these.low] * lower
-  mh[these.high] <- mh[these.high] * higher
+  B1.star <- B1^(1 / alpha)
+  B2   <- B.star
 
-  acc[these.update] <- 0
-  att[these.update] <- 0
+  BB <- sweepC2plus(X = B2, y = B1.star)
+  EC0  <- rowSumsC(BB^alpha)
 
-  results <- list(acc=acc, att=att, mh=mh)
-  return(results)
+  EC1  <- BB^(alpha - 1)
+  EC1  <- sweepC2times(EC1, B1.star / B1)
+  EC1  <- sweepC1times(EC1, Y - EC0)
+
+  grad <- -2 * colSums(EC1, na.rm = TRUE) +
+    2 * lambda * (sum(B1) - 1)
+
+  return(grad)
 }
 
-dPS.Rcpp <- function(a, alpha, mid.points, bin.width) {
-  if (is.null(dim(a))) {
-    ns <- length(a)
-    nt <- 1
-    a <- matrix(a, ns, nt)  # turn it into a matrix
+
+make.EC  <- function(B, alpha){
+  Ba    <- B^(1 / alpha)
+  EC    <- NULL
+  for(j in 1:nrow(B)){
+    BB <- sweep(Ba, 2, Ba[j, ], "+")
+    EC <- cbind(EC, rowSums(BB^alpha))
+  }
+
+  return(EC)
+}
+
+SSE.rhoalpha <- function(rho, dw2, Y, alpha) {
+  w <- getW(rho = rho, dw2 = dw2)
+  w <- w^(1 / alpha)
+
+  n <- ncol(Y)
+  EC <- getECRhoAlphaC(w = w, alpha = alpha)
+  diag(EC) <- NA
+
+  if (any(is.nan(EC))) {
+    return(Inf)
+  }
+
+  sse <- sum((Y - EC)^2, na.rm = TRUE)
+
+  return(sse)
+}
+
+getGPSS <- function(Qb, param, Xb) {
+  # get the sum of squares for a gaussian process with prec matrix Qb
+  if (is.matrix(Xb)) {  # this takes less time than the slower version
+    SS <- diag(quad.form(Qb, param - Xb))
   } else {
-    ns <- nrow(a)
-    nt <- ncol(a)
+    SS <- quad.form(Qb, param - Xb)
   }
+  return(SS)
+}
 
-  results <- dPSCPP(a=a, alpha=alpha, mid_points=mid.points,
-                    bin_width=bin.width)
-  return(results)
+getGPSS.slow <- function(Qb, param, Xb) {
+  # get the sum of squares for a gaussian process with prec matrix Qb
+  if (is.matrix(Xb)) {
+    nt <- ncol(Xb)
+    SS <- rep(0, nt)
+    for (t in 1:nt) {
+      SS[t] <- quad.form(Qb, param[, t] - Xb[, t])
+    }
+  } else {
+    SS <- quad.form(Qb, param - Xb)
+  }
+  return(SS)
+}
+
+# Performs kernel smoothing of the extremal coefficient matrix.
+Ksmooth <- function(ECmat, s = NULL, bw = NULL){
+
+  n           <- nrow(ECmat)
+  diag(ECmat) <- 0
+  E1          <- ifelse(ECmat == 0, 0, 1)
+  if (is.null(s)) {s <- 1:n}
+  if (is.null(bw)) {bw <- 2 * min(dist(s))}
+
+  d2       <- as.matrix(dist(s) / bw)^2
+  W        <- exp(-d2)
+  diag(W)  <- 0
+
+  num      <- W %*% ECmat %*% W
+  den      <- W %*% E1 %*% W
+
+  ECsmooth <- num / den
+
+  return(ECsmooth)
 }
 
 #### Plotting
-
 theme_clean <- function(base_size = 12) {
   require(grid)
   theme_grey(base_size) %+replace%
@@ -342,12 +1034,14 @@ theme_clean <- function(base_size = 12) {
 }
 
 map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
-                          midpoint = NULL, limits = NULL) {
+                          mid = NULL, midpoint = NULL, limits = NULL,
+                          cents = NULL, cents.text = NULL) {
   require(ggplot2)
   require(maps)
   if (is.null(midpoint)) {
     midpoint <- 1.5
   }
+
   georgia <- map("county", "georgia", fill = TRUE, col = "transparent",
                  plot = FALSE)
   subregion <- sapply(strsplit(georgia$names, ","), function(x) x[2])
@@ -359,25 +1053,43 @@ map.ga.ggplot <- function(Y, counties = NULL, main = "", fill.legend = "",
         "a list of counties.")
     basis <- data.frame(Y, subregion)
   } else {
-    basis <- data.frame(Y, subregion = counties)
+    basis <- data.frame(Y, subregion = tolower(counties))
   }
-  extcoef_map <- merge(county_map, basis, all.x = TRUE)
+  extcoef_map <- merge(county_map, basis, sort = FALSE, all.x = TRUE)
 
   if (is.null(limits)) {
     limits <- c(min(Y), max(Y))
   }
 
+  xlim <- range(extcoef_map$long)
+  ylim <- range(extcoef_map$lat)
+
+  if (is.null(mid)) {
+    mid = "#FFFFFF"
+  }
+
+  if (!is.null(cents)) {
+    df.text <- data.frame(x = cents[, 1], y = cents[, 2], text = cents.text)
+  }
+
   # using fill = Y because that's the column of extcoef_map with the actual data
-  p <- ggplot(extcoef_map, aes(x = long, y = lat, group = group, fill = Y))
-  p <- p + geom_polygon(colour = "grey", aes(fill = Y))
+  p <- ggplot(extcoef_map, aes(x = long, y = lat))
+  p <- p + geom_polygon(aes(group = group, fill = Y), color = "grey20")
   p <- p + expand_limits(x = extcoef_map$long, y = extcoef_map$lat)
   p <- p + coord_map("polyconic")
-  p <- p + ggtitle(main)  # make the title
-  p <- p + labs(fill = fill.legend)
-  p <- p + scale_fill_gradient2(low = "dodgerblue4", high = "firebrick4",
-                                mid = "#ffffff", midpoint = midpoint,
-                                limits = limits)
+  # p <- p + ggtitle(main)  # make the title
+  # p <- p + labs(fill = fill.legend)
+  p <- p + coord_fixed(ratio=1.2, xlim=xlim, ylim=ylim)
+  if (!is.null(cents)) {
+    p <- p + geom_text(data = df.text, aes(x = x, y = y, label = text))
+  }
+  p <- p + scale_fill_gradient2(low = "dodgerblue3", high = "firebrick3",
+                                mid = mid, midpoint = midpoint,
+                                limits = limits, name = fill.legend)
+  p <- p + labs(title = main, x = "", y = "")
   p <- p + theme_clean()
+  p <- p + theme(plot.title = element_text(size = rel(1.5)))
+
   return(p)
 }
 
@@ -418,8 +1130,8 @@ map.sc.ggplot <- function(Y, main = "", fill.legend = "", midpoint = NULL) {
 ################################################################
 QuantScore <- function(preds, probs, validate) {
 
-#   nt <- ncol(validate)  # number of prediction days
-#   np <- nrow(validate)  # number of prediction sites
+  #   nt <- ncol(validate)  # number of prediction days
+  #   np <- nrow(validate)  # number of prediction sites
   npreds <- length(validate)
   nprobs <- length(probs)  # number of quantiles to find quantile score
 
@@ -456,29 +1168,6 @@ BrierScore <- function(preds, validate, thresh) {
   score <- mean(((validate >= thresh) - probs)^2)
 
   return(score)
-}
-
-
-################################################################
-# Arguments:
-#   preds(iters, npreds): mcmc predictions for test site/day
-#   probs(nprobs): sample quantiles for scoring
-#   validate(npreds): validation data
-#   thresh(npreds): threshold for the site at which the prediction
-#                    is made
-#
-# Returns:
-#   scores: list of scores (bs and qs)
-#   scores$bs: brier score for exceeding the scoring threshold
-#   scores$qs: quantile score for validation data that exceeds thresh
-#              at the site
-################################################################
-Score <- function(preds, probs, validate, thresh) {
-  these.qs <- validate > thresh
-
-  # find the Brier scores for all sites
-
-  # only get the quantile scores for these.qs
 }
 
 
@@ -592,7 +1281,7 @@ get.pw.ec.fmado <- function(Y, thresh = NULL, thresh.quant = FALSE,
   # qlims <- matrix(0, nrow = (ns * ns - ns) / 2 + ns, ncol = 2)
   # qlim.idx <- 1
   fmado <- madogramCPP(data = Y)
-  fmado <- ifelse(fmado >= 1 / 6, 1 / 6, fmado)
+  fmado[fmado >= 1 / 6] <- 1 / 6
   ec <- (1 + 2 * fmado) / (1 - 2 * fmado)
 
   return(list(ec = ec, fmadogram = fmado))
@@ -653,3 +1342,300 @@ mrl.plot <- function (data, umin = min(data), umax = max(data) - 0.1,
   lines(u[!is.na(xl)], xl[!is.na(xl)], lty = 2)
   lines(u[!is.na(xu)], xu[!is.na(xu)], lty = 2)
 }
+
+#############################################################:
+###           OTHER FUNCTIONS USED IN THE MCMC            ###:
+#############################################################:
+grad_loglike_betamu <- function(beta1, X1, y, theta, ls, xi, thresh,
+                                alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  sigma    <- exp(ls)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  this.grad <- -(tx_star^(-1 / xi_star - 1)) / sig_star +
+    (y > thresh) * (xi_star + 1) / (sig_star * tx_star)
+  this.grad[is.na(y)] <- 0  # for the missing data
+
+  grad <- rep(0, p.mu)
+  for (j in 1:p.mu) {
+    grad[j] <- sum(this.grad * X1[, , j])
+  }
+
+  return(grad)
+}
+
+grad_logpost_betamu <- function(beta1, beta.mu, beta.sd, X1, y, theta, ls,
+                                xi, thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  sig <- exp(ls)
+
+  tx  <- (1 + xi * (y - mu) / sig)
+
+  this.grad <- - (tx^(-1 / (alpha * xi) - 1)) * theta^(1 / alpha) /
+    (alpha * sig) +
+    (y > thresh) * (alpha * xi + 1) / (alpha * tx * sig)
+  this.grad[is.na(y)] <- 0  # for the missing data
+
+  grad <- rep(0, p.mu)
+  for (j in 1:p.mu) {
+    grad[j] <- sum(this.grad * X1[, , j]) - (beta1[j] - beta.mu) / beta.sd^2
+  }
+
+  return(grad)
+}
+
+hess_logpost_betamu <- function(beta1, beta.mu, beta.sd, X1, y, theta, ls,
+                                xi, thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  sigma <- exp(ls)
+  tx <- (1 + xi * (y - mu) / sigma)
+
+  this.hess <- - (tx^(-1 / (alpha * xi) - 2) * (alpha * xi + 1) *
+                    theta^(1 / alpha)) / (alpha^2 * sigma^2) +
+    (y > thresh) * (alpha * xi + 1) * xi / (alpha * tx^2 * sigma^2)
+  this.hess[is.na(y)] <- 0  # for missing data
+
+  hess <- matrix(0, p.mu, p.mu)
+  for (j in 1:p.mu) {
+    for (i in j:p.mu) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X1[, , i] * X1[, , j])
+    }
+  }
+
+  hess <- hess - diag(1 / beta.sd^2, p.mu)  # account for prior
+
+  return(hess)
+}
+
+hess_loglike_betamu <- function(beta1, X1, y, theta, ls, xi, thresh,
+                                alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  # print(mean(mu))
+  sigma    <- exp(ls)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+  this.hess <- -(xi_star + 1) * tx_star^(-1 / xi_star - 2) / sig_star^2 +
+    (y > thresh) * (xi_star + 1) * xi_star / (sig_star^2 * tx_star^2)
+  this.hess[is.na(y)] <- 0
+
+  hess <- matrix(0, p.mu, p.mu)
+  for (i in 1:p.mu) {
+    for (j in i:p.mu) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X1[, , i] * X1[, , j])
+    }
+  }
+
+  return(hess)
+}
+
+loglike_mu <- function(beta1, X1, y, theta, ls, xi, thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, ls = ls, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  return(sum(ll[!is.na(y)]))
+}
+
+logpost_mu <- function(beta1, beta.mu, beta.sd, X1, y, theta, ls, xi,
+                       thresh, alpha) {
+  mu <- 0
+  p.mu <- dim(X1)[3]
+  for (j in 1:p.mu) {
+    mu <- mu + X1[, , j] * beta1[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, ls = ls, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  lp <- sum(dnorm(beta1, beta.mu, beta.sd, log = TRUE))
+
+  return(sum(ll[!is.na(y)]) + lp)
+}
+
+grad_loglike_betasig <- function(beta2, X2, y, theta, mu, xi, thresh,
+                                 alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  sigma    <- exp(ls)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+  this.grad <- (-tx_star^(-1 / xi_star - 1) *
+                  xi * (y - mu) / (xi_star * sigma * theta^xi) +
+                  (y > thresh) * (-1 + ((xi_star + 1) * xi * (y - mu)) /
+                                    (xi_star * sigma * tx_star * theta^xi)))
+  this.grad[is.na(y)] <- 0
+
+  grad <- rep(0, p.sig)
+  for (j in 1:p.sig) {
+    grad[j] <- sum(this.grad * X2[, , j])
+  }
+
+  return(grad)
+}
+
+grad_logpost_betasig <- function(beta2, beta.mu, beta.sd, X2, y, theta, mu,
+                                 xi, thresh, alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  sigma <- exp(ls)
+  res <- y - mu
+
+  tx <- (1 + xi * res / sigma)
+
+  this.grad <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) /
+    (alpha * sigma) +
+    (y > thresh) * ((alpha * xi + 1) * res / (alpha * tx * sigma) - 1)
+
+  this.grad[is.na(y)] <- 0
+
+  grad <- rep(0, p.sig)
+  for (j in 1:p.sig) {
+    grad[j] <- sum(this.grad * X2[, , j]) - (beta2[j] - beta.mu) / beta.sd^2
+  }
+
+  return(grad)
+}
+
+hess_logpost_betasig <- function(beta2, beta.mu, beta.sd, X2, y, theta, mu,
+                                 xi, thresh, alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  sigma <- exp(ls)
+  res <- y - mu
+
+  tx <- (1 + xi * res / sigma)
+
+  this.hess <- - theta^(1 / alpha) * res * tx^(-1 / (alpha * xi) - 1) * (
+    (alpha * xi + 1) * xi * res / (alpha * xi * tx * sigma) - 1
+  ) / (alpha * sigma) -
+    (y > thresh) * (alpha * xi + 1) * res * sigma /
+    (alpha * (sigma + xi * res)^2)
+
+  hess <- matrix(0, p.sig, p.sig)
+  for (i in 1:p.sig) {
+    for (j in i:p.sig) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X2[, , i] * X2[, , j])
+    }
+  }
+
+  hess <- hess - diag(1 / beta.sd^2, p.sig)  # account for prior
+
+  return(hess)
+}
+
+hess_loglike_betasig <- function(beta2, X2, y, theta, mu, xi, thresh,
+                                 alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  sigma    <- exp(ls)
+  mu_star  <- mu + sigma * ((theta^xi) - 1) / xi
+  sig_star <- alpha * sigma * (theta^xi)
+  xi_star  <- alpha * xi
+
+  tx_star  <- (1 + xi_star * (y - mu_star) / sig_star)
+
+  hess <- matrix(0, p.sig, p.sig)
+  dtx <- -xi * (y - mu) / (theta^xi * sigma)
+  d12 <- (-1 / xi_star - 1) * tx_star^(-1 / xi_star - 2) * dtx^2
+  d21 <- tx_star^(-1 / xi_star - 1) * (-dtx)
+  this.hess <- (d12 + d21) / xi_star
+  this.hess <- this.hess + (y > thresh) * (xi_star + 1) / alpha *
+    (y - mu) / theta^xi * (-1 / (sigma * tx_star) - dtx / (tx_star^2 * sigma))
+  this.hess[is.na(y)] <- 0
+  for (i in 1:p.sig) {
+    for (j in i:p.sig) {
+      hess[i, j] <- hess[j, i] <- sum(this.hess * X2[, , i] * X2[, , j])
+    }
+  }
+
+  return(hess)
+}
+
+loglike_sig <- function(beta2, X2, y, theta, mu, xi, thresh, alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, ls = ls, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  return(sum(ll))
+}
+
+logpost_sig <- function(beta2, beta.mu, beta.sd, X2, y, theta, mu, xi,
+                        thresh, alpha) {
+  ls <- 0
+  p.sig <- dim(X2)[3]
+  for (j in 1:p.sig) {
+    ls <- ls + X2[, , j] * beta2[j]
+  }
+
+  ll <- loglike(y = y, theta = theta, mu = mu, ls = ls, xi = xi,
+                thresh = thresh, alpha = alpha)
+
+  lp <- sum(dnorm(beta2, beta.mu, beta.sd, log = TRUE))
+  return(sum(ll[!is.na(y)]) + lp)
+}
+
+# ###########  PS functions  ############
+#
+# get.level <- function(A, cuts){
+#   lev <- A * 0 + 1
+#   for (j in 1:length(cuts)) {
+#     lev <- ifelse(A > cuts[j], j + 1, lev)
+#   }
+#   return(lev)
+# }

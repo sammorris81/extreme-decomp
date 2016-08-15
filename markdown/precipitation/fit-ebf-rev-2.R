@@ -1,4 +1,4 @@
-Ls <- c(40, 35, 30, 25, 20, 15, 10, 5)
+Ls <- c(40, 35)
 
 for (L in Ls) {
   rm(list=setdiff(ls(), c("Ls", "L")))  # don't lose which setting we're running

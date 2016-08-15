@@ -17,6 +17,7 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
+files <- files[-c(41, 82, 123, 164)]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs + 1)
@@ -41,12 +42,6 @@ for (i in 1:(length(files))) {  # last file is timing.txt
   proc.idx  <- which(procs == split[1])
   margin.idx <- which(margs == split[2])
   basis.idx <- which(bases == split[3])
-
-  # idx: 1 - 5: ebf spatial, ebf marginal
-  # idx: 6 - 10: ebf spatial, gsk marginal
-  # idx: 11 - 15: gsk spatial, ebf marginal
-  # idx: 16 - 20: gsk spatial, gsk marginal
-  # idx: 21: gsk spatial, gsk marginal - knots at all counties
 
   if (as.numeric(split[3]) == 159) {
     idx <- length(rownames)
@@ -83,7 +78,7 @@ bs.results.mn <- bs.results.se <- matrix(NA, nbases * nmargs * 2 + 1, nprobs.bs)
 # idx: 6 - 10: ebf spatial, gsk marginal
 # idx: 11 - 15: gsk spatial, ebf marginal
 # idx: 16 - 20: gsk spatial, gsk marginal
-# idx: 21: gsk spatial, gsk marginal, knots at all locations
+done.sets <- 1:10
 for (p in 1:nprocs) {
   for (m in 1:nmargs) {
     for (b in 1:nbases) {
@@ -91,13 +86,13 @@ for (p in 1:nprocs) {
                   (m - 1) * nbases + b
       this.qs <- qs.results[[this.row]]
       this.bs <- bs.results[[this.row]]
-      qs.results.mn[this.row, ] <- apply(this.qs, 2, mean,
+      qs.results.mn[this.row, ] <- apply(this.qs[done.sets, ], 2, mean,
                                          na.rm = TRUE)
-      bs.results.mn[this.row, ] <- apply(this.bs, 2, mean,
+      bs.results.mn[this.row, ] <- apply(this.bs[done.sets, ], 2, mean,
                                          na.rm = TRUE)
-      qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
+      qs.results.se[this.row, ] <- apply(this.qs[done.sets, ], 2, sd,
                                          na.rm = TRUE) / sqrt(10)
-      bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
+      bs.results.se[this.row, ] <- apply(this.bs[done.sets, ], 2, sd,
                                          na.rm = TRUE) / sqrt(10)
     }
   }
@@ -110,49 +105,56 @@ round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)
 
 # Brier scores
-quartz(width = 8, height = 8)
-par(mfrow = c(2, 2))
 these.ebf <- 1:8
 these.gsk <- 9:16
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1], type = "l",
-     main = "Brier score for q(0.95)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
 
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "l",
-     main = "Quantile score for q(0.95)",
-     ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 1]),
-     xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-plot(seq_along(these.ebf), bs.results.mn[these.ebf, 2], type = "l",
-     main = "Brier score for q(0.99)",
-     ylab = "Brier score", xlab = "Knots",
-     ylim = range(bs.results.mn[c(these.ebf, these.gsk), 2]),
-     xaxt = "n")
-lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-plot(seq_along(these.ebf), qs.results.mn[these.ebf, 5], type = "l",
-     main = "Quantile score for q(0.99)",
-     ylab = "Quantile score", xlab = "Knots",
-     ylim = range(qs.results.mn[c(these.ebf, these.gsk), 5]),
-     xaxt = "n")
-lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 2)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5))
-legend("topright", lty = c(1, 2), legend = c("EBF   ", "GSK   "))
-
-dev.print(device = pdf, file = "~/Desktop/precip-bs.pdf")
+quartz(width = 8, height = 8)
+ylim <- range(bs.results.mn[c(these.ebf, these.gsk), ] * 100)
+ylim[2] <- ylim[2] + 1.1  # give space for legend
+plot(seq_along(these.ebf), bs.results.mn[these.ebf, 1] * 100, type = "b",
+     # main = "Brier score (x 100)",
+     ylab = "Brier score (x 100)", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), bs.results.mn[these.gsk, 1] * 100, lty = 1,
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf), bs.results.mn[these.ebf, 2] * 100, lty = 3,
+      type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), bs.results.mn[these.gsk, 2] * 100, lty = 3,
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+dev.print(device = pdf, width = 8, height = 8, file = "plots/fire-bs.pdf")
 dev.off()
 
+quartz(width = 8, height = 8)
+ylim <- range(qs.results.mn[c(these.ebf, these.gsk), c(1, 5)])
+ylim[2] <- ylim[2] + 15  # give space for legend
+plot(seq_along(these.ebf), qs.results.mn[these.ebf, 1], type = "b",
+     # main = "Brier score (x 100)",
+     ylab = "Quantile Score", xlab = "Knots",
+     ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
+     cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), qs.results.mn[these.gsk, 1], lty = 1,
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.ebf), qs.results.mn[these.ebf, 5], lty = 3,
+      type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
+lines(seq_along(these.gsk), qs.results.mn[these.gsk, 5], lty = 3,
+      type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
+axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+legend("topright",
+       pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
+       pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
+       cex = 1.5, lwd = 1.25, lty = c(1, 1, 3, 3),
+       legend = c("q(0.95): EBF", "q(0.95): GSK",
+                  "q(0.99): EBF", "q(0.99): GSK"))
+dev.print(device = pdf, width = 8, height = 8, file = "plots/fire-qs.pdf")
+dev.off()
 
 round(bs.results.mn * 100, 3)
 round(qs.results.mn[, c(1, 5)], 3)
@@ -341,144 +343,88 @@ qs.results.se[this.row, ] <- apply(this.qs, 2, sd,
 bs.results.se[this.row, ] <- apply(this.bs, 2, sd,
                                    na.rm = TRUE) / sqrt(10)
 
-process.col <- c(rep("ebf", nbases * 2), rep("gsk", nbases * 2 + 1))
-margin.col  <- c(rep("ebf", nbases), rep("gsk", nbases),
-                 rep("ebf", nbases), rep("gsk", nbases + 1))
-bases.col   <- c(rep(bases, 4), 159)
+process.col <- c(rep("ebf", nbases), rep("gsk", nbases))
+# margin.col  <- c(rep("ebf", nbases), rep("gsk", nbases),
+#                  rep("ebf", nbases), rep("gsk", nbases))
+bases.col   <- rep(bases, 2)
 results.df <- data.frame(process = as.factor(process.col),
-                         margin = as.factor(margin.col),
+                         # margin = as.factor(margin.col),
                          bases = as.integer(bases.col),
-                         bs95 = as.double(100 * bs.results.mn[, 1]),
-                         bs99 = as.double(100 * bs.results.mn[, 2]),
-                         qs95 = as.double(qs.results.mn[, 1]),
-                         qs99 = as.double(qs.results.mn[, 5]))
+                         bs95 = as.double(100 * bs.results.mn[1:16, 1]),
+                         bs99 = as.double(100 * bs.results.mn[1:16, 2]),
+                         qs95 = as.double(qs.results.mn[1:16, 1]),
+                         qs99 = as.double(qs.results.mn[1:16, 5]))
 
 quartz(width = 16, height = 8)
 par(mfrow = c(1, 2))
 # look at plots by process/margin
 ylim <- range(results.df$bs95)
-ylim[2] <- ylim[2] + 0.4
-these <- results.df$process == "ebf" & results.df$margin == "ebf"
+ylim[2] <- ylim[2] + 0.02
+these <- results.df$process == "ebf"
 plot(results.df$bases[these], results.df$bs95[these], type = "l",
-     # main = "Brier score (x 100) for exceeding q(0.95)",
+     main = "Brier score (x 100) for exceeding q(0.95)",
      ylim = ylim, ylab = "Brier score (x 100)",
      xlab = "Number of knots/basis functions",
-     col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$bs95[these],
-      col = "dodgerblue1", lty = 2)
-these <- results.df$process == "gsk" & results.df$margin == "ebf"
-lines(results.df$bases[these], results.df$bs95[these],
-      col = "firebrick1", lty = 1)
-these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$bs95[these],
-      col = "firebrick1", lty = 2)
-curve(results.df$bs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
-      add = TRUE)
+     lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+these <- results.df$process == "gsk"
+lines(results.df$bases[these], results.df$bs95[these], lty = 2)
 
-legend("topright", legend = c("Process: ebf Margin: ebf",
-                              "Process: ebf Margin: gsk",
-                              "Process: gsk Margin: ebf",
-                              "Process: gsk Margin: gsk",
-                              "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2),
-       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
+legend("topright", legend = c("EBF", "GSK"),
+       lty = c(1, 2),
        cex = 1.5)
 
 
 # look at plots by process/margin
 ylim <- range(results.df$bs99)
-ylim[2] <- ylim[2] + 0.15
-these <- results.df$process == "ebf" & results.df$margin == "ebf"
+ylim[2] <- ylim[2] + 0.02
+these <- results.df$process == "ebf"
 plot(results.df$bases[these], results.df$bs99[these], type = "l",
-     # main = "Brier score (x 100) for exceeding q(0.99)",
+     main = "Brier score (x 100) for exceeding q(0.99)",
      ylim = ylim, ylab = "Brier score (x 100)",
      xlab = "Number of knots/basis functions",
-     col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$bs99[these],
-      col = "dodgerblue1", lty = 2)
-these <- results.df$process == "gsk" & results.df$margin == "ebf"
-lines(results.df$bases[these], results.df$bs99[these],
-      col = "firebrick1", lty = 1)
-these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$bs99[these],
-      col = "firebrick1", lty = 2)
-curve(results.df$bs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
-      add = TRUE)
+     lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+these <- results.df$process == "gsk"
+lines(results.df$bases[these], results.df$bs99[these], lty = 2)
 
-legend("topright", legend = c("Process: ebf Margin: ebf",
-                              "Process: ebf Margin: gsk",
-                              "Process: gsk Margin: ebf",
-                              "Process: gsk Margin: gsk",
-                              "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2),
-       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
+legend("topright", legend = c("EBF", "GSK"),
+       lty = c(1, 2),
        cex = 1.5)
-dev.print(device = pdf, file = "plots/bs-mean-fire.pdf")
+dev.print(device = pdf, file = "plots/fire-bs.pdf")
 dev.off()
 
 quartz(width = 16, height = 8)
 par(mfrow = c(1, 2))
-ylim <- range(results.df$qs95[results.df$bases != 25])
-ylim[2] <- ylim[2] + 10
+ylim <- range(results.df$qs95)
+ylim[2] <- ylim[2] + 2
 # look at plots by process/margin
-these <- results.df$process == "ebf" & results.df$margin == "ebf" & results.df$bases != 25
+these <- results.df$process == "ebf"
 plot(results.df$bases[these], results.df$qs95[these], type = "l",
-     # main = "Quantile score for q(0.95)",
+     main = "Quantile score for q(0.95)",
      ylim = ylim, ylab = "Quantile score",
-     xlim = c(5, 25), xlab = "Number of knots/basis functions",
-     col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$qs95[these],
-      col = "dodgerblue1", lty = 2)
-these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
-lines(results.df$bases[these], results.df$qs95[these],
-      col = "firebrick1", lty = 1)
-these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$qs95[these],
-      col = "firebrick1", lty = 2)
-curve(results.df$qs95[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
-      add = TRUE)
-legend("topleft", legend = c("Process: ebf Margin: ebf",
-                             "Process: ebf Margin: gsk",
-                             "Process: gsk Margin: ebf",
-                             "Process: gsk Margin: gsk",
-                             "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2),
-       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
-       cex = 1.5)
+     xlim = c(5, 40), xlab = "Number of knots/basis functions",
+     lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+these <- results.df$process == "gsk"
+lines(results.df$bases[these], results.df$qs95[these], lty = 2)
 
+legend("topright", legend = c("EBF", "GSK"),
+       lty = c(1, 2), cex = 1.5)
 
 # look at plots by process/margin
-ylim <- range(results.df$qs99[results.df$bases != 25])
-ylim[2] <- ylim[2] + 10
-these <- results.df$process == "ebf" & results.df$margin == "ebf" & results.df$bases != 25
+ylim <- range(results.df$qs99)
+ylim[2] <- ylim[2] + 2
+these <- results.df$process == "ebf"
 plot(results.df$bases[these], results.df$qs99[these], type = "l",
-     # main = "Quantile score for q(0.99)",
+     main = "Quantile score for q(0.99)",
      ylim = ylim, ylab = "Quantile score",
-     xlim = c(5, 25), xlab = "Number of knots/basis functions",
-     col = "dodgerblue1", lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-these <- results.df$process == "ebf" & results.df$margin == "gsk"
-lines(results.df$bases[these], results.df$qs99[these],
-      col = "dodgerblue1", lty = 2)
-these <- results.df$process == "gsk" & results.df$margin == "ebf" & results.df$bases != 25
-lines(results.df$bases[these], results.df$qs99[these],
-      col = "firebrick1", lty = 1)
-these <- results.df$process == "gsk" & results.df$margin == "gsk" & results.df$bases != 159
-lines(results.df$bases[these], results.df$qs99[these],
-      col = "firebrick1", lty = 2)
-curve(results.df$qs99[21] + x * 0, from = 5, to = 25, lty = 1, col = "black",
-      add = TRUE)
-legend("topleft", legend = c("Process: ebf Margin: ebf",
-                             "Process: ebf Margin: gsk",
-                             "Process: gsk Margin: ebf",
-                             "Process: gsk Margin: gsk",
-                             "Process: gsk Margin: gsk, knots at all sites"),
-       lty = c(1, 2, 1, 2),
-       col = c("dodgerblue1", "dodgerblue1", "firebrick1", "firebrick1", "black"),
+     xlim = c(5, 40), xlab = "Number of knots/basis functions",
+     lty = 1, cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+these <- results.df$process == "gsk"
+lines(results.df$bases[these], results.df$qs99[these], lty = 2)
+
+legend("topright", legend = c("EBF", "GSK"),
+       lty = c(1, 2),
        cex = 1.5)
-dev.print(device = pdf, file = "plots/qs-mean-fire.pdf")
+dev.print(device = pdf, file = "plots/fire-qs.pdf")
 dev.off()
 
 
@@ -633,3 +579,10 @@ plot(fit.kern$beta2[, 6], type = "l")
 hist(fit.basis$y.pred[, 1])
 hist(fit.kern$y.pred[, 1])
 
+#### Get the timing ####
+ebf.time <- read.table("./cv-tables/ebf-timing.txt")
+gsk.time <- read.table("./cv-tables/gsk-timing.txt")
+time <- cbind(apply(ebf.time, 1, mean), apply(gsk.time, 1, mean))
+time <- time / 350 * 1000 / 60
+colnames(time) <- c("ebf", "gsk")
+round(time, 2)

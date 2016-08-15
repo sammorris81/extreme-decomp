@@ -1,4 +1,3 @@
-
 ######################################################################
 #
 # Function to estimate the B functions:
@@ -20,10 +19,6 @@
 #  EC.smooth := smoothed version of EC
 #
 ######################################################################
-if (!exists("rowSumsC")) {
-  sourceCpp(file = "pcax.cpp")
-}
-
 get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
                            init.B = NULL, iters = 10, verbose = TRUE){
 
@@ -74,8 +69,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
       B.star <- B^(1 / alpha)
       for (i in 1:n) {
         if (!convergence.inner[i]) {
-          fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
-                       B2 = B, B.star = B.star, alpha = alpha,
+          fit <- optim(B[i, ], fn = SSE.B, gr = SSE.B.grad, Y = EC[i, ],
+                       B.star = B.star, alpha = alpha,
                        lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                        method = "L-BFGS-B", control = list(maxit = maxit))
 
@@ -99,8 +94,8 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
     cat("  Start convergence check \n")
     convergence.outer <- rep(FALSE, n)
     for (i in 1:n) {  # double check that everything has converged
-      fit <- optim(B[i, ], fn = SSE, gr = SSE.grad, Y = EC[i, ],
-                   B2 = B, B.star = B.star, alpha = alpha,
+      fit <- optim(B[i, ], fn = SSE.B, gr = SSE.B.grad, Y = EC[i, ],
+                   B.star = B.star, alpha = alpha,
                    lower = rep(1.0e-7, L), upper = rep(0.9999999, L),
                    method = "L-BFGS-B", control = list(maxit = 1000))
 
@@ -156,82 +151,6 @@ get.factors.EC <- function(EC, L = 5, s = NULL, bw = NULL, alpha = NULL,
   return(output)
 }
 
-# SSE for row of Y-EC
-SSE <- function(B1, B2, B.star, Y, alpha, lambda = 1000){
-
-  BB  <- B1^(1 / alpha)
-  # B2  <- B2^(1 / alpha)
-  B2  <- B.star
-  # EC.temp <- sweep(B2, 2, BB, "+")
-  EC  <- sweepC2plus(X = B2, y = BB)
-  # EC.temp <- rowSums(EC^alpha)
-  EC  <- rowSumsC(EC^alpha)
-
-  # penalty term is to make sure that the bases sum to 1
-  sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
-
-  return(sse)
-}
-
-SSE.grad <- function(B1, B2, B.star, Y, alpha, lambda = 1000, exclude = 1){
-
-  B1.star <- B1^(1 / alpha)
-  # BB   <- B1^(1 / alpha)
-  # B2   <- B2^(1 / alpha)
-  B2   <- B.star
-
-  # BB   <- sweep(B2, 2, BB, "+")
-  # BB.temp <- sweep(B2, 2, BB, "+")
-  BB <- sweepC2plus(X = B2, y = B1.star)
-  # EC0.temp  <- rowSums(BB^alpha)
-  EC0  <- rowSumsC(BB^alpha)
-
-  EC1  <- BB^(alpha - 1)
-  # EC1.t  <- sweep(EC1, 2, B1^(1 / alpha - 1), "*")
-  # EC1.t  <- sweep(EC1, 2, B1.star / B1, "*")
-  EC1  <- sweepC2times(EC1, B1.star / B1)
-  # EC1.1  <- sweep(EC1, 1, Y - EC0, "*")
-  EC1  <- sweepC1times(EC1, Y - EC0)
-
-  grad <- -2 * colSums(EC1, na.rm = TRUE) +
-           2 * lambda * (sum(B1) - 1)
-
-  return(grad)
-}
-
-
-make.EC  <- function(B, alpha){
-  Ba    <- B^(1 / alpha)
-  EC    <- NULL
-  for(j in 1:nrow(B)){
-    BB <- sweep(Ba, 2, Ba[j, ], "+")
-    EC <- cbind(EC, rowSums(BB^alpha))
-  }
-
-  return(EC)
-}
-
-# Performs kernel smoothing of the extremal coefficient matrix.
-Ksmooth <- function(ECmat, s = NULL, bw = NULL){
-
-  n           <- nrow(ECmat)
-  diag(ECmat) <- 0
-  E1          <- ifelse(ECmat == 0, 0, 1)
-  if (is.null(s)) {s <- 1:n}
-  if (is.null(bw)) {bw <- 2 * min(dist(s))}
-
-  d2       <- as.matrix(dist(s) / bw)^2
-  W        <- exp(-d2)
-  diag(W)  <- 0
-
-  num      <- W %*% ECmat %*% W
-  den      <- W %*% E1 %*% W
-
-  ECsmooth <- num / den
-
-  return(ECsmooth)
-}
-
 ######################################################################
 #
 # Function to estimate the B functions:
@@ -251,7 +170,6 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
 #  EC.smooth := smoothed version of EC
 #
 ######################################################################
-
 get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
                           init.rho = NULL, verbose = TRUE){
   require(fields)
@@ -273,7 +191,7 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   if (is.null(knots)) {
     knots <- s
   }
-  dw2             <- as.matrix(rdist(s, knots))^2
+  dw2 <- as.matrix(rdist(s, knots))^2
   dw2[dw2 < 1e-6] <- 0
   dknots2 <- rdist(knots)^2
   diag(dknots2) <- 0
@@ -306,104 +224,58 @@ get.rho.alpha <- function(EC, s = NULL, knots = NULL, bw = NULL, alpha = NULL,
   return(output)
 }
 
-# SSE
-SSE.rhoalpha <- function(rho, dw2, Y, alpha) {
-  w <- getW(rho = rho, dw2 = dw2)
-  w <- w^(1 / alpha)
-
-  n <- ncol(Y)
-  # EC <- matrix(NA, n, n)
-  # for (i in 1:(n - 1)) {
-  #   for (j in (i + 1):n) {
-  #     EC[i, j] <- EC[j, i] <- sum(colSums(w[c(i, j), ])^alpha)
-  #   }
-  # }
-
-  EC <- getECRhoAlphaC(w = w, alpha = alpha)
-  diag(EC) <- NA
-
-  if (any(is.nan(EC))) {
-    return(Inf)
-  }
-
-  sse <- sum((Y - EC)^2, na.rm = TRUE)
-
-  return(sse)
-}
-
-getW <- function(rho, dw2) {
-  w <- stdW(makeW(dw2 = dw2, rho = rho))
-  return(w)
-}
-
-
-# get the kernel weighting
-makeW <- function(dw2, rho) {
-  w <- exp(-0.5 * dw2 / (rho^2))
-
-  return(w)
-}
-
-# standardize the kernel weights
-stdW <- function(x, single = FALSE) {
-  if (single) {x <- x / sum(x)}
-  if (!single) {x <- sweep(x, 1, rowSums(x), "/")}
-  return(x)
-}
-
-
-####################################################
-# SIMPLE EXAMPLE
-####################################################
-
-if(FALSE){
-
- library(splines)
- library(fields)
-
- n     <- 100
- L     <- 5
- alpha <- 0.3
-
- #set.seed(0820)
-
- #Define the truth
-
-  B.true  <- bs(1:n,df=L,intercept=TRUE)
-  B.true  <- sweep(B.true,1,rowSums(B.true),"/")
-  tot     <- colSums(B.true)
-  B.true  <- B.true[,order(-tot)]
-  EC.true <- make.EC(B.true,alpha)
-
- # The estimate (not generated in a realistic way)
-
-  junk    <- matrix(rnorm(n^2),n,n)
-  EC.hat  <- EC.true+0.01*t(junk)%*%junk
-  EC.hat  <- ifelse(EC.hat<1,1,EC.hat)
-  EC.hat  <- ifelse(EC.hat>2,2,EC.hat)
-
-  diag(EC.hat) <- NA
-
- # Estimation
-
-
-  out       <- get.factors.EC(EC.hat,L=L,s=1:n,bw=5)
-  B.est     <- out$est
-  alphahat  <- out$alpha
-  EC.smooth <- out$EC.smooth
-  EC.est    <- make.EC(B.est, alphahat)
-
-  print(out$pct)
-
- # Plot the results
-
-  par(mfrow=c(3,2))
-  matplot(B.true,type="l",main="True B")
-  matplot(B.est,type="l",main="Estimated B")
-  image.plot(1:n,1:n,EC.true,main="True EC")
-  image.plot(1:n,1:n,EC.hat,main="Initial EC estimate (theta-hat)")
-  image.plot(1:n,1:n,EC.smooth,main="Smoothed EC (theta-tilde)")
-  image.plot(1:n,1:n,EC.est,main="Final EC estimate")
-
-
-}
+# ####################################################
+# # SIMPLE EXAMPLE
+# ####################################################
+#
+# if(FALSE){
+#
+#  library(splines)
+#  library(fields)
+#
+#  n     <- 100
+#  L     <- 5
+#  alpha <- 0.3
+#
+#  #set.seed(0820)
+#
+#  #Define the truth
+#
+#   B.true  <- bs(1:n,df=L,intercept=TRUE)
+#   B.true  <- sweep(B.true,1,rowSums(B.true),"/")
+#   tot     <- colSums(B.true)
+#   B.true  <- B.true[,order(-tot)]
+#   EC.true <- make.EC(B.true,alpha)
+#
+#  # The estimate (not generated in a realistic way)
+#
+#   junk    <- matrix(rnorm(n^2),n,n)
+#   EC.hat  <- EC.true+0.01*t(junk)%*%junk
+#   EC.hat  <- ifelse(EC.hat<1,1,EC.hat)
+#   EC.hat  <- ifelse(EC.hat>2,2,EC.hat)
+#
+#   diag(EC.hat) <- NA
+#
+#  # Estimation
+#
+#
+#   out       <- get.factors.EC(EC.hat,L=L,s=1:n,bw=5)
+#   B.est     <- out$est
+#   alphahat  <- out$alpha
+#   EC.smooth <- out$EC.smooth
+#   EC.est    <- make.EC(B.est, alphahat)
+#
+#   print(out$pct)
+#
+#  # Plot the results
+#
+#   par(mfrow=c(3,2))
+#   matplot(B.true,type="l",main="True B")
+#   matplot(B.est,type="l",main="Estimated B")
+#   image.plot(1:n,1:n,EC.true,main="True EC")
+#   image.plot(1:n,1:n,EC.hat,main="Initial EC estimate (theta-hat)")
+#   image.plot(1:n,1:n,EC.smooth,main="Smoothed EC (theta-tilde)")
+#   image.plot(1:n,1:n,EC.est,main="Final EC estimate")
+#
+#
+# }

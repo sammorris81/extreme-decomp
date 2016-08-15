@@ -8,6 +8,7 @@ library(ggplot2)
 # library(gridExtra)  # not available on hpc
 # library(rapport)    # not available on hpc
 library(Rcpp)
+library(SpatialExtremes)
 source(file = "../../../usefulR/usefulfunctions.R", chdir = TRUE)
 source(file = "../../code/analysis/fire/adj.R", chdir = TRUE)
 source(file = "../../code/R/auxfunctions.R", chdir = TRUE)
@@ -74,6 +75,25 @@ d <- rdist(s)
 diag(d) <- 0
 
 save(cv.idx, ec.hat, file = "cv-extcoef.RData")
+
+# compare with Schlather and Tawn estimate in fitextcoeff
+fitextcoeff(data = t(Y), coord = s, estim = "ST", marge = "emp",
+            prob = 0.90)
+
+for (fold in 1:nfolds) {
+  Y.tst <- Y
+  Y.tst[cv.idx[[fold]]] <- NA
+
+  # build ec matrix: ns x ns
+  ec <- fitextcoeff(data = t(Y.tst[1:10, ]), coord = s[1:10, ], estim = "ST",
+                    marge = "emp", prob = 0.90)
+
+  ec.hat[[fold]] <- ec$ec
+  qlim.min.range[fold, ] <- range(ec$qlims[, 1])
+  qlim.max.range[fold, ] <- range(ec$qlims[, 2])
+
+  cat("finished fold:", fold, "\n")
+}
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####
@@ -168,7 +188,57 @@ B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
 filename <- paste("gsk-", L, "-all.RData", sep = "")
 save(B.gsk, alpha, knots, file = filename)
 
+#### looks like L = 35 is after things settle down.
+# get pairwise extremal coefficients
+# build ec matrix: ns x ns
+ec <- get.pw.ec.fmado(Y = Y)
+ec.hat <- ec$ec
+L <- 25
 
+# Empirical basis functions
+cat("Starting estimation of empirical basis functions \n")
+out       <- get.factors.EC(ec.hat, L = L, s = s)
+B.ebf     <- out$est
+ec.smooth <- out$EC.smooth
+alpha     <- out$alpha
+
+filename <- paste("ebf-", L, "-all.RData", sep = "")
+save(B.ebf, ec.smooth, alpha, file = filename)
+
+# Gaussian kernel functions
+cat("Starting estimation of Gaussian kernels \n")
+set.seed(5687)
+knots <- cover.design(cents.grid, nd = L)$design
+out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots)
+B.gsk <- getW(rho = out$rho, dw2 = out$dw2)
+
+filename <- paste("gsk-", L, "-all.RData", sep = "")
+save(B.gsk, alpha, knots, file = filename)
+
+# plot cumsum against basis function
+L <- 25
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Fire analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/firev-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
+
+L <- 35
+file <- paste("ebf-", L, "-all.RData", sep = "")
+load(file)
+v <- colSums(B.ebf) / ns
+plot(1:L, cumsum(v), ylim = c(0, 1),
+     main = paste("Fire analysis (", L, " knots)", sep = ""),
+     ylab = "Cumulative relative contribution",
+     xlab = "Knot")
+plotname <- paste("plots/firev-", L, ".pdf", sep = "")
+dev.print(device = pdf, file = plotname,
+          width = 6, height = 6)
 
 library(ggplot2)
 library(gridExtra)
@@ -243,3 +313,6 @@ for (i in 1:L) {
                               midpoint = median(B.est[, i]))
 }
 multiplot(plotlist = plots, cols = 4)
+
+
+

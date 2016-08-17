@@ -6,16 +6,17 @@
 #
 # INPUTS:
 #
-#   y       := ns x nt matrix of data
-#   X       := ns x nt x p matrix of covariance for the GPD prob and scale
-#   thresh  := ns x nt matrix of GPD thresholds
-#   B       := ns x L matrix of PCs
-#   alpha   := PS parameter alpha
-#   A       := initial A terms
-#   beta1   := initial values for the GEV location coefficients
-#   beta2   := initial values for the GEV scale coefficients
-#   xi      := initial value for the GEV shape parameter
-#   beta.sd := prior sd of the elements of beta1 and beta2
+#   y        := ns x nt matrix of data
+#   test.set := the ns x nt boolean matrix of which observations should be test
+#   X        := ns x nt x p matrix of covariance for the GPD prob and scale
+#   thresh   := ns x nt matrix of GPD thresholds
+#   B        := ns x L matrix of PCs
+#   alpha    := PS parameter alpha
+#   A        := initial A terms
+#   beta1    := initial values for the GEV location coefficients
+#   beta2    := initial values for the GEV scale coefficients
+#   xi       := initial value for the GEV shape parameter
+#   beta.sd  := prior sd of the elements of beta1 and beta2
 #
 # OUTPUTS:
 #
@@ -28,7 +29,7 @@
 #
 ################################################################################
 
-ReShMCMC<-function(y, s, thresh, B, alpha,
+ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
                    # details for the GP prior on mu and logsig
                    beta.int = NULL, beta.int.mn = NULL,
                    beta.int.attempts = 100, canbeta.int.sd = 0.1,
@@ -72,16 +73,32 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     time[t] <- (t - nt / 2) / nt
   }
 
-  miss <- is.na(y)
   if (length(thresh) == 1) {
     thresh <- matrix(thresh, ns, nt)
   }
   y <- ifelse(y < thresh, thresh, y)
 
-  # initial missing values to be set at threshold
-  # looping over time because threshold is a vector of ns length
+  # two different reasons why y = NA
+  # 1. y is missing, so it should be imputed
+  # 2. y will be in the test set
+  if (!is.null(y.test)) {
+    GG <- rep(0, iters - burn)
+    CRPS <- rep(0, iters - burn)
+    y.true <- y      # store for calculating CRPS and GG
+    y[test.set] <- NA
+  } else {
+    GG   <- NULL
+    CRPS <- NULL
+  }
+
+  miss <- is.na(y)
   if (any(miss)) {
     missing.times <- which(colSums(miss) > 0)
+    # only record the missing data after burnin finishes
+    keep.y <- matrix(0, iters - burn, sum(miss))
+    yp <- y
+  } else {
+    keep.y <- NULL
   }
 
   # INITIAL VALUES:
@@ -165,12 +182,6 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
   keep.tau.time     <- matrix(0, iters, 2)
   keep.bw           <- rep(0, iters)  # bandwidth for GP
   keep.A            <- array(0, dim = c(iters, keep.knots, keep.days))
-  if (any(miss)) {
-    # only record the missing data after burnin finishes
-    keep.y <- matrix(0, iters - burn, sum(miss))
-  } else {
-    keep.y <- NULL
-  }
 
   # TUNING:
 
@@ -375,9 +386,16 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     ####################################################
     ##############      Impute missing      ############
     ####################################################
+    # Using a matrix for yp because it makes it easier to keep track of
+    # the posterior predictive distribution for y. This is not needed for the
+    # second realization used for CRPS since it doesn't need to be saved.
+    # Also, using a vector for these.yp because it allows for observations to
+    # be either missing or test set (or both)
     if (iter > burn) {
+      these.yp <- rep(NA, ns)
+      y.crps <- rep(NA, ns)
+      this.GG <- this.CRPS <- n.test <- 0
       if (any(miss)) {
-        y.tmp <- y
         for (t in missing.times) {
           # calculate mu and sigma
           miss.t     <- miss[, t]  # logical vector of whether it's missing
@@ -390,10 +408,35 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
           # get unit frechet
           these.miss <- -1 / log(runif(sum(miss.t)))
           # transform to correct marginals
-          y.tmp[miss.t, t] <- mu.star.t + sig.star.t *
+          these.yp[miss.t] <- mu.star + sig.star *
             (these.miss^xi.star - 1) / xi.star
+
+          # get stuff for CRPS and GG
+          # NOTE: Not all of the NAs are test, some are actually missing.
+          #       In the case y is missing, it should not be used for scores
+          if (!is.null(test.set)) {
+            test.t <- test.set[, t]
+            n.test <- n.test + sum(!is.na(y.true[test.t, t]))
+            this.GG <- this.GG +
+              sum((these.yp[test.t] - y.true[test.t, t])^2, na.rm = TRUE)
+            these.miss.crps <- -1 / log(runif(sum(miss.t)))
+            y.crps[miss.t] <- mu.star.t + sig.star.t *
+              (these.miss.crps^xi.star - 1) / xi.star
+            this.CRPS <- this.CRPS +
+              sum(abs(these.yp[test.t] - y.true[test.t, t]) -
+                    0.5 * mean(abs(these.yp[test.t] - y.crps[test.t])),
+                  na.rm = TRUE)
+
+          }
+
+          yp[miss.t, t] <- these.yp
         }
-        keep.y[(iter - burn), ] <- y.tmp[miss]
+        print(this.GG)
+        print(this.CRPS)
+        print(n.test)
+        GG[iter] <- this.GG / n.test
+        CRPS[iter] <- this.CRPS / n.test
+        keep.yp[(iter - burn), ] <- yp[miss]
       }
 
     }
@@ -477,17 +520,28 @@ ReShMCMC<-function(y, s, thresh, B, alpha,
     return.iters <- (burn + 1):iters
   }
 
-  list(beta.int     = keep.beta.int[return.iters, , , drop = FALSE],
-       beta.time    = keep.beta.time[return.iters, , , drop = FALSE],
-       beta.int.mn  = keep.beta.int.mn[return.iters, , drop = FALSE],
-       beta.time.mn = keep.beta.time.mn[return.iters, , drop = FALSE],
-       xi           = keep.xi[return.iters],
-       tau.int      = keep.tau.int[return.iters, , drop = FALSE],
-       tau.time     = keep.tau.time[return.iters, , drop = FALSE],
-       bw           = keep.bw[return.iters],
-       A            = keep.A[return.iters, , , drop = FALSE],
-       y.pred       = keep.y,  # only stores for post-burnin
-       timing       = toc - tic)
+  if (!is.null(test.set)) {
+    GG <- mean(GG)
+    CRPS <- mean(CRPS)
+  } else {
+    GG   <- NULL
+    CRPS <- NULL
+  }
+  results <- list(beta.int     = keep.beta.int[return.iters, , , drop = FALSE],
+                  beta.time    = keep.beta.time[return.iters, , , drop = FALSE],
+                  beta.int.mn  = keep.beta.int.mn[return.iters, , drop = FALSE],
+                  beta.time.mn = keep.beta.time.mn[return.iters, , drop = FALSE],
+                  xi           = keep.xi[return.iters],
+                  tau.int      = keep.tau.int[return.iters, , drop = FALSE],
+                  tau.time     = keep.tau.time[return.iters, , drop = FALSE],
+                  bw           = keep.bw[return.iters],
+                  A            = keep.A[return.iters, , , drop = FALSE],
+                  y.pred       = keep.y,  # only stores for post-burnin
+                  timing       = toc - tic,
+                  GG           = GG,
+                  CRPS         = CRPS)
+
+  return(results)
 }
 
 #############################################################:

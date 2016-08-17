@@ -23,6 +23,9 @@ if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Darwin") {
   do.upload <- TRUE
+} else if (Sys.info()["sysname"] == "Windows") {
+  do.upload <- FALSE
+  setMKLthreads(1)
 } else {
   do.upload <- FALSE
   # set number of threads to use

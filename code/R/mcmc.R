@@ -81,7 +81,7 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
   # two different reasons why y = NA
   # 1. y is missing, so it should be imputed
   # 2. y will be in the test set
-  if (!is.null(y.test)) {
+  if (!is.null(test.set)) {
     GG <- rep(0, iters - burn)
     CRPS <- rep(0, iters - burn)
     y.true <- y      # store for calculating CRPS and GG
@@ -95,10 +95,10 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
   if (any(miss)) {
     missing.times <- which(colSums(miss) > 0)
     # only record the missing data after burnin finishes
-    keep.y <- matrix(0, iters - burn, sum(miss))
+    keep.yp <- matrix(0, iters - burn, sum(miss))
     yp <- y
   } else {
-    keep.y <- NULL
+    keep.yp <- NULL
   }
 
   # INITIAL VALUES:
@@ -408,7 +408,7 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
           # get unit frechet
           these.miss <- -1 / log(runif(sum(miss.t)))
           # transform to correct marginals
-          these.yp[miss.t] <- mu.star + sig.star *
+          these.yp[miss.t] <- mu.star.t + sig.star.t *
             (these.miss^xi.star - 1) / xi.star
 
           # get stuff for CRPS and GG
@@ -417,8 +417,12 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
           if (!is.null(test.set)) {
             test.t <- test.set[, t]
             n.test <- n.test + sum(!is.na(y.true[test.t, t]))
+
+            # get GG for this day
             this.GG <- this.GG +
               sum((these.yp[test.t] - y.true[test.t, t])^2, na.rm = TRUE)
+
+            # CRPS contribution for this day
             these.miss.crps <- -1 / log(runif(sum(miss.t)))
             y.crps[miss.t] <- mu.star.t + sig.star.t *
               (these.miss.crps^xi.star - 1) / xi.star
@@ -428,12 +432,10 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
                   na.rm = TRUE)
 
           }
+          yp[miss.t, t] <- these.yp[miss.t]
 
-          yp[miss.t, t] <- these.yp
         }
-        print(this.GG)
-        print(this.CRPS)
-        print(n.test)
+
         GG[iter] <- this.GG / n.test
         CRPS[iter] <- this.CRPS / n.test
         keep.yp[(iter - burn), ] <- yp[miss]
@@ -536,7 +538,7 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
                   tau.time     = keep.tau.time[return.iters, , drop = FALSE],
                   bw           = keep.bw[return.iters],
                   A            = keep.A[return.iters, , , drop = FALSE],
-                  y.pred       = keep.y,  # only stores for post-burnin
+                  y.pred       = keep.yp,  # only stores for post-burnin
                   timing       = toc - tic,
                   GG           = GG,
                   CRPS         = CRPS)

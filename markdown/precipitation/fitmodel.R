@@ -128,7 +128,7 @@ iters  <- 25000
 burn   <- 15000
 update <- 500
 
-# iters <- 100; burn <- 10; update <- 50  # for testing
+# iters <- 100; burn <- 90; update <- 50  # for testing
 A.init <- matrix(exp(2), L, nt)  # consistent with estimates of alpha
 # A.init <- matrix(1, L, nt)
 theta.init <- (B.sp^(1 / alpha) %*% A.init)^alpha

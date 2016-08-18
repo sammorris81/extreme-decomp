@@ -436,8 +436,8 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
 
         }
 
-        GG[iter] <- this.GG / n.test
-        CRPS[iter] <- this.CRPS / n.test
+        GG[iter - burn] <- this.GG / n.test
+        CRPS[iter - burn] <- this.CRPS / n.test
         keep.yp[(iter - burn), ] <- yp[miss]
       }
 

@@ -1,0 +1,1 @@
+install.packages(pkgs = c("Bolstad2", "coda", "doMC", "emulator", "evd", "extRemes", "fields", "geoR", "gplots", "gam", "ggplot2", "gridExtra", "inline", "maps", "maptools", "mapproj", "microbenchmark", "NSM3", "pander", "pscl", "pROC", "rapport", "Rcpp", "RcppArmadillo", "Rcmdr", "rgeos", "ROCR", "SpatialExtremes", "sn", "spatstat", "SpatialTools", "statmod", "xtable"))

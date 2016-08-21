@@ -505,6 +505,34 @@ layout.mtx <- matrix(1:6, nrow = 3, ncol = 2)
 #                      plot.pdiff.mu, plot.pdiff.ls, plot.pdiff.q90,
 #                      ncol = 2, layout_matrix = layout.mtx)
 
+plots <- list(plot.Delta.mu, plot.pdiff.mu)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/precip-", method, "-post-beta1time.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(plot.Delta.ls, plot.pdiff.ls)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/precip-", method, "-post-beta2time.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(plot.Delta.q90, plot.pdiff.q90)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/precip-", method, "-post-q90diff.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(plot.Delta.mu, plot.Delta.ls, plot.Delta.q90,
+              plot.pdiff.mu, plot.pdiff.ls, plot.pdiff.q90)
+g     <- lapply(plots, ggplotGrob)
+row1 <- cbind(g[[1]], g[[2]], g[[3]], size = "max")
+row2 <- cbind(g[[4]], g[[5]], g[[6]], size = "max")
+panel <- rbind(row1, row2, size = "max")
+ggsave(paste("./plots/precip-", method, "-postpanel-slides.pdf", sep = ""),
+       panel, width = 13.5, height = 9)
+
+
 plots <- list(plot.Delta.mu, plot.Delta.ls, plot.Delta.q90,
               plot.pdiff.mu, plot.pdiff.ls, plot.pdiff.q90)
 g     <- lapply(plots, ggplotGrob)

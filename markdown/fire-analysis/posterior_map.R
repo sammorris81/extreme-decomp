@@ -182,6 +182,32 @@ p6 <- map.ga.ggplot(Y = pdiff.q90.pos, counties = county, midpoint = 0.5,
 # panel <- arrangeGrob(p1, p2, p3, p4, p5, p6, ncol = 2,
 #                      layout_matrix = layout.mtx, widths = rep(4.5, 2))
 
+plots <- list(p1, p4)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/fire-", method, "-post-beta1time.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(p2, p5)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/fire-", method, "-post-beta2time.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(p3, p6)
+g     <- lapply(plots, ggplotGrob)
+panel <- cbind(g[[1]], g[[2]], size = "max")
+ggsave(paste("./plots/fire-", method, "-post-q90diff.pdf", sep = ""),
+       panel, width = 10, height = 5)
+
+plots <- list(p1, p2, p3, p4, p5, p6)
+g     <- lapply(plots, ggplotGrob)
+row1 <- cbind(g[[1]], g[[2]], g[[3]], size = "max")
+row2 <- cbind(g[[4]], g[[5]], g[[6]], size = "max")
+panel <- rbind(row1, row2, size = "max")
+ggsave(paste("./plots/fire-", method, "-postpanel-slides.pdf", sep = ""),
+       panel, width = 13.5, height = 9)
+
 plots <- list(p1, p2, p3, p4, p5, p6)
 g     <- lapply(plots, ggplotGrob)
 col1 <- rbind(g[[1]], g[[2]], g[[3]], size = "max")

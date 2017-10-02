@@ -396,3 +396,55 @@ ggsave(filename = "plots/precip-eig-5.pdf", e5, device = pdf,
        width = 4.5, height = 4.5)
 ggsave(filename = "plots/precip-eig-6.pdf", e6, device = pdf,
        width = 4.5, height = 4.5)
+
+rm(list = ls())
+library(gridExtra)
+load("precip_preprocess.RData")
+load("ebf-25-all.RData")
+
+# NYC is at (-74.0059, 40.7128)
+this.nyc.1 <- which(s[, 1] == -74.0625)
+this.nyc.2 <- which(s[, 2] == s[600, 2])  # theres a weird rounding issue
+nyc <- intersect(this.nyc.1, this.nyc.2)
+
+# ATL is at (-84.3880, 33.7490)
+this.atl.1 <- which(s[, 1] == -84.6875)
+this.atl.2 <- which(s[, 2] == s[434, 2])
+atl <- intersect(this.atl.1, this.atl.2)
+
+# IAD is at (-77.0369, 38.9072)
+this.iad.1 <- which(s[, 1] == -77.8125)
+this.iad.2 <- which(s[, 2] == s[502, 2])
+iad <- intersect(this.iad.1, this.iad.2)
+
+# KNX is at (-83.9207, 35.9606)
+this.knx.1 <- which(s[, 1] == -84.0625)
+this.knx.2 <- which(s[, 2] == s[496, 2])
+knx <- intersect(this.knx.1, this.knx.2)
+
+# get pairwise ECs for NYC, ATL, and
+nyc.ebf <- atl.ebf <- iad.ebf <- knx.ebf <- rep(0, nrow(s))
+for (i in 1:nrow(s)) {
+  nyc.ebf[i] <- sum((B.ebf[nyc, ]^(1 / alpha) + B.ebf[i, ]^(1 / alpha))^alpha)
+  atl.ebf[i] <- sum((B.ebf[atl, ]^(1 / alpha) + B.ebf[i, ]^(1 / alpha))^alpha)
+  iad.ebf[i] <- sum((B.ebf[iad, ]^(1 / alpha) + B.ebf[i, ]^(1 / alpha))^alpha)
+  knx.ebf[i] <- sum((B.ebf[knx, ]^(1 / alpha) + B.ebf[i, ]^(1 / alpha))^alpha)
+}
+nyc.ebf[nyc] <- NA
+atl.ebf[atl] <- NA
+iad.ebf[iad] <- NA
+knx.ebf[knx] <- NA
+
+p1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = nyc.ebf, midpoint = 1.5,
+                  mainTitle = "New York City, NY", zlim = c(1, 2))
+p2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = atl.ebf, midpoint = 1.5,
+                  mainTitle = "Atlanta, GA", zlim = c(1, 2))
+p3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = iad.ebf, midpoint = 1.5,
+                  mainTitle = "Washington, DC", zlim = c(1, 2))
+p4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = knx.ebf, midpoint = 1.5,
+                  mainTitle = "Knoxville, TN", zlim = c(1, 2))
+
+layout.mtx = matrix(1:4, nrow = 2, ncol = 2, byrow = TRUE)
+panel <- arrangeGrob(p1, p2, p3, p4, ncol = 2, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/pairwise-ec.pdf", panel, device = pdf,
+       width = 9, height = 9)

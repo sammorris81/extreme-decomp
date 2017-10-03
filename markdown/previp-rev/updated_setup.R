@@ -1,4 +1,4 @@
-# This file takes the revised basis functions and folds from Brian and 
+# This file takes the revised basis functions and folds from Brian and
 # recomputes the Gaussian kernel functions with the new folds.
 
 rm(list = ls())
@@ -20,12 +20,12 @@ load("./precip_preprocess.RData")
 # Run GSK smoother
 ec.hat <- vector(mode = "list", length = nfolds)
 
-#### NEED get.chi FUNCTION FROM BRIAN 
+#### NEED get.chi FUNCTION FROM BRIAN
 
 for (fold in 1:nfolds) {
   Y.tst <- Y
-  Y.tst[fold ==f] <- NA
-  
+  Y.tst[fold == f] <- NA
+
   # # build ec matrix: ns x ns
   # ec <- get.pw.ec.fmado(Y = Y.tst)
   # ec.hat[[fold]] <- ec$ec
@@ -35,7 +35,7 @@ for (fold in 1:nfolds) {
   ec[lower.tri(ec)] <- this.ec[, 3]
   ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
   ec.hat[[fold]] <- ec
-  
+
   cat("finished fold:", fold, "\n")
 }
 
@@ -46,16 +46,19 @@ for (L in nknots) {
   knots <- cover.design(s, nd = L)$design
   B.gsk <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
-    out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s, knots = knots,
-                           init.rho = 0.3)
+    Y.tst <- Y
+    Y.tst[fold == f] <- NA
+    ec.hat <- get.chi(Y.tst)
+    out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots,
+                           init.rho = 3)
     B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
     alphas[fold]  <- out$alpha
-    
+
     cat("  Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
   }
-  
+
   filename <- paste("gsk-", L, ".RData", sep = "")
   save(B.gsk, alphas, knots, file = filename)
-  
+
   cat("Finished L = ", L, ".\n", sep = "")
 }

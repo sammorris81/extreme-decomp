@@ -4,6 +4,24 @@ if (!exists("cppaux.load")) {
   cppaux.load <- TRUE
 }
 
+get.chi <- function(Y, u = 0.9) {
+  library(extRemes)
+  n   <- nrow(Y)
+  chi <- matrix(0, n, n)
+  for(i in 1:n) {
+    for(j in 1:n) {
+      if(i < j) {
+        junk      <- is.na(Y[i, ] + Y[j, ])
+        chi[i, j] <- taildep(Y[i, !junk], Y[j, !junk], u = u, type = "chi")
+        chi[j, i] <- chi[i, j]
+      }
+    }
+  }
+  chi[chi > 0.999] <- 0.999
+  chi[chi < 0.001] <- 0.001
+  return(2 - chi)
+}
+
 #############################################################
 ########   FUNCTIONS TO COMPUTE INITIAL VALUES    ###########
 #############################################################
@@ -1014,6 +1032,47 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
 
   ECsmooth <- num / den
 
+  return(ECsmooth)
+}
+
+KsmoothCV <- function(ECmat, s, bw = seq(0.01, 1, length = 10)){
+
+  n           <- nrow(ECmat)
+  m           <- length(bw)
+  d           <- as.matrix(dist(s))
+  diag(ECmat) <- 0
+  MSE         <- rep(0, m)
+  fold        <- ceiling(5 * rank(runif(n)) / n)
+
+  for (i in 1:m) {
+    W       <- exp(-0.5 * d / bw[i])
+    diag(W) <- 0
+    for (f in 1:5) {
+      EC             <- ECmat
+      EC[fold == f, ]   <- 0
+      EC[, fold == f]   <- 0
+      E1             <- ifelse(EC == 0, 0, 1)
+      ECsmooth       <- W %*% EC %*% W / (W %*% E1 %*% W)
+      diag(ECsmooth) <- 0
+      MSE[i] <- MSE[i] + sum((ECmat[fold == f, fold == f] -
+                                ECsmooth[fold == f, fold == f])^2)
+    }
+    ppp <- ECsmooth
+    diag(ppp) <- NA
+  }
+  plot(bw, MSE)
+
+  best <- which.min(MSE)
+  if (best == 1) {
+    ECsmooth <- ECmat
+  }
+  if (best > 1) {
+    bw       <- bw[best]
+    W        <- exp(-0.5 * d / bw)
+    diag(W)  <- 0
+    E1       <- ifelse(ECmat == 0, 0, 1)
+    ECsmooth <- (W %*% ECmat %*% W) / (W %*% E1 %*% W)
+  }
   return(ECsmooth)
 }
 

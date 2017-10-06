@@ -21,40 +21,64 @@ load("./precip_preprocess.RData")
 ec.hat <- vector(mode = "list", length = nfolds)
 
 #### NEED get.chi FUNCTION FROM BRIAN
+#
+# for (fold in 1:nfolds) {
+#   Y.tst <- Y
+#   Y.tst[fold == f] <- NA
+#
+#   # # build ec matrix: ns x ns
+#   # ec <- get.pw.ec.fmado(Y = Y.tst)
+#   # ec.hat[[fold]] <- ec$ec
+#   this.ec <- fmadogram(data = t(Y.tst), coord = s, which = "ext")
+#   this.ec[this.ec >= 2] <- 2
+#   ec <- matrix(1, nrow(Y), nrow(Y))
+#   ec[lower.tri(ec)] <- this.ec[, 3]
+#   ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
+#   ec.hat[[fold]] <- ec
+#
+#   cat("finished fold:", fold, "\n")
+# }
 
-for (fold in 1:nfolds) {
-  Y.tst <- Y
-  Y.tst[fold == f] <- NA
 
-  # # build ec matrix: ns x ns
-  # ec <- get.pw.ec.fmado(Y = Y.tst)
-  # ec.hat[[fold]] <- ec$ec
-  this.ec <- fmadogram(data = t(Y.tst), coord = s, which = "ext")
-  this.ec[this.ec >= 2] <- 2
-  ec <- matrix(1, nrow(Y), nrow(Y))
-  ec[lower.tri(ec)] <- this.ec[, 3]
-  ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
-  ec.hat[[fold]] <- ec
-
-  cat("finished fold:", fold, "\n")
-}
+# B     = OUTPUT[[f]]$est
+# alpha = OUTPUT[[f]]$alpha
+#
+# The B and alpha for the final model fit to all the data are
+#
+# B     = OUTPUT[[6]]$est
+# alpha = OUTPUT[[6]]$alpha
 
 for (L in nknots) {
+  # Brian did the basis functions for EBF separately
+  ebf.basis.file <- paste0("./from-bjr/basis_L", L, ".RData")
+  load(ebf.basis.file)
+  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
+  alphas <- rep(0, nfolds)
+  for (f in 1:nfolds) {
+    B.ebf[[f]] <- OUTPUT[[f]]$est
+    ec.smooth[[f]] <- OUTPUT[[f]]$EC.smooth
+    alphas[f] <- OUTPUT[[f]]$alpha
+  }
+
+  filename <- paste("ebf-", L, ".RData", sep = "")
+  save(B.ebf, ec.smooth, alphas, file = filename)
+
   # Gaussian kernel functions
   set.seed(5687 + L)  # knots + L
   cat("Starting estimation of Gaussian kernels \n")
   knots <- cover.design(s, nd = L)$design
   B.gsk <- vector(mode = "list", length = nfolds)
-  for (fold in 1:nfolds) {
+  alphas <- rep(0, nfolds)
+  for (f in 1:nfolds) {
     Y.tst <- Y
     Y.tst[fold == f] <- NA
     ec.hat <- get.chi(Y.tst)
     out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots,
-                           init.rho = 3)
-    B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
-    alphas[fold]  <- out$alpha
+                           init.rho = 5)
+    B.gsk[[f]] <- getW(rho = out$rho, dw2 = out$dw2)
+    alphas[f]  <- out$alpha
 
-    cat("  Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
+    cat("  Finished fold ", f, " of ", nfolds, " for gsk. \n", sep = "")
   }
 
   filename <- paste("gsk-", L, ".RData", sep = "")

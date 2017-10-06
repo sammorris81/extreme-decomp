@@ -14,47 +14,22 @@ nfolds <- 5  # picking 5 because data are max-stable and 64 years of data
 set.seed(0820)
 fold <- matrix(sample(1:nfolds, ns * nt, replace = TRUE), ns, nt)
 
+# Save the cv.folds for use when fitting the model.
+cv.idx <- vector(mode = "list", length = nfolds)
+for (f in seq_len(nfolds)) {
+  cv.idx[[f]] <- fold == f
+}
+save(cv.idx, file = "cv-extcoef.RData")
+
 # Load preprocessed precip data
 load("./precip_preprocess.RData")
-
-# Run GSK smoother
-ec.hat <- vector(mode = "list", length = nfolds)
-
-#### NEED get.chi FUNCTION FROM BRIAN
-#
-# for (fold in 1:nfolds) {
-#   Y.tst <- Y
-#   Y.tst[fold == f] <- NA
-#
-#   # # build ec matrix: ns x ns
-#   # ec <- get.pw.ec.fmado(Y = Y.tst)
-#   # ec.hat[[fold]] <- ec$ec
-#   this.ec <- fmadogram(data = t(Y.tst), coord = s, which = "ext")
-#   this.ec[this.ec >= 2] <- 2
-#   ec <- matrix(1, nrow(Y), nrow(Y))
-#   ec[lower.tri(ec)] <- this.ec[, 3]
-#   ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
-#   ec.hat[[fold]] <- ec
-#
-#   cat("finished fold:", fold, "\n")
-# }
-
-
-# B     = OUTPUT[[f]]$est
-# alpha = OUTPUT[[f]]$alpha
-#
-# The B and alpha for the final model fit to all the data are
-#
-# B     = OUTPUT[[6]]$est
-# alpha = OUTPUT[[6]]$alpha
-
 for (L in nknots) {
   # Brian did the basis functions for EBF separately
   ebf.basis.file <- paste0("./from-bjr/basis_L", L, ".RData")
   load(ebf.basis.file)
   ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
   alphas <- rep(0, nfolds)
-  for (f in 1:nfolds) {
+  for (f in seq_len(nfolds)) {
     B.ebf[[f]] <- OUTPUT[[f]]$est
     ec.smooth[[f]] <- OUTPUT[[f]]$EC.smooth
     alphas[f] <- OUTPUT[[f]]$alpha

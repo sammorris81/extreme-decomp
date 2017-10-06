@@ -21,6 +21,8 @@ source(file = "./MappingFunctions.R")
 if (Sys.info()["nodename"] == "cwl-mth-sam-001") {
   openblas.set.num.threads(1)
   do.upload <- TRUE
+} else if (Sys.info()["nodename"] == "sammorris-macbookpro.roam.corp.google.com") {
+  do.upload <- FALSE
 } else if (Sys.info()["sysname"] == "Darwin") {
   do.upload <- TRUE
 } else if (Sys.info()["sysname"] == "Windows") {

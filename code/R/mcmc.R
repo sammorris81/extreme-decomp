@@ -125,8 +125,7 @@ ReShMCMC<-function(y, test.set = NULL, s, thresh, B, alpha,
   diag(d) <- 0
   bw.min <- 1e-4
   bw.max <- max(d[upper.tri(d)])
-  print(bw.max)
-  stop()
+
   if (!is.null(bw.init)) {
     bw <- bw.init
   } else {

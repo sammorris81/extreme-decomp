@@ -34,3 +34,4 @@ core-covariates.csv
 *.rdb
 
 *.rdx
+*.DS_Store

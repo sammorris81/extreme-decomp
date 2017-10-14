@@ -12,52 +12,59 @@ nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 nfolds <- 5  # picking 5 because data are max-stable and 64 years of data
 
 set.seed(0820)
-fold <- matrix(sample(1:nfolds, ns * nt, replace = TRUE), ns, nt)
-
-# Save the cv.folds for use when fitting the model.
-cv.idx <- vector(mode = "list", length = nfolds)
-for (f in seq_len(nfolds)) {
-  cv.idx[[f]] <- fold == f
-}
+# stratifying the selection so each training set location loses only 20% of
+# observations
+cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 save(cv.idx, file = "cv-extcoef.RData")
+
+#### Try to precalculate the basis functions #########
+#### Hoping to save a little time in the analysis ####
+load("precip_preprocess.RData")
+load("cv-extcoef.RData")
+nfolds <- length(cv.idx)
+# openblas.set.num.threads(4)
+s.scale        <- s
+s.scale.factor <- min(diff(range(s[, 1])), diff(range(s[, 2])))
+s.min          <- apply(s, 2, min)
+s.scale[, 1]   <- (s[, 1] - s.min[1]) / s.scale.factor
+s.scale[, 2]   <- (s[, 2] - s.min[2]) / s.scale.factor
+cents.grid     <- s.scale
 
 # Load preprocessed precip data
 load("./precip_preprocess.RData")
 for (L in nknots) {
-  # Brian did the basis functions for EBF separately
-  ebf.basis.file <- paste0("./from-bjr/basis_L", L, ".RData")
-  load(ebf.basis.file)
-  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
-  alphas <- rep(0, nfolds)
-  for (f in seq_len(nfolds)) {
-    B.ebf[[f]] <- OUTPUT[[f]]$est
-    ec.smooth[[f]] <- OUTPUT[[f]]$EC.smooth
-    alphas[f] <- OUTPUT[[f]]$alpha
-  }
-
-  filename <- paste("ebf-", L, ".RData", sep = "")
-  save(B.ebf, ec.smooth, alphas, file = filename)
-
-  # Gaussian kernel functions
+  # Storage
+  ec.smooth <- B.ebf <- B.gsk <- vector(mode = "list", length = nfolds)
+  alphas.ebf <- alphas.gsk <- rep(0, nfolds)
   set.seed(5687 + L)  # knots + L
-  cat("Starting estimation of Gaussian kernels \n")
   knots <- cover.design(s, nd = L)$design
-  B.gsk <- vector(mode = "list", length = nfolds)
-  alphas <- rep(0, nfolds)
-  for (f in 1:nfolds) {
+  
+  for (fold in seq_len(nfolds)) {
     Y.tst <- Y
-    Y.tst[fold == f] <- NA
+    Y.tst[cv.idx[[fold]]] <- NA
     ec.hat <- get.chi(Y.tst)
-    out   <- get.rho.alpha(EC = ec.hat, s = s, knots = knots,
-                           init.rho = 5)
+    
+    # Get the basis function using the EBF method
+    out.ebf <- get.factors.EC(EChat = ec.hat, L = L, s = s.scale, 
+                              verbose = TRUE)
+    B.ebf[[f]] <- out.ebf$est
+    ec.smooth[[f]] <- out.ebf$EC.smooth
+    alphas.ebf[f] <- out.ebf$alpha
+    
+    # Get the basis functions using the GSK method
+    out   <- get.rho.alpha(EC = ec.hat, s = s.scale, knots = knots,
+                           init.rho = 0.3)
     B.gsk[[f]] <- getW(rho = out$rho, dw2 = out$dw2)
-    alphas[f]  <- out$alpha
+    alphas.gsk[f]  <- out$alpha
 
     cat("  Finished fold ", f, " of ", nfolds, " for gsk. \n", sep = "")
   }
 
+  filename <- paste("ebf-", L, ".RData", sep = "")
+  save(B.ebf, ec.smooth, alphas.ebf, file = filename)
+  
   filename <- paste("gsk-", L, ".RData", sep = "")
-  save(B.gsk, alphas, knots, file = filename)
+  save(B.gsk, alphas.gsk, knots, file = filename)
 
   cat("Finished L = ", L, ".\n", sep = "")
 }

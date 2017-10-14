@@ -44,10 +44,10 @@ load(file = gsk.file)
 if (process == "ebf") {
   B.sp      <- B.ebf[[cv]]
   ec.smooth <- ec.smooth[[cv]]
-  alpha     <- alphas[cv]
+  alpha     <- alphas.ebf[cv]
 } else {
   # get the knot locations
-  alpha <- alphas[cv]
+  alpha <- alphas.gsk[cv]
   B.sp  <- B.gsk[[cv]]
 }
 

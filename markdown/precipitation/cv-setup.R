@@ -54,31 +54,21 @@ cv.idx <- get.cv.test.strat(data = Y, nfolds = nfolds, idx = 1)
 # loop over the list for cross-validation and get the basis functions
 # before getting started
 
-ec.hat <- vector(mode = "list", length = nfolds)
-# temp <- fmadogram(data = t(Y[1:5, ]), coord = s[1:5, ], which = "ext")
-# ec.temp <- matrix(1, nrow(Y[1:5, ]), nrow(Y[1:5, ]))
-# ec.temp[lower.tri(ec.temp)] <- temp[, 3]
-# ec.temp[upper.tri(ec.temp)] <- t(ec.temp)[upper.tri(ec.temp)]
-# ec.hat[[1]] <-
-
+ec.hat <- ec.smooth <- vector(mode = "list", length = nfolds)
+alpha.hats <-rep(0, nfolds)
 for (fold in 1:nfolds) {
   Y.tst <- Y
   Y.tst[cv.idx[[fold]]] <- NA
 
-  # # build ec matrix: ns x ns
-  # ec <- get.pw.ec.fmado(Y = Y.tst)
-  # ec.hat[[fold]] <- ec$ec
-  this.ec <- fmadogram(data = t(Y.tst), coord = s, which = "ext")
-  this.ec[this.ec >= 2] <- 2
-  ec <- matrix(1, nrow(Y), nrow(Y))
-  ec[lower.tri(ec)] <- this.ec[, 3]
-  ec[upper.tri(ec)] <- t(ec)[upper.tri(ec)]
-  ec.hat[[fold]] <- ec
+  # build ec matrix: ns x ns
+  ec.hat[[fold]] <- get.ec.fmad(Y = Y.tst, s = s)
+  ec.smooth[[fold]] <- KsmoothCV(ec.hat[[fold]], s)$EC
+  alpha.hats[fold] <- EstimateAlpha(ec.hat = ec.hat[[fold]], d = d, n0 = 50)
 
   cat("finished fold:", fold, "\n")
 }
 
-save(cv.idx, ec.hat, file = "cv-extcoef.RData")
+save(cv.idx, ec.hat, alpha.hats, ec.smooth, file = "cv-extcoef.RData")
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####
@@ -98,19 +88,16 @@ nknots <- c(5, 10, 15, 20, 25, 30, 35, 40)
 for (L in nknots) {
   # Empirical basis functions
   cat("Starting estimation of empirical basis functions \n")
-  alphas <- rep(0, nfolds)
-  ec.smooth <- B.ebf <- vector(mode = "list", length = nfolds)
+  B.ebf <- B.gsk <- vector(mode = "list", length = nfolds)
+
   for (fold in 1:nfolds) {
     out               <- get.factors.EC(ec.hat[[fold]], L = L, s = s.scale)
     B.ebf[[fold]]     <- out$est
-    ec.smooth[[fold]] <- out$EC.smooth
-    alphas[fold]      <- out$alpha
-
     cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
   }
 
   filename <- paste("ebf-", L, ".RData", sep = "")
-  save(B.ebf, ec.smooth, alphas, file = filename)
+  save(B.ebf, file = filename)
 
   # Gaussian kernel functions
   set.seed(5687 + L)  # knots + L
@@ -118,16 +105,14 @@ for (L in nknots) {
   knots <- cover.design(cents.grid, nd = L)$design
   B.gsk <- vector(mode = "list", length = nfolds)
   for (fold in 1:nfolds) {
-    out   <- get.rho.alpha(EC = ec.hat[[fold]], s = s.scale, knots = knots,
+    out   <- get.gsk.basis(EC = ec.hat[[fold]], s = s.scale, knots = knots,
                            init.rho = 0.3)
     B.gsk[[fold]] <- getW(rho = out$rho, dw2 = out$dw2)
-    alphas[fold]  <- out$alpha
-
     cat("  Finished fold ", fold, " of ", nfolds, " for gsk. \n", sep = "")
   }
 
   filename <- paste("gsk-", L, ".RData", sep = "")
-  save(B.gsk, alphas, knots, file = filename)
+  save(B.gsk, file = filename)
 
   cat("Finished L = ", L, ".\n", sep = "")
 }

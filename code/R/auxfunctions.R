@@ -4,22 +4,69 @@ if (!exists("cppaux.load")) {
   cppaux.load <- TRUE
 }
 
-get.chi <- function(Y, u = 0.9) {
-  library(extRemes)
-  n   <- nrow(Y)
-  chi <- matrix(0, n, n)
-  for(i in 1:n) {
-    for(j in 1:n) {
-      if(i < j) {
-        junk      <- is.na(Y[i, ] + Y[j, ])
-        chi[i, j] <- taildep(Y[i, !junk], Y[j, !junk], u = u, type = "chi")
-        chi[j, i] <- chi[i, j]
-      }
-    }
+get.ec.fmad <- function(Y, s) {
+  ec          <- fmadogram(data = t(Y), coord = s, which = NULL)[, 3]
+  ec[ec >= 2] <- 2
+  EC          <- diag(nrow(s))
+  low         <- lower.tri(EC)
+  EC[low]     <- ec
+  EC          <- EC + t(EC)
+  return(EC)
+}
+
+KsmoothCV <- function(ECmat, s, bw = seq(0.01, 1, length = 100)) {
+
+  n           <- nrow(ECmat)
+  m           <- length(bw)
+  d           <- as.matrix(dist(s))
+  diag(ECmat) <- 0
+  MSE         <- rep(0, m)
+  fold        <- ceiling(5 * rank(runif(n)) / n)
+
+  for (i in 1:m) {
+    W       <- exp(-0.5 * (d / bw[i])^2)
+    for(f in 1:5){
+       EC              <- ECmat
+       EC[fold == f, ] <- 0
+       EC[, fold == f] <- 0
+       E1              <- ifelse(EC == 0, 0, 1)
+       ECsmooth        <- W %*% EC %*% W / (W %*% E1 %*% W)
+       diag(ECsmooth)  <- 0
+       MSE[i] <- MSE[i] + sum(
+           (ECmat[fold == f, fold == f] - ECsmooth[fold == f, fold == f])^2)
+     }
   }
-  chi[chi > 0.999] <- 0.999
-  chi[chi < 0.001] <- 0.001
-  return(2 - chi)
+
+  best     <- which.min(MSE)
+  bw       <- bw[best]
+  W        <- exp(-0.5 * (d / bw)^2)
+  E1       <- ifelse(ECmat == 0, 0, 1)
+  ECsmooth <- (W %*% ECmat %*% W) / (W %*% E1 %*% W)
+
+  return(list(bw = bw, EC = ECsmooth))
+}
+
+EstimateAlpha <- function(ec.hat, d, n0 = 10) {
+  # Estimate alpha by taking pairs for the n0 smallest distances.
+  #
+  # Args:
+  #   ec.hat: Estimated extremal coefficients.
+  #   d: Pairwise distance matrix for the sites.
+  #   n0: The number of pairs used to estimate alpha (typically small compared
+  #       to number of sites).
+  #
+  # Returns:
+  #   Estimate of alpha.
+  #
+  # Notes:
+  #   We assume that the EC equals the nugget (will have positive bias,
+  #   hopefully small).
+
+  d0 <- sort(d[lower.tri(d)])[n0]
+  ec.0 <- mean(ec.hat[d <= d0 & d > 0])
+  alpha <- log2(mean(ec.0))
+
+  return(alpha)
 }
 
 #############################################################
@@ -1032,47 +1079,6 @@ Ksmooth <- function(ECmat, s = NULL, bw = NULL){
 
   ECsmooth <- num / den
 
-  return(ECsmooth)
-}
-
-KsmoothCV <- function(ECmat, s, bw = seq(0.01, 1, length = 10)){
-
-  n           <- nrow(ECmat)
-  m           <- length(bw)
-  d           <- as.matrix(dist(s))
-  diag(ECmat) <- 0
-  MSE         <- rep(0, m)
-  fold        <- ceiling(5 * rank(runif(n)) / n)
-
-  for (i in 1:m) {
-    W       <- exp(-0.5 * d / bw[i])
-    diag(W) <- 0
-    for (f in 1:5) {
-      EC             <- ECmat
-      EC[fold == f, ]   <- 0
-      EC[, fold == f]   <- 0
-      E1             <- ifelse(EC == 0, 0, 1)
-      ECsmooth       <- W %*% EC %*% W / (W %*% E1 %*% W)
-      diag(ECsmooth) <- 0
-      MSE[i] <- MSE[i] + sum((ECmat[fold == f, fold == f] -
-                                ECsmooth[fold == f, fold == f])^2)
-    }
-    ppp <- ECsmooth
-    diag(ppp) <- NA
-  }
-  plot(bw, MSE)
-
-  best <- which.min(MSE)
-  if (best == 1) {
-    ECsmooth <- ECmat
-  }
-  if (best > 1) {
-    bw       <- bw[best]
-    W        <- exp(-0.5 * d / bw)
-    diag(W)  <- 0
-    E1       <- ifelse(ECmat == 0, 0, 1)
-    ECsmooth <- (W %*% ECmat %*% W) / (W %*% E1 %*% W)
-  }
   return(ECsmooth)
 }
 

@@ -94,7 +94,7 @@ for (L in nknots) {
   for (fold in 1:nfolds) {
     out <- get.factors.EC(EC.smooth = ec.smooth[[fold]], 
                           alpha.hat = alpha.hats[fold], L = L, s = s.scale,
-                          maxit = 10000)
+                          maxit = 2000, n_starts = 3)
     B.ebf[[fold]] <- out$est
     cat("  Finished fold ", fold, " of ", nfolds, " for ebf. \n", sep = "")
   }

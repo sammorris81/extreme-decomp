@@ -4,11 +4,11 @@
 #
 # Inputs:
 #
-#  EChat    := n x n matrix of estimated pairwise extremal coefficients
-#  s        := locations
-#  knots    := knot locations
-#  alpha    := positive stable parameter alpha
-#  init.rho := inital value
+#  EC.smooth := n x n matrix of spatially smoothed pairwise ECs
+#  s         := locations
+#  knots     := knot locations
+#  alpha     := positive stable parameter alpha
+#  init.rho  := inital value
 #
 # Outputs
 #
@@ -40,7 +40,7 @@ get.rho <- function(EC.smooth, alpha.hat, s = NULL, knots = NULL,
   }
 
   # Find the best rho for alpha.
-  fit <- optim(rho, fn = SSE.rhoalpha, Y = ECSmooth, dw2 = dw2,
+  fit <- optim(rho, fn = SSE.rhoalpha, Y = EC.smooth, dw2 = dw2,
                alpha = alpha.hat, lower = 1e-2, upper = 0.5 * sqrt(max(dw2)),
                method = "L-BFGS-B")
   rho <- fit$par

@@ -165,21 +165,21 @@ B2EC_code = "
                         plugin = "Rcpp")
 
 get.factors.EC <- function(EC.smooth, alpha.hat, L = 5, s = NULL,
-                           n_starts = 10, init.B = NULL, fudge = 0.001,
-                           maxit = 500, eps = 0.0001, verbose = TRUE) {
+                           n_starts = 10, fudge = 0.001,
+                           maxit = 500, eps = 1e-8, verbose = TRUE) {
   tick   <- proc.time()[3]
-  n <- ncol(ECSmooth)
+  n <- ncol(EC.smooth)
   d <- rdist(s, s)
 
   # Basis function estimation.
   bestval <- Inf
   for (rep in 1:n_starts) {
-    ab         <- 10 * eigen(2 - ECSmooth)$vec[, 1:L] + rnorm(n * L) / 2
+    ab         <- 10 * eigen(2 - EC.smooth)$vec[, 1:L] + rnorm(n * L) / 2
     opt        <- optim(ab, fn = sse, gr = sse_grad, n = n, L = L,
-                        EC = EC.smooth, alpha = alpha.hat, fudge = 0.001,
+                        EC = EC.smooth, alpha = alpha.hat, fudge = fudge,
                         method = "BFGS",
                         control = list(trace = ifelse(verbose, 50, 0),
-                        maxit = maxit, reltol = 0.00000001))
+                        maxit = maxit, reltol = eps))
     if (opt$val < bestval) {
       b          <- opt$par
       bestval    <- opt$val

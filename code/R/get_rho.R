@@ -41,8 +41,8 @@ get.rho <- function(EC.smooth, alpha.hat, s = NULL, knots = NULL,
 
   # Find the best rho for alpha.
   fit <- optim(rho, fn = SSE.rhoalpha, Y = EC.smooth, dw2 = dw2,
-               alpha = alpha.hat, lower = 1e-2, upper = 0.5 * sqrt(max(dw2)),
-               method = "L-BFGS-B")
+               alpha = alpha.hat, #lower = 1e-2, upper = 0.5 * sqrt(max(dw2)),
+               method = "BFGS")
   rho <- fit$par
   if (fit$convergence != 0) {
     cat(" Warning, optim returned convergence code", fit$convergence, "\n")

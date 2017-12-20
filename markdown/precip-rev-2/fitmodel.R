@@ -41,13 +41,12 @@ load(file = gsk.file)
 ################################################################################
 #### Get weight functions for spatial process ##################################
 ################################################################################
+alpha <- alpha.hats[cv]
 if (process == "ebf") {
   B.sp      <- B.ebf[[cv]]
   ec.smooth <- ec.smooth[[cv]]
-  alpha     <- alphas.ebf[cv]
 } else {
   # get the knot locations
-  alpha <- alphas.gsk[cv]
   B.sp  <- B.gsk[[cv]]
 }
 
@@ -153,7 +152,7 @@ cat("Start mcmc fit \n")
 set.seed(6262)  # mcmc
 
 beta.time.init <- matrix(0, ns, 2)
-fit <- ReShMCMC(y = Y, test.set = this.cv, s = s, thresh = -Inf, B = B.sp,
+fit <- ReShMCMC(y = Y, test.set = this.cv, s = s.scale, thresh = -Inf, B = B.sp,
                 alpha = alpha, beta.int = beta.int.init, canbeta.int.sd = 0.5,
                 beta.time = beta.time.init, canbeta.time.sd = 0.5,
                 xi = xi.init, bw.init = 0.2, A = A.init,

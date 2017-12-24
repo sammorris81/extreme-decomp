@@ -120,3 +120,25 @@ for (L in nknots) {
 
   cat("Finished L = ", L, ".\n", sep = "")
 }
+
+# Plot pairwise extremal coefficients
+quartz(width = 8, height = 8)
+fmadogram(data = t(Y), coord = s, which = "ext", n.bins = 500)
+dev.print(device = pdf, width = 8, height = 8, file = "plots/bin-500-fmad.pdf")
+dev.off()
+
+quartz(width = 8, height = 8)
+fmadogram(data = t(Y), coord = s, which = "ext", n.bins = 1000)
+dev.print(device = pdf, width = 8, height = 8, file = "plots/bin-1000-fmad.pdf")
+dev.off()
+
+quartz(width = 8, height = 8)
+fmadogram(data = t(Y), coord = s, which = "ext", n.bins = 2500)
+dev.print(device = pdf, width = 8, height = 8, file = "plots/bin-2500-fmad.pdf")
+dev.off()
+
+quartz(width = 8, height = 8)
+fmadogram(data = t(Y), coord = s, which = "ext", n.bins = 5000)
+dev.print(device = pdf, width = 8, height = 8, file = "plots/bin-5000-fmad.pdf")
+dev.off()
+

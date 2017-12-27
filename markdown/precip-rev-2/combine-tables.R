@@ -138,8 +138,8 @@ quartz(width = 16, height = 8)
 par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
 
 # current
-ylim <- c(1, 5) # range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ] * 100)
-# ylim[2] <- ylim[2] + 1.1  # give space for legend
+ylim <- range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ]) * 100
+ylim[2] <- ylim[2] + 1.1  # give space for legend
 plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1] * 100,
      type = "b",
      main = "Current Precipitation Data",
@@ -190,8 +190,8 @@ quartz(width = 16, height = 8)
 par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
 
 # current
-ylim <- c(0.17, 0.87) # range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ] * 100)
-# ylim[2] <- ylim[2] + 1.1  # give space for legend
+ylim <- range(qs.results.mn[c(these.ebf.cur, these.gsk.cur), ])
+ylim[2] <- ylim[2] + 0.25  # give space for legend
 plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 1],
      type = "b",
      main = "Current Precipitation Data",

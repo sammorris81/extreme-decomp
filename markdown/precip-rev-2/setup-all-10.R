@@ -49,7 +49,7 @@ diag(d) <- 0
 ns <- nrow(s.scale)
 nt <- ncol(Y)
 
-nknots <- 10
+nknots <- L <- 10
 ec.hat <- get.ec.fmad(Y = Y, s = s.scale)
 ec.smooth <- KsmoothCV(ec.hat, s.scale)$EC
 alpha.hats <- EstimateAlpha(ec.hat = ec.hat, d = d, n0 = 50)

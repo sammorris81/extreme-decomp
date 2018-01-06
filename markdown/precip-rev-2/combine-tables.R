@@ -8,7 +8,7 @@ times  <- c("current", "future")  # is this current or future data
 ntimes <- length(times)
 margs  <- "gsk"
 nmargs <- length(margs)
-bases  <- c(5, 10, 15, 20, 25, 30, 35, 40)
+bases  <- c(2, 3, 5, 10, 15, 20, 25, 30, 35, 40)
 nbases <- length(bases)
 probs.for.qs <- c(0.95, 0.96, 0.97, 0.98, 0.99, 0.995)  # always check fitmodel
 probs.for.bs <- c(0.95, 0.99)
@@ -16,7 +16,7 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
-files <- files[-c(21, 62, 83, 104, 145, 166)]
+# files <- files[-c(21, 62, 83, 104, 145, 166)]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
@@ -125,10 +125,10 @@ for (p in 1:nprocs) {
 rownames(bs.results.mn) <- rownames
 rownames(qs.results.mn) <- rownames
 
-these.ebf.cur <- 1:8
-these.ebf.fut <- 9:16
-these.gsk.cur <- 17:24
-these.gsk.fut <- 25:32
+these.ebf.cur <- 1:10
+these.ebf.fut <- 11:20
+these.gsk.cur <- 21:30
+these.gsk.fut <- 31:40
 
 # Brier scores:
 # q(0.95) & q(0.99): lty = 1, lty = 2,
@@ -140,19 +140,19 @@ par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
 # current
 ylim <- range(bs.results.mn[c(these.ebf.cur, these.gsk.cur), ]) * 100
 ylim[2] <- ylim[2] + 1.1  # give space for legend
-plot(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 1] * 100,
+plot(bases, bs.results.mn[these.ebf.cur, 1] * 100,
      type = "b",
      main = "Current Precipitation Data",
      ylab = "Brier score (x 100)", xlab = "Knots",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
-lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 1] * 100,
+lines(bases, bs.results.mn[these.gsk.cur, 1] * 100,
       lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.ebf.cur), bs.results.mn[these.ebf.cur, 2] * 100,
+lines(bases, bs.results.mn[these.ebf.cur, 2] * 100,
       lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.gsk.cur), bs.results.mn[these.gsk.cur, 2] * 100,
+lines(bases, bs.results.mn[these.gsk.cur, 2] * 100,
       lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+axis(1, at = bases, labels = bases, cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
        pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
@@ -162,19 +162,19 @@ legend("topright",
 
 # ylim <- range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), ] * 100)
 # ylim[2] <- ylim[2] + 0.1  # give space for legend
-plot(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 1] * 100,
+plot(bases, bs.results.mn[these.ebf.fut, 1] * 100,
      lty = 1, type = "b",
      main = "Future Precipitation Data",
      ylab = "Brier score (x 100)", xlab = "Knots",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
-lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 1] * 100,
+lines(bases, bs.results.mn[these.gsk.fut, 1] * 100,
       lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.ebf.fut), bs.results.mn[these.ebf.fut, 2] * 100,
+lines(bases, bs.results.mn[these.ebf.fut, 2] * 100,
       lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.gsk.fut), bs.results.mn[these.gsk.fut, 2] * 100,
+lines(bases, bs.results.mn[these.gsk.fut, 2] * 100,
       lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+axis(1, at = bases, labels = bases, cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
        pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
@@ -192,19 +192,19 @@ par(mfrow = c(1, 2), oma = c(0, 0.5, 0, 0))
 # current
 ylim <- range(qs.results.mn[c(these.ebf.cur, these.gsk.cur), ])
 ylim[2] <- ylim[2] + 0.25  # give space for legend
-plot(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 1],
+plot(bases, qs.results.mn[these.ebf.cur, 1],
      type = "b",
      main = "Current Precipitation Data",
      ylab = "Quantile score", xlab = "Knots",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
-lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 1],
+lines(bases, qs.results.mn[these.gsk.cur, 1],
       lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.ebf.cur), qs.results.mn[these.ebf.cur, 5],
+lines(bases, qs.results.mn[these.ebf.cur, 5],
       lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.gsk.cur), qs.results.mn[these.gsk.cur, 5],
+lines(bases, qs.results.mn[these.gsk.cur, 5],
       lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+axis(1, at = bases, labels = bases, cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
        pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,
@@ -214,19 +214,19 @@ legend("topright",
 
 # ylim <- range(bs.results.mn[c(these.ebf.fut, these.gsk.fut), ] * 100)
 # ylim[2] <- ylim[2] + 0.1  # give space for legend
-plot(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 1],
+plot(bases, qs.results.mn[these.ebf.fut, 1],
      lty = 1, type = "b",
      main = "Future Precipitation Data",
      ylab = "Quantile score", xlab = "Knots",
      ylim = ylim, xaxt = "n", bg = "dodgerblue1", pch = 21,
      cex = 1.5, cex.lab = 1.5, cex.axis = 1.5, lwd = 1.25, cex.main = 1.5)
-lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 1],
+lines(bases, qs.results.mn[these.gsk.fut, 1],
       lty = 1, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.ebf.fut), qs.results.mn[these.ebf.fut, 5],
+lines(bases, qs.results.mn[these.ebf.fut, 5],
       lty = 3, type = "b", bg = "dodgerblue1", pch = 21, cex = 1.5, lwd = 1.25)
-lines(seq_along(these.gsk.fut), qs.results.mn[these.gsk.fut, 5],
+lines(bases, qs.results.mn[these.gsk.fut, 5],
       lty = 3, type = "b", bg = "firebrick1", pch = 21, cex = 1.5, lwd = 1.25)
-axis(1, at = 1:8, labels = seq(5, 40, by = 5), cex.lab = 1.5, cex.axis = 1.5)
+axis(1, at = bases, labels = bases, cex.lab = 1.5, cex.axis = 1.5)
 legend("topright",
        pt.bg = c("dodgerblue1", "firebrick1", "dodgerblue1", "firebrick1"),
        pch = c(21, 21, 21, 21), pt.lwd = 1.25, pt.cex = 1.5,

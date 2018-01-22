@@ -31,7 +31,7 @@ out <- mclapply(1:nfolds,
                 alpha.hat = alpha.hats,
                 L = L,
                 s = s.scale,
-                mc.cores = 3)
+                mc.cores = 5)
 
 ebf.pct <- B.ebf <- vector(mode = "list", length = nfolds)
 

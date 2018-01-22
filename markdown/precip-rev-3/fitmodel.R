@@ -35,18 +35,18 @@ cents.grid <- s
 #### Load in cross-validation setup ############################################
 ################################################################################
 load(file = "./cv-extcoef.RData")
+load(file = basis.file)
+load(file = gsk.file)
 
 ################################################################################
 #### Get weight functions for spatial process ##################################
 ################################################################################
 alpha <- alpha.hats[cv]
 if (process == "ebf") {
-  load(file = basis.file)
   B.sp      <- B.ebf[[cv]]
   ec.smooth <- ec.smooth[[cv]]
 } else {
   # get the knot locations
-  load(file = gsk.file)
   B.sp  <- B.gsk[[cv]]
 }
 

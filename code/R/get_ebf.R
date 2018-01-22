@@ -226,7 +226,7 @@ B2EC_cpp <- cxxfunction(signature(Ba = "numeric", alpha = "numeric"),
 
 get.factors.EC <- function(EC.smooth, alpha.hat, L = 5, s = NULL,
                            n_starts = 10, fudge = 0.001,
-                           maxit.1 = 20, maxit.2 = 5000,
+                           maxit.1 = 20, maxit.2 = 100000,
                            eps = 1e-8, verbose = TRUE) {
   tick   <- proc.time()[3]
   n <- ncol(EC.smooth)

@@ -92,7 +92,7 @@ for (L in nknots) {
   B.ebf <- B.gsk <- vector(mode = "list", length = nfolds)
 
   for (fold in 1:nfolds) {
-    out <- get.factors.EC(EC.smooth = ec.smooth[[fold]], 
+    out <- get.factors.EC(EC.smooth = ec.smooth[[fold]],
                           alpha.hat = alpha.hats[fold], L = L, s = s.scale,
                           maxit = 2000, n_starts = 3)
     B.ebf[[fold]] <- out$est
@@ -142,3 +142,102 @@ fmadogram(data = t(Y), coord = s, which = "ext", n.bins = 5000)
 dev.print(device = pdf, width = 8, height = 8, file = "plots/bin-5000-fmad.pdf")
 dev.off()
 
+#### Generate basis function maps ####
+load(file = "precip_preprocess.RData")
+load(file = "./basis_functions/ebf-10-all.RData")
+ns <- nrow(Y)
+nt <- ncol(Y)
+basis.weight <- colSums(B.ebf) / ns
+plot(cumsum(basis.weight), xlab = "Knot", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (10 knots)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "plots/precipv-10.pdf",
+          width = 4.5, height = 4.5)
+
+p1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 1],
+                  mainTitle = "Basis function 1 (of 10)")
+p2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 2],
+                  mainTitle = "Basis function 2 (of 10)")
+p3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 3],
+                  mainTitle = "Basis function 3 (of 10)")
+p4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 4],
+                  mainTitle = "Basis function 4 (of 10)")
+p5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 5],
+                  mainTitle = "Basis function 5 (of 10)")
+p6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = B.ebf[, 6],
+                  mainTitle = "Basis function 6 (of 10)")
+
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(p1, p2, p3, p4, p5, p6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-ebf-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
+
+ggsave(filename = "./plots/precip-ebf-1.pdf", p1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-ebf-2.pdf", p2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-ebf-3.pdf", p3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-ebf-4.pdf", p4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-ebf-5.pdf", p5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-ebf-6.pdf", p6, device = pdf,
+       width = 4.5, height = 4.5)
+
+# Eigenvectors
+rm(list = ls())
+source(file = "./package_load.R", chdir = T)
+options(warn = 0)
+load(file = "./precip_preprocess.RData")
+load(file = "./basis_functions/ebf-10-all.RData")
+
+# for correlation want ns x ns, so need cor(t(Y))
+Y.mean <- apply(Y, 1, mean)
+Y.center <- Y - Y.mean
+tY.center <- t(Y.center)
+
+Y.eigvec <- eigen(cor(tY.center))$vectors
+Y.eigval <- eigen(cor(tY.center))$values
+
+# standardize eigenvalues
+Y.eigval <- cumsum(Y.eigval) / sum(Y.eigval)
+
+plot(Y.eigval[1:10], xlab = "Eigenvalue contribution", ylim = c(0, 1),
+     ylab = "Cumulative relative contribution",
+     main = "Precipitation analysis (10 eigenvalues)",
+     cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+dev.print(device = pdf, file = "./plots/preciplambda-10.pdf", width = 6, height = 6)
+
+
+e1 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 1],
+                  mainTitle = "Principal Component 1")
+e2 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 2],
+                  mainTitle = "Principal Component 2")
+e3 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 3],
+                  mainTitle = "Principal Component 3")
+e4 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 4],
+                  mainTitle = "Principal Component 4")
+e5 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 5],
+                  mainTitle = "Principal Component 5")
+e6 <- map.heatmap(lat = s[, 2], lon = s[, 1], data = Y.eigvec[, 6],
+                  mainTitle = "Principal Component 6")
+
+layout.mtx = matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+panel <- arrangeGrob(e1, e2, e3, e4, e5, e6, ncol = 3, layout_matrix = layout.mtx)
+ggsave(filename = "./plots/precip-eig-panel.pdf", panel, device = pdf,
+       width = 13.5, height = 9)
+
+ggsave(filename = "./plots/precip-eig-1.pdf", e1, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-eig-2.pdf", e2, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-eig-3.pdf", e3, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-eig-4.pdf", e4, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-eig-5.pdf", e5, device = pdf,
+       width = 4.5, height = 4.5)
+ggsave(filename = "./plots/precip-eig-6.pdf", e6, device = pdf,
+       width = 4.5, height = 4.5)

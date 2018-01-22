@@ -16,7 +16,8 @@ nprobs.qs <- length(probs.for.qs)
 nprobs.bs <- length(probs.for.bs)
 
 files <- list.files(path = "cv-tables/")
-# files <- files[-c(21, 62, 83, 104, 145, 166)]
+is.cv <- !grepl(".*-all.txt", files) & !grepl(".*-timing.txt", files)
+files <- files[is.cv]
 # each element of these lists is a matrix - including an extra for gsk-gsk-all
 qs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
 bs.results <- vector(mode = "list", length = nbases * nprocs * nmargs)
@@ -691,6 +692,32 @@ for (s in sites) { for (t in days) {
 ebf.time <- read.table("./cv-tables/ebf-timing.txt")
 gsk.time <- read.table("./cv-tables/gsk-timing.txt")
 time <- cbind(apply(ebf.time, 1, mean), apply(gsk.time, 1, mean))
+time <- rbind(time[, 1, drop = F], time[, 2, drop = F])
+rownames(time)[1:20] <- paste0("ebf-", rownames(time)[1:20])
+rownames(time)[21:40] <- paste0("gsk-", rownames(time)[21:40])
 time <- time / 250 * 1000 / 60
-colnames(time) <- c("ebf", "gsk")
-round(time, 2)
+
+#### Summarize the scores in a data.frame
+library(dplyr)
+results.mn <- data.frame(
+  period = c(rep("cur", 10), rep("fut", 10), rep("cur", 10), rep("fut", 10)),
+  L = bases,
+  process = c(rep("ebf", 20), rep("gsk", 20)),
+  bs.95 = round(bs.results.mn[, 1] * 100, 3),
+  bs.99 = round(bs.results.mn[, 2] * 100, 3),
+  qs.95 = round(qs.results.mn[, 1], 3),
+  qs.99 = round(qs.results.mn[, 5], 3),
+  crps = round(crps.results.mn, 3),
+  mad = round(mad.results.mn, 3),
+  timing = round(time, 2),
+  stringsAsFactors = FALSE
+)
+
+results.mn <- results.mn %>%
+  dplyr::arrange(period, L, process)
+
+# Table 1
+results.mn %>% dplyr::filter(period == "cur") %>% dplyr::select(-period)
+results.mn %>% dplyr::filter(period == "fut") %>% dplyr::select(-period)
+
+min(results.mn$bs.95)

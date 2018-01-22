@@ -38,7 +38,7 @@ SSE1row <- function(b, theta, Brest, alpha) {
 }
 
 SSEall <- function(alpha, theta, B){
-  thetahat <- B2ECcpp(B^(1 / alpha), alpha)
+  thetahat <- B2EC_cpp(B^(1 / alpha), alpha)
   sse      <- sum((theta - thetahat)^2, na.rm = TRUE)
   return(sse)
 }
@@ -81,15 +81,14 @@ sse_grad <- function(ab, EC, n, L, alpha, fudge = 0.001) {
   b       <- matrix(ab, n, L)
   B       <- sweep(exp(b), 1, rowSums(exp(b)), "/")
   Ba      <- B^(1 / alpha)
-  theta   <- B2ECcpp(Ba, alpha)
+  theta   <- B2EC_cpp(Ba, alpha)
 
   R       <- EC - theta
   diag(R) <- 0
   Gb      <- 0 * b
   for (k in 1:L) {
-    delta  <- (matrix(Ba[, k], n, n, byrow = TRUE) +
-               matrix(Ba[, k], n, n, byrow = FALSE))^(alpha - 1)
-    Rd     <- rowSums(R * delta)
+    Rd     <- GetRd_cpp(Ba = Ba[, k], alpha = alpha, R = R)
+    Rd     <- rowSums(Rd)
     Gb     <- Gb + sweep(B, 1, Rd * Ba[, k], "*")
     Gb[,k] <- Gb[, k] - Rd * Ba[, k]
   }
@@ -97,8 +96,6 @@ sse_grad <- function(ab, EC, n, L, alpha, fudge = 0.001) {
 
   return(G / (n * L))
 }
-
-
 
 SSE1rowgrad <- function(b, theta, Brest, alpha) {
   B         <- exp(b) / sum(exp(b))
@@ -129,6 +126,69 @@ B2EC <- function(B, alpha){
 library(inline)
 library(Rcpp)
 
+# Rcpp function to get delta
+GetDelta_code = "
+  Rcpp::NumericVector this_ba(Ba);
+  double a = Rcpp::as<double>(alpha);
+
+  int n = this_ba.size();
+  Rcpp::NumericMatrix delta(n, n);
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < i; j++){
+      delta(i, j) = pow(this_ba(i) + this_ba(j), a - 1);
+      delta(j, i) = delta(i, j);
+    }
+    delta(i, i) = pow(2 * this_ba(i), a - 1);
+  }
+
+  return delta;
+"
+
+GetDelta_cpp <- cxxfunction(signature(Ba = "numeric", alpha = "numeric"),
+                            body = GetDelta_code,
+                            plugin = "Rcpp")
+
+GetRd_code = "
+  Rcpp::NumericVector ba_c(Ba);
+  double alpha_c = Rcpp::as<double>(alpha);
+  Rcpp::NumericMatrix r_c(R);
+
+  int n = ba_c.size();
+  Rcpp::NumericMatrix delta(n, n);
+  double this_delta_ij;
+
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < i; j++){
+      this_delta_ij = pow(ba_c(i) + ba_c(j), alpha_c - 1);
+      delta(i, j) = r_c(i, j) * this_delta_ij;
+      delta(j, i) = r_c(j, i) * this_delta_ij;
+    }
+    delta(i, i) = r_c(i, i) * pow(2.0 * ba_c(i), alpha_c - 1);
+  }
+
+  return delta;
+"
+
+GetRd_cpp <- cxxfunction(signature(Ba = "numeric",
+                                   alpha = "numeric",
+                                   R = "numeric"),
+                         body = GetRd_code,
+                         plugin = "Rcpp")
+
+GetDeltaR <- function(Ba, alpha) {
+  n <- length(Ba)
+  delta  <- (matrix(Ba, n, n, byrow = TRUE) +
+               matrix(Ba, n, n, byrow = FALSE))^(alpha - 1)
+  return(delta)
+}
+
+GetRdR <- function(Ba, alpha, R) {
+  delta <- GetDeltaR(Ba, alpha)
+  Rd <- R * delta
+  return(Rd)
+}
+
 # Rcpp function to multiply a matrix by a constant
 
 B2EC_code = "
@@ -139,52 +199,62 @@ B2EC_code = "
   int L = Bcpp.ncol();
   Rcpp::NumericMatrix theta(n, n);
 
-  for(int l = 0; l<L; l++){
-   for (int i = 0; i < n; i++){
-    for (int j = 0; j < i; j++){
-      theta(i,j) += pow(Bcpp(i,l)+Bcpp(j,l),a);
+  for (int l = 0; l < L; l++) {
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < i; j++) {
+        theta(i, j) += pow(Bcpp(i, l) + Bcpp(j, l), a);
+      }
     }
-   }
   }
 
-   for (int i = 0; i < n; i++){
+  for (int i = 0; i < n; i++){
     for (int j = 0; j < i; j++){
       theta(j,i) += theta(i,j);
     }
-   }
+  }
 
-   for (int i = 0; i < n; i++){
-     theta(i,i) = pow(2,a);
-   }
+  for (int i = 0; i < n; i++){
+    theta(i,i) = pow(2,a);
+  }
 
   return theta;
 "
 
- B2ECcpp <- cxxfunction(signature(Ba = "numeric", alpha = "numeric"),
+B2EC_cpp <- cxxfunction(signature(Ba = "numeric", alpha = "numeric"),
                         body = B2EC_code,
                         plugin = "Rcpp")
 
 get.factors.EC <- function(EC.smooth, alpha.hat, L = 5, s = NULL,
                            n_starts = 10, fudge = 0.001,
-                           maxit = 500, eps = 1e-8, verbose = TRUE) {
+                           maxit.1 = 20, maxit.2 = 5000,
+                           eps = 1e-8, verbose = TRUE) {
   tick   <- proc.time()[3]
   n <- ncol(EC.smooth)
   d <- rdist(s, s)
 
   # Basis function estimation.
   bestval <- Inf
+  # We try a few random starts to get us in the correct direction, but then
+  # move on to the real minimization.
   for (rep in 1:n_starts) {
-    ab         <- 10 * eigen(2 - EC.smooth)$vec[, 1:L] + rnorm(n * L) / 2
+    ab <- 10 * eigen(2 - EC.smooth)$vec[, 1:L] + rnorm(n * L) / 2
     opt        <- optim(ab, fn = sse, gr = sse_grad, n = n, L = L,
                         EC = EC.smooth, alpha = alpha.hat, fudge = fudge,
                         method = "BFGS",
                         control = list(trace = ifelse(verbose, 50, 0),
-                        maxit = maxit, reltol = eps))
+                                       maxit = maxit.1, reltol = eps))
     if (opt$val < bestval) {
       b          <- opt$par
       bestval    <- opt$val
     }
   }
+
+  opt        <- optim(b, fn = sse, gr = sse_grad, n = n, L = L,
+                      EC = EC.smooth, alpha = alpha.hat, fudge = fudge,
+                      method = "BFGS",
+                      control = list(trace = ifelse(verbose, 50, 0),
+                                     maxit = maxit.2, reltol = eps))
+  b <- opt$par
 
   b     <- matrix(b, n, L)
   B     <- sweep(exp(b), 1, rowSums(exp(b)), "/")

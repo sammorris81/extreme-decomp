@@ -5,7 +5,7 @@ library(SpatialExtremes)
 library(parallel)
 options(warn = 0)
 
-L <- 2
+L <- 25
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####
@@ -31,7 +31,7 @@ out <- mclapply(1:nfolds,
                 alpha.hat = alpha.hats,
                 L = L,
                 s = s.scale,
-                mc.cores = 4)
+                mc.cores = 5)
 
 ebf.pct <- B.ebf <- vector(mode = "list", length = nfolds)
 

@@ -5,7 +5,7 @@ library(SpatialExtremes)
 library(parallel)
 options(warn = 0)
 
-L <- 2
+L <- 3
 
 #### Try to precalculate the basis functions #########
 #### Hoping to save a little time in the analysis ####

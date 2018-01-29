@@ -977,36 +977,7 @@ getXBeta <- function(X, beta) {
 }
 
 # SSE for row of Y - EC
-SSE.B <- function(B1, B2, B.star, Y, alpha, lambda = 1000){
 
-  BB  <- B1^(1 / alpha)
-  B2  <- B.star
-  EC  <- sweepC2plus(X = B2, y = BB)
-  EC  <- rowSumsC(EC^alpha)
-
-  # penalty term is to make sure that the bases sum to 1
-  sse <- sum((Y - EC)^2, na.rm = TRUE) + lambda * (sum(B1) - 1)^2
-
-  return(sse)
-}
-
-SSE.B.grad <- function(B1, B.star, Y, alpha, lambda = 1000, exclude = 1){
-
-  B1.star <- B1^(1 / alpha)
-  B2   <- B.star
-
-  BB <- sweepC2plus(X = B2, y = B1.star)
-  EC0  <- rowSumsC(BB^alpha)
-
-  EC1  <- BB^(alpha - 1)
-  EC1  <- sweepC2times(EC1, B1.star / B1)
-  EC1  <- sweepC1times(EC1, Y - EC0)
-
-  grad <- -2 * colSums(EC1, na.rm = TRUE) +
-    2 * lambda * (sum(B1) - 1)
-
-  return(grad)
-}
 
 
 make.EC  <- function(B, alpha){
